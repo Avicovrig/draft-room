@@ -150,12 +150,16 @@ export function DraftBoard({
 
       if (response.error) {
         console.error('Auto-pick failed:', response.error)
-        addToast('Auto-pick failed. Please make a manual selection.', 'error')
+        // Only show error if it's not a race condition (multiple clients calling simultaneously)
+        if (!response.error.message?.includes('Pick already made')) {
+          addToast('Auto-pick failed. Please make a manual selection.', 'error')
+        }
       } else if (response.data?.error) {
         // Handle application-level errors from the edge function
-        console.error('Auto-pick error:', response.data.error)
-        // Don't show toast for "pick already made" - this is expected in race conditions
-        if (response.data.error !== 'Pick already made') {
+        console.log('Auto-pick not executed:', response.data.error)
+        // Don't show toast for expected race condition errors
+        const expectedErrors = ['Pick already made', 'Timer has not expired yet', 'Draft is not in progress']
+        if (!expectedErrors.includes(response.data.error)) {
           addToast(`Auto-pick failed: ${response.data.error}`, 'error')
         }
       } else if (response.data?.success) {
@@ -300,7 +304,6 @@ export function DraftBoard({
                 captain={viewingAsCaptain}
                 availablePlayers={availablePlayers}
                 leagueId={league.id}
-                currentPickIndex={league.current_pick_index}
               />
             </CardContent>
           </Card>
