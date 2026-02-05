@@ -1,11 +1,17 @@
+import { useRef } from 'react'
 import { ChevronUp, ChevronDown, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { useToast } from '@/components/ui/Toast'
 import { useDraftQueue, useRemoveFromQueue, useMoveInQueue, useToggleAutoPick } from '@/hooks/useDraftQueue'
+import { supabase } from '@/lib/supabase'
 import type { Captain, Player } from '@/lib/types'
 
 interface DraftQueueProps {
   captain: Captain
   availablePlayers: Player[]
+  isMyTurn?: boolean
+  leagueId?: string
+  currentPickIndex?: number
 }
 
 function getInitials(name: string): string {
@@ -17,11 +23,13 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function DraftQueue({ captain, availablePlayers }: DraftQueueProps) {
+export function DraftQueue({ captain, availablePlayers, isMyTurn, leagueId, currentPickIndex }: DraftQueueProps) {
   const { data: queue = [], isLoading } = useDraftQueue(captain.id)
   const removeFromQueue = useRemoveFromQueue()
   const moveInQueue = useMoveInQueue()
   const toggleAutoPick = useToggleAutoPick()
+  const { addToast } = useToast()
+  const isAutoPickingRef = useRef(false)
 
   // Filter queue to only show available players (not drafted yet)
   const availablePlayerIds = new Set(availablePlayers.map((p) => p.id))
@@ -54,11 +62,47 @@ export function DraftQueue({ captain, availablePlayers }: DraftQueueProps) {
     })
   }
 
-  function handleToggleAutoPick() {
-    toggleAutoPick.mutate({
-      captainId: captain.id,
-      enabled: !captain.auto_pick_enabled,
-    })
+  async function handleToggleAutoPick() {
+    const newEnabled = !captain.auto_pick_enabled
+
+    toggleAutoPick.mutate(
+      {
+        captainId: captain.id,
+        enabled: newEnabled,
+      },
+      {
+        onSuccess: async () => {
+          // If enabling auto-pick and it's my turn, trigger immediate pick
+          if (newEnabled && isMyTurn && leagueId && currentPickIndex !== undefined) {
+            if (isAutoPickingRef.current) return
+            isAutoPickingRef.current = true
+
+            console.log('[DraftQueue] Auto-pick enabled during my turn, triggering immediate pick')
+
+            try {
+              const response = await supabase.functions.invoke('auto-pick', {
+                body: {
+                  leagueId,
+                  expectedPickIndex: currentPickIndex,
+                },
+              })
+
+              if (response.error) {
+                console.error('Auto-pick failed:', response.error)
+              } else if (response.data?.error && response.data.error !== 'Pick already made') {
+                console.error('Auto-pick error:', response.data.error)
+              } else if (response.data?.success) {
+                addToast(`Auto-picked ${response.data.pick.player}`, 'info')
+              }
+            } catch (error) {
+              console.error('Auto-pick error:', error)
+            } finally {
+              isAutoPickingRef.current = false
+            }
+          }
+        },
+      }
+    )
   }
 
   return (
@@ -83,8 +127,8 @@ export function DraftQueue({ captain, availablePlayers }: DraftQueueProps) {
         </label>
         <p className="mt-1 text-xs text-muted-foreground">
           {captain.auto_pick_enabled
-            ? 'When your timer expires, the top player from your queue will be picked automatically.'
-            : 'When your timer expires, a random player will be picked.'}
+            ? 'When your turn starts, the top player from your queue will be picked automatically.'
+            : 'When your timer expires, a player will be picked from your queue (or randomly if empty).'}
         </p>
       </div>
 
