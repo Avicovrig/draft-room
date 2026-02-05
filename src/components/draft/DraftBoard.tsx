@@ -301,7 +301,6 @@ export function DraftBoard({
               <DraftQueue
                 captain={viewingAsCaptain}
                 availablePlayers={availablePlayers}
-                isMyTurn={isMyTurn}
                 leagueId={league.id}
                 currentPickIndex={league.current_pick_index}
               />

@@ -23,7 +23,7 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function DraftQueue({ captain, availablePlayers, isMyTurn, leagueId, currentPickIndex }: DraftQueueProps) {
+export function DraftQueue({ captain, availablePlayers, leagueId, currentPickIndex }: DraftQueueProps) {
   const { data: queue = [], isLoading } = useDraftQueue(captain.id)
   const removeFromQueue = useRemoveFromQueue()
   const moveInQueue = useMoveInQueue()
@@ -65,44 +65,52 @@ export function DraftQueue({ captain, availablePlayers, isMyTurn, leagueId, curr
   async function handleToggleAutoPick() {
     const newEnabled = !captain.auto_pick_enabled
 
-    toggleAutoPick.mutate(
-      {
+    try {
+      // Wait for the toggle to complete
+      await toggleAutoPick.mutateAsync({
         captainId: captain.id,
         enabled: newEnabled,
-      },
-      {
-        onSuccess: async () => {
-          // If enabling auto-pick and it's my turn, trigger immediate pick
-          if (newEnabled && isMyTurn && leagueId && currentPickIndex !== undefined) {
-            if (isAutoPickingRef.current) return
-            isAutoPickingRef.current = true
+      })
 
-            console.log('[DraftQueue] Auto-pick enabled during my turn, triggering immediate pick')
+      // If enabling auto-pick, trigger immediate pick
+      // The server will validate if it's actually this captain's turn
+      if (newEnabled && leagueId && currentPickIndex !== undefined && availablePlayers.length > 0) {
+        if (isAutoPickingRef.current) return
+        isAutoPickingRef.current = true
 
-            try {
-              const response = await supabase.functions.invoke('auto-pick', {
-                body: {
-                  leagueId,
-                  expectedPickIndex: currentPickIndex,
-                },
-              })
+        console.log('[DraftQueue] Auto-pick enabled, triggering immediate pick for pick index:', currentPickIndex)
 
-              if (response.error) {
-                console.error('Auto-pick failed:', response.error)
-              } else if (response.data?.error && response.data.error !== 'Pick already made') {
-                console.error('Auto-pick error:', response.data.error)
-              } else if (response.data?.success) {
-                addToast(`Auto-picked ${response.data.pick.player}`, 'info')
-              }
-            } catch (error) {
-              console.error('Auto-pick error:', error)
-            } finally {
-              isAutoPickingRef.current = false
-            }
+        // Small delay to ensure database write is fully propagated
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        try {
+          const response = await supabase.functions.invoke('auto-pick', {
+            body: {
+              leagueId,
+              expectedPickIndex: currentPickIndex,
+            },
+          })
+
+          console.log('[DraftQueue] Auto-pick response:', response)
+
+          if (response.error) {
+            console.error('Auto-pick failed:', response.error)
+          } else if (response.data?.error) {
+            // Log but don't show toast for expected errors
+            console.log('Auto-pick not executed:', response.data.error)
+          } else if (response.data?.success) {
+            addToast(`Auto-picked ${response.data.pick.player}`, 'info')
           }
-        },
+        } catch (error) {
+          console.error('Auto-pick error:', error)
+        } finally {
+          isAutoPickingRef.current = false
+        }
       }
-    )
+    } catch (error) {
+      console.error('Toggle auto-pick failed:', error)
+      addToast('Failed to toggle auto-pick', 'error')
+    }
   }
 
   return (
