@@ -193,9 +193,9 @@ export function DraftBoard({
     // Only if there are players available
     if (availablePlayers.length === 0) return
 
-    // Create a unique key combining pick index and captain's auto-pick state
-    // This ensures we trigger when either changes
-    const autoPickKey = `${league.current_pick_index}-${currentCaptain.id}-autopick`
+    // Create a unique key combining pick index, captain, and auto-pick state
+    // Including auto_pick_enabled ensures we trigger when captain enables it mid-turn
+    const autoPickKey = `${league.current_pick_index}-${currentCaptain.id}-${currentCaptain.auto_pick_enabled}`
 
     // Prevent duplicate calls for the same key
     if (lastAutoPickKeyRef.current === autoPickKey) return
