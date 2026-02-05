@@ -149,6 +149,7 @@ export function useMoveInQueue() {
 interface ToggleAutoPickInput {
   captainId: string
   enabled: boolean
+  leagueId?: string
 }
 
 export function useToggleAutoPick() {
@@ -163,8 +164,13 @@ export function useToggleAutoPick() {
 
       if (error) throw error
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['league'] })
+    onSuccess: (_, variables) => {
+      // Invalidate specific league if provided, otherwise all leagues
+      if (variables.leagueId) {
+        queryClient.invalidateQueries({ queryKey: ['league', variables.leagueId] })
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['league'] })
+      }
     },
   })
 }

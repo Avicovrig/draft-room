@@ -74,6 +74,18 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
           queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'captains',
+          filter: `league_id=eq.${leagueId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
+        }
+      )
       .subscribe((status) => {
         // Silently handle subscription - polling fallback will work if this fails
         setIsSubscribed(status === 'SUBSCRIBED')

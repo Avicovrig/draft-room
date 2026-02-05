@@ -70,6 +70,7 @@ export function DraftQueue({ captain, availablePlayers, leagueId, currentPickInd
       await toggleAutoPick.mutateAsync({
         captainId: captain.id,
         enabled: newEnabled,
+        leagueId,
       })
 
       // If enabling auto-pick, trigger immediate pick
