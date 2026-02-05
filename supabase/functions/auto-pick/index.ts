@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
     }
 
     // Idempotency check: verify we're picking for the expected turn
+    // Return 200 with error field for expected race conditions (not HTTP error)
     if (expectedPickIndex !== undefined && expectedPickIndex !== league.current_pick_index) {
       console.log(`[auto-pick] Pick index mismatch: expected ${expectedPickIndex}, actual ${league.current_pick_index}`)
       return new Response(
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
           expectedPickIndex,
           actualPickIndex: league.current_pick_index
         }),
-        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -101,13 +102,14 @@ Deno.serve(async (req) => {
 
         if (elapsed < effectiveTimeLimit) {
           console.log(`[auto-pick] Timer not expired: ${elapsed}s elapsed, need ${effectiveTimeLimit}s`)
+          // Return 200 with error field for expected race conditions (not HTTP error)
           return new Response(
             JSON.stringify({
               error: 'Timer has not expired yet',
               elapsed: Math.round(elapsed),
               required: effectiveTimeLimit
             }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
       }
