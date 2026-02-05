@@ -1,0 +1,138 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
+import type { League, LeagueFull, DraftType, LeagueStatus } from '@/lib/types'
+
+export function useLeagues() {
+  const { user } = useAuth()
+
+  return useQuery({
+    queryKey: ['leagues', user?.id],
+    queryFn: async () => {
+      if (!user) return []
+
+      const { data, error } = await supabase
+        .from('leagues')
+        .select('*')
+        .eq('manager_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return data as League[]
+    },
+    enabled: !!user,
+  })
+}
+
+interface UseLeagueOptions {
+  refetchInterval?: number | false
+}
+
+export function useLeague(id: string | undefined, options?: UseLeagueOptions) {
+  return useQuery({
+    queryKey: ['league', id],
+    queryFn: async () => {
+      if (!id) return null
+
+      const { data, error } = await supabase
+        .from('leagues')
+        .select(`
+          *,
+          captains (*),
+          players (*),
+          draft_picks (*)
+        `)
+        .eq('id', id)
+        .single()
+
+      if (error) throw error
+      return data as LeagueFull
+    },
+    enabled: !!id,
+    refetchInterval: options?.refetchInterval,
+  })
+}
+
+interface CreateLeagueInput {
+  name: string
+  draft_type?: DraftType
+  time_limit_seconds?: number
+}
+
+export function useCreateLeague() {
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+
+  return useMutation({
+    mutationFn: async (data: CreateLeagueInput) => {
+      if (!user) throw new Error('Not authenticated')
+
+      const { data: league, error } = await supabase
+        .from('leagues')
+        .insert({
+          name: data.name,
+          manager_id: user.id,
+          draft_type: data.draft_type ?? 'snake',
+          time_limit_seconds: data.time_limit_seconds ?? 60,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return league as League
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+    },
+  })
+}
+
+interface UpdateLeagueInput {
+  id: string
+  name?: string
+  draft_type?: DraftType
+  time_limit_seconds?: number
+  status?: LeagueStatus
+  current_pick_index?: number
+  current_pick_started_at?: string | null
+}
+
+export function useUpdateLeague() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, ...data }: UpdateLeagueInput) => {
+      const { data: league, error } = await supabase
+        .from('leagues')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return league as League
+    },
+    onSuccess: (league) => {
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+      queryClient.invalidateQueries({ queryKey: ['league', league.id] })
+    },
+  })
+}
+
+export function useDeleteLeague() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('leagues')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+    },
+  })
+}

@@ -1,0 +1,337 @@
+import { useState } from 'react'
+import { Plus, Trash2, Upload, Pencil, Copy, ExternalLink } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Label } from '@/components/ui/Label'
+import { Textarea } from '@/components/ui/Textarea'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
+import { PlayerProfileForm, type ProfileFormData } from '@/components/player/PlayerProfileForm'
+import { useCreatePlayer, useCreatePlayers, useDeletePlayer } from '@/hooks/usePlayers'
+import { useUpdatePlayerProfile, useUploadProfilePicture } from '@/hooks/usePlayerProfile'
+import { useUpsertCustomFields } from '@/hooks/useCustomFields'
+import { useToast } from '@/components/ui/Toast'
+import type { LeagueFull, Player, PlayerCustomField } from '@/lib/types'
+
+interface PlayerListProps {
+  league: LeagueFull
+  customFieldsMap?: Record<string, PlayerCustomField[]>
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+}
+
+export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
+  const [newPlayerName, setNewPlayerName] = useState('')
+  const [bulkInput, setBulkInput] = useState('')
+  const [showBulkAdd, setShowBulkAdd] = useState(false)
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
+
+  const { addToast } = useToast()
+  const createPlayer = useCreatePlayer()
+  const createPlayers = useCreatePlayers()
+  const deletePlayer = useDeletePlayer()
+  const updateProfile = useUpdatePlayerProfile()
+  const uploadPicture = useUploadProfilePicture()
+  const upsertCustomFields = useUpsertCustomFields()
+
+  const isEditable = league.status === 'not_started'
+
+  async function handleAddPlayer(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newPlayerName.trim()) return
+
+    try {
+      await createPlayer.mutateAsync({
+        league_id: league.id,
+        name: newPlayerName.trim(),
+      })
+      setNewPlayerName('')
+    } catch {
+      // Error handled by mutation
+    }
+  }
+
+  async function handleBulkAdd() {
+    const names = bulkInput
+      .split('\n')
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0)
+
+    if (names.length === 0) return
+
+    try {
+      await createPlayers.mutateAsync(
+        names.map((name) => ({ league_id: league.id, name }))
+      )
+      setBulkInput('')
+      setShowBulkAdd(false)
+    } catch {
+      // Error handled by mutation
+    }
+  }
+
+  async function handleDeletePlayer(playerId: string) {
+    try {
+      await deletePlayer.mutateAsync({ id: playerId, leagueId: league.id })
+    } catch {
+      // Error handled by mutation
+    }
+  }
+
+  async function handleSaveProfile(data: ProfileFormData) {
+    if (!editingPlayer) return
+
+    try {
+      // Upload profile picture if provided
+      let profilePictureUrl = editingPlayer.profile_picture_url
+      if (data.profilePictureBlob) {
+        const result = await uploadPicture.mutateAsync({
+          playerId: editingPlayer.id,
+          leagueId: league.id,
+          blob: data.profilePictureBlob,
+        })
+        profilePictureUrl = result.profile_picture_url
+      }
+
+      // Update profile
+      await updateProfile.mutateAsync({
+        playerId: editingPlayer.id,
+        bio: data.bio,
+        height: data.height,
+        weight: data.weight,
+        birthday: data.birthday,
+        hometown: data.hometown,
+        profile_picture_url: profilePictureUrl,
+      })
+
+      // Update custom fields
+      await upsertCustomFields.mutateAsync({
+        playerId: editingPlayer.id,
+        leagueId: league.id,
+        fields: data.customFields,
+        deletedIds: data.deletedCustomFieldIds,
+      })
+
+      addToast('Profile saved successfully!', 'success')
+      setEditingPlayer(null)
+    } catch (err) {
+      console.error('Save error:', err)
+      addToast(err instanceof Error ? err.message : 'Failed to save profile', 'error')
+    }
+  }
+
+  function getPlayerEditUrl(player: Player): string {
+    return `${window.location.origin}/player/${player.id}/edit?token=${player.edit_token}`
+  }
+
+  async function handleCopyPlayerUrl(player: Player) {
+    const url = getPlayerEditUrl(player)
+    try {
+      await navigator.clipboard.writeText(url)
+      addToast(`Copied ${player.name}'s profile link`, 'success')
+    } catch {
+      addToast('Failed to copy link', 'error')
+    }
+  }
+
+  function handleOpenPlayerUrl(player: Player) {
+    const url = getPlayerEditUrl(player)
+    window.open(url, '_blank')
+  }
+
+  const availablePlayers = league.players.filter((p) => !p.drafted_by_captain_id)
+  const draftedPlayers = league.players.filter((p) => p.drafted_by_captain_id)
+
+  return (
+    <div className="space-y-6">
+      {/* Add Players */}
+      {isEditable && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Add Players</CardTitle>
+            <CardDescription>
+              Add players who will be available for captains to draft.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {showBulkAdd ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bulk">Player Names (one per line)</Label>
+                  <Textarea
+                    id="bulk"
+                    placeholder="John Smith&#10;Jane Doe&#10;Bob Wilson"
+                    value={bulkInput}
+                    onChange={(e) => setBulkInput(e.target.value)}
+                    rows={6}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleBulkAdd}
+                    disabled={createPlayers.isPending || !bulkInput.trim()}
+                  >
+                    {createPlayers.isPending ? 'Adding...' : 'Add All'}
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowBulkAdd(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <form onSubmit={handleAddPlayer} className="flex gap-2">
+                  <Input
+                    placeholder="Player name"
+                    value={newPlayerName}
+                    onChange={(e) => setNewPlayerName(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button type="submit" disabled={createPlayer.isPending || !newPlayerName.trim()}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add
+                  </Button>
+                </form>
+                <Button variant="outline" onClick={() => setShowBulkAdd(true)}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Bulk Add Players
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Profile Modal */}
+      {editingPlayer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-background p-6 shadow-lg">
+            <h2 className="mb-4 text-lg font-semibold">Edit Profile: {editingPlayer.name}</h2>
+            <PlayerProfileForm
+              player={editingPlayer}
+              customFields={customFieldsMap[editingPlayer.id] || []}
+              onSave={handleSaveProfile}
+              onCancel={() => setEditingPlayer(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Player List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Available Players ({availablePlayers.length})
+          </CardTitle>
+          <CardDescription>
+            Players available to be drafted.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {availablePlayers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No players added yet. Add players above to get started.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {availablePlayers.map((player) => (
+                <li key={player.id} className="flex items-center gap-3 py-3">
+                  {/* Profile Picture */}
+                  {player.profile_picture_url ? (
+                    <img
+                      src={player.profile_picture_url}
+                      alt={player.name}
+                      className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground flex-shrink-0">
+                      {getInitials(player.name)}
+                    </div>
+                  )}
+
+                  {/* Player Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{player.name}</div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditingPlayer(player)}
+                      title="Edit profile"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleCopyPlayerUrl(player)}
+                      title="Copy profile link"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenPlayerUrl(player)}
+                      title="Open profile link in new tab"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                    {isEditable && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeletePlayer(player.id)}
+                        disabled={deletePlayer.isPending}
+                        title="Delete player"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Drafted Players */}
+      {draftedPlayers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Drafted Players ({draftedPlayers.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-border">
+              {draftedPlayers
+                .sort((a, b) => (a.draft_pick_number ?? 0) - (b.draft_pick_number ?? 0))
+                .map((player) => {
+                  const captain = league.captains.find(
+                    (c) => c.id === player.drafted_by_captain_id
+                  )
+                  return (
+                    <li key={player.id} className="flex items-center justify-between py-2">
+                      <span>{player.name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        Pick #{player.draft_pick_number} • {captain?.name}
+                      </span>
+                    </li>
+                  )
+                })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}

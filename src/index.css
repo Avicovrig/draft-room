@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: system-ui, Avenir, Helvetica, Arial, sans-serif;
+
+  /* Light mode colors - Detroit Lions inspired */
+  /* Honolulu Blue: #0076B6, Silver: #B0B7BC */
+  --color-background: oklch(0.99 0 0);
+  --color-foreground: oklch(0.15 0 0);
+  --color-muted: oklch(0.95 0.005 240);
+  --color-muted-foreground: oklch(0.45 0.02 240);
+  --color-popover: oklch(0.99 0 0);
+  --color-popover-foreground: oklch(0.15 0 0);
+  --color-card: oklch(0.99 0 0);
+  --color-card-foreground: oklch(0.15 0 0);
+  --color-border: oklch(0.85 0.01 240);
+  --color-input: oklch(0.85 0.01 240);
+  --color-primary: oklch(0.55 0.2 240);        /* Honolulu Blue */
+  --color-primary-foreground: oklch(0.99 0 0);
+  --color-secondary: oklch(0.75 0.01 240);     /* Silver */
+  --color-secondary-foreground: oklch(0.15 0 0);
+  --color-accent: oklch(0.55 0.2 240);
+  --color-accent-foreground: oklch(0.99 0 0);
+  --color-destructive: oklch(0.577 0.245 27.325);
+  --color-destructive-foreground: oklch(0.985 0 0);
+  --color-ring: oklch(0.55 0.2 240);
+}
+
+/* Dark mode colors - Detroit Lions inspired */
+.dark {
+  --color-background: oklch(0.12 0.01 240);
+  --color-foreground: oklch(0.95 0 0);
+  --color-muted: oklch(0.2 0.015 240);
+  --color-muted-foreground: oklch(0.65 0.02 240);
+  --color-popover: oklch(0.12 0.01 240);
+  --color-popover-foreground: oklch(0.95 0 0);
+  --color-card: oklch(0.15 0.01 240);
+  --color-card-foreground: oklch(0.95 0 0);
+  --color-border: oklch(0.3 0.02 240);
+  --color-input: oklch(0.3 0.02 240);
+  --color-primary: oklch(0.6 0.2 240);         /* Slightly lighter blue for dark mode */
+  --color-primary-foreground: oklch(0.99 0 0);
+  --color-secondary: oklch(0.35 0.02 240);
+  --color-secondary-foreground: oklch(0.95 0 0);
+  --color-accent: oklch(0.6 0.2 240);
+  --color-accent-foreground: oklch(0.99 0 0);
+  --color-destructive: oklch(0.396 0.141 25.723);
+  --color-destructive-foreground: oklch(0.985 0 0);
+  --color-ring: oklch(0.6 0.2 240);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+/* Hide scrollbar for horizontal scroll areas */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom animations */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--color-primary);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--color-primary), 0 0 30px var(--color-primary);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-confetti {
+  animation: confetti-fall 3s ease-in-out forwards;
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 2s ease-in-out infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
+}

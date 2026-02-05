@@ -1,0 +1,170 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
+import type { CaptainDraftQueue, Player } from '@/lib/types'
+
+export interface QueuedPlayer extends CaptainDraftQueue {
+  player: Player
+}
+
+export function useDraftQueue(captainId: string | undefined) {
+  return useQuery({
+    queryKey: ['draft-queue', captainId],
+    queryFn: async () => {
+      if (!captainId) return []
+
+      const { data, error } = await supabase
+        .from('captain_draft_queues')
+        .select(`
+          *,
+          player:players(*)
+        `)
+        .eq('captain_id', captainId)
+        .order('position', { ascending: true })
+
+      if (error) throw error
+      return data as QueuedPlayer[]
+    },
+    enabled: !!captainId,
+  })
+}
+
+interface AddToQueueInput {
+  captainId: string
+  playerId: string
+}
+
+export function useAddToQueue() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ captainId, playerId }: AddToQueueInput) => {
+      // Get current max position
+      const { data: existing } = await supabase
+        .from('captain_draft_queues')
+        .select('position')
+        .eq('captain_id', captainId)
+        .order('position', { ascending: false })
+        .limit(1)
+
+      const nextPosition = existing && existing.length > 0 ? existing[0].position + 1 : 0
+
+      const { data, error } = await supabase
+        .from('captain_draft_queues')
+        .insert({
+          captain_id: captainId,
+          player_id: playerId,
+          position: nextPosition,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as CaptainDraftQueue
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['draft-queue', variables.captainId] })
+    },
+  })
+}
+
+interface RemoveFromQueueInput {
+  captainId: string
+  queueEntryId: string
+}
+
+export function useRemoveFromQueue() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ queueEntryId }: RemoveFromQueueInput) => {
+      const { error } = await supabase
+        .from('captain_draft_queues')
+        .delete()
+        .eq('id', queueEntryId)
+
+      if (error) throw error
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['draft-queue', variables.captainId] })
+    },
+  })
+}
+
+interface MoveInQueueInput {
+  captainId: string
+  queueEntryId: string
+  newPosition: number
+}
+
+export function useMoveInQueue() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ captainId, queueEntryId, newPosition }: MoveInQueueInput) => {
+      // Get current queue
+      const { data: queue, error: fetchError } = await supabase
+        .from('captain_draft_queues')
+        .select('*')
+        .eq('captain_id', captainId)
+        .order('position', { ascending: true })
+
+      if (fetchError) throw fetchError
+      if (!queue) return
+
+      const currentIndex = queue.findIndex((q) => q.id === queueEntryId)
+      if (currentIndex === -1) return
+
+      // Reorder array
+      const [item] = queue.splice(currentIndex, 1)
+      queue.splice(newPosition, 0, item)
+
+      // Update all positions
+      const updates = queue.map((q, index) => ({
+        id: q.id,
+        captain_id: q.captain_id,
+        player_id: q.player_id,
+        position: index,
+      }))
+
+      // Delete and re-insert to handle unique constraint
+      const { error: deleteError } = await supabase
+        .from('captain_draft_queues')
+        .delete()
+        .eq('captain_id', captainId)
+
+      if (deleteError) throw deleteError
+
+      const { error: insertError } = await supabase
+        .from('captain_draft_queues')
+        .insert(updates)
+
+      if (insertError) throw insertError
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['draft-queue', variables.captainId] })
+    },
+  })
+}
+
+interface ToggleAutoPickInput {
+  captainId: string
+  enabled: boolean
+}
+
+export function useToggleAutoPick() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ captainId, enabled }: ToggleAutoPickInput) => {
+      const { error } = await supabase
+        .from('captains')
+        .update({ auto_pick_enabled: enabled })
+        .eq('id', captainId)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['league'] })
+    },
+  })
+}

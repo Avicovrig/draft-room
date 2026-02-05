@@ -1,0 +1,233 @@
+// Supabase Edge Function for auto-pick when timer expires
+// Deploy with: supabase functions deploy auto-pick
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+interface RequestBody {
+  leagueId: string
+  expectedPickIndex?: number // For idempotency - ensure we're picking for the expected turn
+}
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    const { leagueId, expectedPickIndex }: RequestBody = await req.json()
+
+    if (!leagueId) {
+      return new Response(
+        JSON.stringify({ error: 'leagueId is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log(`[auto-pick] Request for league ${leagueId}, expectedPickIndex: ${expectedPickIndex}`)
+
+    // Get the league
+    const { data: league, error: leagueError } = await supabase
+      .from('leagues')
+      .select('*, captains(*), players(*)')
+      .eq('id', leagueId)
+      .single()
+
+    if (leagueError || !league) {
+      return new Response(
+        JSON.stringify({ error: 'League not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Check if draft is in progress
+    if (league.status !== 'in_progress') {
+      console.log(`[auto-pick] Draft not in progress, status: ${league.status}`)
+      return new Response(
+        JSON.stringify({ error: 'Draft is not in progress', status: league.status }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Idempotency check: verify we're picking for the expected turn
+    if (expectedPickIndex !== undefined && expectedPickIndex !== league.current_pick_index) {
+      console.log(`[auto-pick] Pick index mismatch: expected ${expectedPickIndex}, actual ${league.current_pick_index}`)
+      return new Response(
+        JSON.stringify({
+          error: 'Pick already made',
+          expectedPickIndex,
+          actualPickIndex: league.current_pick_index
+        }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Verify timer has actually expired (server-side validation)
+    // Allow 2 second grace period for client-server time skew
+    const GRACE_PERIOD_SECONDS = 2
+    if (league.current_pick_started_at) {
+      const startTime = new Date(league.current_pick_started_at).getTime()
+      const elapsed = (Date.now() - startTime) / 1000
+      const effectiveTimeLimit = league.time_limit_seconds - GRACE_PERIOD_SECONDS
+
+      if (elapsed < effectiveTimeLimit) {
+        console.log(`[auto-pick] Timer not expired: ${elapsed}s elapsed, need ${effectiveTimeLimit}s`)
+        return new Response(
+          JSON.stringify({
+            error: 'Timer has not expired yet',
+            elapsed: Math.round(elapsed),
+            required: effectiveTimeLimit
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
+    // Get available players
+    const availablePlayers = league.players.filter(
+      (p: { drafted_by_captain_id: string | null }) => !p.drafted_by_captain_id
+    )
+
+    if (availablePlayers.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'No available players' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Get current captain
+    const sortedCaptains = [...league.captains].sort(
+      (a: { draft_position: number }, b: { draft_position: number }) =>
+        a.draft_position - b.draft_position
+    )
+    const captainIds = sortedCaptains.map((c: { id: string }) => c.id)
+    const captainCount = captainIds.length
+    const currentRound = Math.floor(league.current_pick_index / captainCount)
+    const positionInRound = league.current_pick_index % captainCount
+
+    // Snake draft logic
+    const isReversedRound = league.draft_type === 'snake' && currentRound % 2 === 1
+    const orderForRound = isReversedRound ? [...captainIds].reverse() : captainIds
+    const currentCaptainId = orderForRound[positionInRound]
+    const currentCaptain = sortedCaptains.find((c: { id: string }) => c.id === currentCaptainId)
+
+    // Determine which player to pick
+    let selectedPlayer
+    const availablePlayerIds = new Set(availablePlayers.map((p: { id: string }) => p.id))
+
+    // If captain has auto_pick_enabled, check their queue first
+    if (currentCaptain?.auto_pick_enabled) {
+      console.log(`[auto-pick] Captain ${currentCaptain.name} has auto_pick_enabled, checking queue`)
+
+      // Get captain's queue ordered by position
+      const { data: queue } = await supabase
+        .from('captain_draft_queues')
+        .select('player_id')
+        .eq('captain_id', currentCaptainId)
+        .order('position', { ascending: true })
+
+      if (queue && queue.length > 0) {
+        // Find first available player from queue
+        for (const queueEntry of queue) {
+          if (availablePlayerIds.has(queueEntry.player_id)) {
+            selectedPlayer = availablePlayers.find((p: { id: string }) => p.id === queueEntry.player_id)
+            console.log(`[auto-pick] Selected from queue: ${selectedPlayer?.name}`)
+            break
+          }
+        }
+      }
+    }
+
+    // If no player selected from queue (or queue empty/disabled), pick random
+    if (!selectedPlayer) {
+      const randomIndex = Math.floor(Math.random() * availablePlayers.length)
+      selectedPlayer = availablePlayers[randomIndex]
+      console.log(`[auto-pick] Selected random: ${selectedPlayer.name}`)
+    }
+
+    const pickNumber = league.current_pick_index + 1
+
+    // Insert draft pick
+    const { error: pickError } = await supabase.from('draft_picks').insert({
+      league_id: leagueId,
+      captain_id: currentCaptainId,
+      player_id: selectedPlayer.id,
+      pick_number: pickNumber,
+      is_auto_pick: true,
+    })
+
+    if (pickError) {
+      throw pickError
+    }
+
+    // Update player
+    const { error: playerError } = await supabase
+      .from('players')
+      .update({
+        drafted_by_captain_id: currentCaptainId,
+        draft_pick_number: pickNumber,
+      })
+      .eq('id', selectedPlayer.id)
+
+    if (playerError) {
+      throw playerError
+    }
+
+    // Clean up: Remove picked player from ALL captain queues
+    const { error: cleanupError } = await supabase
+      .from('captain_draft_queues')
+      .delete()
+      .eq('player_id', selectedPlayer.id)
+
+    if (cleanupError) {
+      // Log but don't fail the pick - cleanup is not critical
+      console.error('[auto-pick] Queue cleanup error:', cleanupError)
+    }
+
+    // Check if draft is complete
+    const isComplete = availablePlayers.length === 1
+
+    // Update league
+    const { error: updateError } = await supabase
+      .from('leagues')
+      .update({
+        status: isComplete ? 'completed' : 'in_progress',
+        current_pick_index: isComplete ? league.current_pick_index : league.current_pick_index + 1,
+        current_pick_started_at: isComplete ? null : new Date().toISOString(),
+      })
+      .eq('id', leagueId)
+
+    if (updateError) {
+      throw updateError
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        pick: {
+          player: selectedPlayer.name,
+          captain: sortedCaptains.find((c: { id: string }) => c.id === currentCaptainId)?.name,
+          pickNumber,
+          isComplete,
+        },
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  } catch (error) {
+    console.error('Auto-pick error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+})
