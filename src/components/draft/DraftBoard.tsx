@@ -177,8 +177,10 @@ export function DraftBoard({
   }, [isManager, currentCaptain, availablePlayers.length, league.id, league.current_pick_index, addToast, queryClient])
 
   // Trigger immediate auto-pick if current captain has auto_pick_enabled
-  // This runs when the pick index changes (new turn) or when draft starts
-  const lastAutoPickIndexRef = useRef<number | null>(null)
+  // This runs when:
+  // 1. Pick index changes (new turn) and new captain has auto-pick enabled
+  // 2. Current captain enables auto-pick during their turn
+  const lastAutoPickKeyRef = useRef<string | null>(null)
   useEffect(() => {
     // Only the manager should trigger auto-pick
     if (!isManager) return
@@ -188,11 +190,16 @@ export function DraftBoard({
     if (!currentCaptain?.auto_pick_enabled) return
     // Only if there are players available
     if (availablePlayers.length === 0) return
-    // Prevent duplicate calls for the same pick index
-    if (lastAutoPickIndexRef.current === league.current_pick_index) return
 
-    // Mark this pick index as being processed
-    lastAutoPickIndexRef.current = league.current_pick_index
+    // Create a unique key combining pick index and captain's auto-pick state
+    // This ensures we trigger when either changes
+    const autoPickKey = `${league.current_pick_index}-${currentCaptain.id}-autopick`
+
+    // Prevent duplicate calls for the same key
+    if (lastAutoPickKeyRef.current === autoPickKey) return
+
+    // Mark this key as being processed
+    lastAutoPickKeyRef.current = autoPickKey
 
     console.log('[DraftBoard] Captain has auto_pick_enabled, triggering immediate auto-pick')
 
@@ -202,7 +209,7 @@ export function DraftBoard({
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [isManager, league.status, league.current_pick_index, currentCaptain?.auto_pick_enabled, availablePlayers.length, handleTimerExpire])
+  }, [isManager, league.status, league.current_pick_index, currentCaptain?.id, currentCaptain?.auto_pick_enabled, availablePlayers.length, handleTimerExpire])
 
   return (
     <div className="space-y-6">
