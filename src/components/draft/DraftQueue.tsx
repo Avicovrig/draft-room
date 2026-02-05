@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { ChevronUp, ChevronDown, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
@@ -30,6 +30,14 @@ export function DraftQueue({ captain, availablePlayers, leagueId, currentPickInd
   const toggleAutoPick = useToggleAutoPick()
   const { addToast } = useToast()
   const isAutoPickingRef = useRef(false)
+
+  // Local state for optimistic UI updates
+  const [isAutoPickEnabled, setIsAutoPickEnabled] = useState(captain.auto_pick_enabled)
+
+  // Sync local state with server state when it changes
+  useEffect(() => {
+    setIsAutoPickEnabled(captain.auto_pick_enabled)
+  }, [captain.auto_pick_enabled])
 
   // Filter queue to only show available players (not drafted yet)
   const availablePlayerIds = new Set(availablePlayers.map((p) => p.id))
@@ -63,7 +71,10 @@ export function DraftQueue({ captain, availablePlayers, leagueId, currentPickInd
   }
 
   async function handleToggleAutoPick() {
-    const newEnabled = !captain.auto_pick_enabled
+    const newEnabled = !isAutoPickEnabled
+
+    // Optimistically update the UI immediately
+    setIsAutoPickEnabled(newEnabled)
 
     try {
       // Wait for the toggle to complete
@@ -109,6 +120,8 @@ export function DraftQueue({ captain, availablePlayers, leagueId, currentPickInd
         }
       }
     } catch (error) {
+      // Revert optimistic update on error
+      setIsAutoPickEnabled(!newEnabled)
       console.error('Toggle auto-pick failed:', error)
       addToast('Failed to toggle auto-pick', 'error')
     }
@@ -121,19 +134,19 @@ export function DraftQueue({ captain, availablePlayers, leagueId, currentPickInd
         <button
           type="button"
           role="switch"
-          aria-checked={captain.auto_pick_enabled}
+          aria-checked={isAutoPickEnabled}
           onClick={handleToggleAutoPick}
           disabled={toggleAutoPick.isPending}
           className="flex items-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <div
             className={`relative w-11 h-6 rounded-full transition-colors ${
-              captain.auto_pick_enabled ? 'bg-primary' : 'bg-muted'
+              isAutoPickEnabled ? 'bg-primary' : 'bg-muted'
             }`}
           >
             <div
               className={`absolute top-1 w-4 h-4 bg-background rounded-full transition-transform ${
-                captain.auto_pick_enabled ? 'left-6' : 'left-1'
+                isAutoPickEnabled ? 'left-6' : 'left-1'
               }`}
             />
           </div>
@@ -142,7 +155,7 @@ export function DraftQueue({ captain, availablePlayers, leagueId, currentPickInd
           </span>
         </button>
         <p className="mt-1 text-xs text-muted-foreground">
-          {captain.auto_pick_enabled
+          {isAutoPickEnabled
             ? 'When your turn starts, the top player from your queue will be picked automatically.'
             : 'When your timer expires, a player will be picked from your queue (or randomly if empty).'}
         </p>
