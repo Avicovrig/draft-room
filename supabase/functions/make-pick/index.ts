@@ -116,6 +116,14 @@ Deno.serve(async (req) => {
       })
 
     if (pickError) {
+      // Check for unique constraint violation (race condition - pick already made)
+      if (pickError.code === '23505') {
+        console.log(`[make-pick] Duplicate pick detected for pick_number ${pickNumber}`)
+        return new Response(
+          JSON.stringify({ error: 'Pick already made by another player' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
       console.error('Failed to insert pick:', pickError)
       return new Response(
         JSON.stringify({ error: 'Failed to record pick' }),

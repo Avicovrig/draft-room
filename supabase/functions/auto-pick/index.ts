@@ -172,6 +172,17 @@ Deno.serve(async (req) => {
     })
 
     if (pickError) {
+      // Check for unique constraint violation (another client already made this pick)
+      if (pickError.code === '23505') {
+        console.log(`[auto-pick] Duplicate pick detected for pick_number ${pickNumber}`)
+        return new Response(
+          JSON.stringify({
+            error: 'Pick already made',
+            pickNumber,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
       throw pickError
     }
 
