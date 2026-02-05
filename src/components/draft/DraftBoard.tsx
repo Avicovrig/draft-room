@@ -176,6 +176,34 @@ export function DraftBoard({
     }
   }, [isManager, currentCaptain, availablePlayers.length, league.id, league.current_pick_index, addToast, queryClient])
 
+  // Trigger immediate auto-pick if current captain has auto_pick_enabled
+  // This runs when the pick index changes (new turn) or when draft starts
+  const lastAutoPickIndexRef = useRef<number | null>(null)
+  useEffect(() => {
+    // Only the manager should trigger auto-pick
+    if (!isManager) return
+    // Only when draft is in progress
+    if (league.status !== 'in_progress') return
+    // Only if there's a current captain with auto-pick enabled
+    if (!currentCaptain?.auto_pick_enabled) return
+    // Only if there are players available
+    if (availablePlayers.length === 0) return
+    // Prevent duplicate calls for the same pick index
+    if (lastAutoPickIndexRef.current === league.current_pick_index) return
+
+    // Mark this pick index as being processed
+    lastAutoPickIndexRef.current = league.current_pick_index
+
+    console.log('[DraftBoard] Captain has auto_pick_enabled, triggering immediate auto-pick')
+
+    // Small delay to allow UI to update and prevent race conditions
+    const timeoutId = setTimeout(() => {
+      handleTimerExpire()
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [isManager, league.status, league.current_pick_index, currentCaptain?.auto_pick_enabled, availablePlayers.length, handleTimerExpire])
+
   return (
     <div className="space-y-6">
       {/* Draft Status Header */}

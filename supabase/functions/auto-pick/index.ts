@@ -1,4 +1,6 @@
-// Supabase Edge Function for auto-pick when timer expires
+// Supabase Edge Function for auto-pick
+// - Called immediately when captain has auto_pick_enabled
+// - Called when timer expires for captains without auto_pick_enabled
 // Deploy with: supabase functions deploy auto-pick
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -72,40 +74,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verify timer has actually expired (server-side validation)
-    // Allow 2 second grace period for client-server time skew
-    const GRACE_PERIOD_SECONDS = 2
-    if (league.current_pick_started_at) {
-      const startTime = new Date(league.current_pick_started_at).getTime()
-      const elapsed = (Date.now() - startTime) / 1000
-      const effectiveTimeLimit = league.time_limit_seconds - GRACE_PERIOD_SECONDS
-
-      if (elapsed < effectiveTimeLimit) {
-        console.log(`[auto-pick] Timer not expired: ${elapsed}s elapsed, need ${effectiveTimeLimit}s`)
-        return new Response(
-          JSON.stringify({
-            error: 'Timer has not expired yet',
-            elapsed: Math.round(elapsed),
-            required: effectiveTimeLimit
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-    }
-
-    // Get available players
-    const availablePlayers = league.players.filter(
-      (p: { drafted_by_captain_id: string | null }) => !p.drafted_by_captain_id
-    )
-
-    if (availablePlayers.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'No available players' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Get current captain
+    // Get current captain first (needed to check auto_pick_enabled for timer validation)
     const sortedCaptains = [...league.captains].sort(
       (a: { draft_position: number }, b: { draft_position: number }) =>
         a.draft_position - b.draft_position
@@ -121,34 +90,68 @@ Deno.serve(async (req) => {
     const currentCaptainId = orderForRound[positionInRound]
     const currentCaptain = sortedCaptains.find((c: { id: string }) => c.id === currentCaptainId)
 
+    // Timer validation - skip if captain has auto_pick_enabled (immediate pick)
+    // Only validate timer for captains who don't have auto-pick enabled
+    if (!currentCaptain?.auto_pick_enabled) {
+      const GRACE_PERIOD_SECONDS = 2
+      if (league.current_pick_started_at) {
+        const startTime = new Date(league.current_pick_started_at).getTime()
+        const elapsed = (Date.now() - startTime) / 1000
+        const effectiveTimeLimit = league.time_limit_seconds - GRACE_PERIOD_SECONDS
+
+        if (elapsed < effectiveTimeLimit) {
+          console.log(`[auto-pick] Timer not expired: ${elapsed}s elapsed, need ${effectiveTimeLimit}s`)
+          return new Response(
+            JSON.stringify({
+              error: 'Timer has not expired yet',
+              elapsed: Math.round(elapsed),
+              required: effectiveTimeLimit
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+      }
+    } else {
+      console.log(`[auto-pick] Captain ${currentCaptain.name} has auto_pick_enabled, skipping timer validation`)
+    }
+
+    // Get available players
+    const availablePlayers = league.players.filter(
+      (p: { drafted_by_captain_id: string | null }) => !p.drafted_by_captain_id
+    )
+
+    if (availablePlayers.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'No available players' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Determine which player to pick
+    // Always check the captain's queue first, then fall back to random
     let selectedPlayer
     const availablePlayerIds = new Set(availablePlayers.map((p: { id: string }) => p.id))
 
-    // If captain has auto_pick_enabled, check their queue first
-    if (currentCaptain?.auto_pick_enabled) {
-      console.log(`[auto-pick] Captain ${currentCaptain.name} has auto_pick_enabled, checking queue`)
+    // Get captain's queue ordered by position
+    console.log(`[auto-pick] Checking queue for captain ${currentCaptain?.name}`)
+    const { data: queue } = await supabase
+      .from('captain_draft_queues')
+      .select('player_id')
+      .eq('captain_id', currentCaptainId)
+      .order('position', { ascending: true })
 
-      // Get captain's queue ordered by position
-      const { data: queue } = await supabase
-        .from('captain_draft_queues')
-        .select('player_id')
-        .eq('captain_id', currentCaptainId)
-        .order('position', { ascending: true })
-
-      if (queue && queue.length > 0) {
-        // Find first available player from queue
-        for (const queueEntry of queue) {
-          if (availablePlayerIds.has(queueEntry.player_id)) {
-            selectedPlayer = availablePlayers.find((p: { id: string }) => p.id === queueEntry.player_id)
-            console.log(`[auto-pick] Selected from queue: ${selectedPlayer?.name}`)
-            break
-          }
+    if (queue && queue.length > 0) {
+      // Find first available player from queue
+      for (const queueEntry of queue) {
+        if (availablePlayerIds.has(queueEntry.player_id)) {
+          selectedPlayer = availablePlayers.find((p: { id: string }) => p.id === queueEntry.player_id)
+          console.log(`[auto-pick] Selected from queue: ${selectedPlayer?.name}`)
+          break
         }
       }
     }
 
-    // If no player selected from queue (or queue empty/disabled), pick random
+    // If no player selected from queue, pick random
     if (!selectedPlayer) {
       const randomIndex = Math.floor(Math.random() * availablePlayers.length)
       selectedPlayer = availablePlayers[randomIndex]
