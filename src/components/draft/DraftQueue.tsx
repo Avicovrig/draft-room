@@ -9,6 +9,7 @@ interface DraftQueueProps {
   captain: Captain
   availablePlayers: Player[]
   leagueId?: string
+  captainToken?: string
 }
 
 function getInitials(name: string): string {
@@ -20,7 +21,7 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function DraftQueue({ captain, availablePlayers, leagueId }: DraftQueueProps) {
+export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }: DraftQueueProps) {
   const { data: queue = [], isLoading } = useDraftQueue(captain.id)
   const removeFromQueue = useRemoveFromQueue()
   const moveInQueue = useMoveInQueue()
@@ -78,6 +79,7 @@ export function DraftQueue({ captain, availablePlayers, leagueId }: DraftQueuePr
         captainId: captain.id,
         enabled: newEnabled,
         leagueId,
+        captainToken,
       })
     } catch (error) {
       // Revert optimistic update on error

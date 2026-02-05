@@ -150,19 +150,32 @@ interface ToggleAutoPickInput {
   captainId: string
   enabled: boolean
   leagueId?: string
+  captainToken?: string
 }
 
 export function useToggleAutoPick() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ captainId, enabled }: ToggleAutoPickInput) => {
-      const { error } = await supabase
-        .from('captains')
-        .update({ auto_pick_enabled: enabled })
-        .eq('id', captainId)
+    mutationFn: async ({ captainId, enabled, captainToken }: ToggleAutoPickInput) => {
+      // Use edge function to bypass RLS (captains aren't authenticated users)
+      const response = await supabase.functions.invoke('toggle-auto-pick', {
+        body: {
+          captainId,
+          enabled,
+          captainToken,
+        },
+      })
 
-      if (error) throw error
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to toggle auto-pick')
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error)
+      }
+
+      return response.data
     },
     onSuccess: (_, variables) => {
       // Invalidate specific league if provided, otherwise all leagues

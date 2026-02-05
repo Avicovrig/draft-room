@@ -304,6 +304,7 @@ export function DraftBoard({
                 captain={viewingAsCaptain}
                 availablePlayers={availablePlayers}
                 leagueId={league.id}
+                captainToken={captainToken}
               />
             </CardContent>
           </Card>
