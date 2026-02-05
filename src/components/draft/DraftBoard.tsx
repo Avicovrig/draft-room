@@ -126,9 +126,8 @@ export function DraftBoard({
   }
 
   const handleTimerExpire = useCallback(async () => {
-    // Only the manager should trigger auto-pick to prevent race conditions
-    // This ensures a single source of truth for auto-picks
-    if (!isManager) return
+    // Any connected client can trigger auto-pick
+    // The edge function uses expectedPickIndex for idempotency to prevent duplicate picks
     if (!currentCaptain || availablePlayers.length === 0) return
 
     // Prevent multiple simultaneous auto-pick calls
@@ -174,16 +173,15 @@ export function DraftBoard({
     } finally {
       isAutoPickingRef.current = false
     }
-  }, [isManager, currentCaptain, availablePlayers.length, league.id, league.current_pick_index, addToast, queryClient])
+  }, [currentCaptain, availablePlayers.length, league.id, league.current_pick_index, addToast, queryClient])
 
   // Trigger immediate auto-pick if current captain has auto_pick_enabled
   // This runs when:
   // 1. Pick index changes (new turn) and new captain has auto-pick enabled
   // 2. Current captain enables auto-pick during their turn
+  // Any connected client can trigger this - edge function idempotency prevents duplicates
   const lastAutoPickKeyRef = useRef<string | null>(null)
   useEffect(() => {
-    // Only the manager should trigger auto-pick
-    if (!isManager) return
     // Only when draft is in progress
     if (league.status !== 'in_progress') return
     // Only if there's a current captain with auto-pick enabled
@@ -209,7 +207,7 @@ export function DraftBoard({
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [isManager, league.status, league.current_pick_index, currentCaptain?.id, currentCaptain?.auto_pick_enabled, availablePlayers.length, handleTimerExpire])
+  }, [league.status, league.current_pick_index, currentCaptain?.id, currentCaptain?.auto_pick_enabled, availablePlayers.length, handleTimerExpire])
 
   return (
     <div className="space-y-6">
