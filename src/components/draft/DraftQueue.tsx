@@ -118,22 +118,29 @@ export function DraftQueue({ captain, availablePlayers, leagueId, currentPickInd
     <div className="flex h-full flex-col">
       {/* Auto-pick toggle */}
       <div className="mb-4">
-        <label className="flex items-center gap-3 cursor-pointer">
-          <div className="relative">
-            <input
-              type="checkbox"
-              checked={captain.auto_pick_enabled}
-              onChange={handleToggleAutoPick}
-              disabled={toggleAutoPick.isPending}
-              className="sr-only peer"
+        <button
+          type="button"
+          role="switch"
+          aria-checked={captain.auto_pick_enabled}
+          onClick={handleToggleAutoPick}
+          disabled={toggleAutoPick.isPending}
+          className="flex items-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <div
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              captain.auto_pick_enabled ? 'bg-primary' : 'bg-muted'
+            }`}
+          >
+            <div
+              className={`absolute top-1 w-4 h-4 bg-background rounded-full transition-transform ${
+                captain.auto_pick_enabled ? 'left-6' : 'left-1'
+              }`}
             />
-            <div className="w-11 h-6 bg-muted rounded-full peer peer-checked:bg-primary transition-colors" />
-            <div className="absolute left-1 top-1 w-4 h-4 bg-background rounded-full transition-transform peer-checked:translate-x-5" />
           </div>
           <span className="text-sm font-medium">
-            Auto-pick from queue
+            Auto-pick
           </span>
-        </label>
+        </button>
         <p className="mt-1 text-xs text-muted-foreground">
           {captain.auto_pick_enabled
             ? 'When your turn starts, the top player from your queue will be picked automatically.'
