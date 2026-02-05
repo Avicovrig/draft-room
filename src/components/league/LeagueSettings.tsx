@@ -2,18 +2,21 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { useUpdateLeague } from '@/hooks/useLeagues'
+import { toDatetimeLocal, fromDatetimeLocal } from '@/lib/draft'
 import type { LeagueFull } from '@/lib/types'
 
 const settingsSchema = z.object({
   name: z.string().min(1, 'League name is required').max(100),
   draft_type: z.enum(['snake', 'round_robin']),
   time_limit_seconds: z.coerce.number().min(15).max(1800),
+  scheduled_start_at: z.string().optional().nullable(),
 })
 
 
@@ -28,6 +31,8 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors, isSubmitting, isDirty },
   } = useForm({
     resolver: zodResolver(settingsSchema),
@@ -35,18 +40,36 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
       name: league.name,
       draft_type: league.draft_type as 'snake' | 'round_robin',
       time_limit_seconds: league.time_limit_seconds,
+      scheduled_start_at: toDatetimeLocal(league.scheduled_start_at),
     },
   })
 
-  async function onSubmit(data: { name: string; draft_type: 'snake' | 'round_robin'; time_limit_seconds: number }) {
+  const scheduledValue = watch('scheduled_start_at')
+
+  async function onSubmit(data: {
+    name: string
+    draft_type: 'snake' | 'round_robin'
+    time_limit_seconds: number
+    scheduled_start_at?: string | null
+  }) {
     setSuccess(false)
     try {
-      await updateLeague.mutateAsync({ id: league.id, ...data })
+      await updateLeague.mutateAsync({
+        id: league.id,
+        name: data.name,
+        draft_type: data.draft_type,
+        time_limit_seconds: data.time_limit_seconds,
+        scheduled_start_at: fromDatetimeLocal(data.scheduled_start_at || ''),
+      })
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch {
       // Error handled by mutation
     }
+  }
+
+  function clearScheduledTime() {
+    setValue('scheduled_start_at', '', { shouldDirty: true })
   }
 
   const isEditable = league.status === 'not_started' || league.status === 'paused'
@@ -108,6 +131,34 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
               <option value="900">15 minutes</option>
               <option value="1800">30 minutes</option>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="scheduled_start_at">Scheduled Start Time (Optional)</Label>
+            <div className="flex gap-2">
+              <Input
+                id="scheduled_start_at"
+                type="datetime-local"
+                {...register('scheduled_start_at')}
+                disabled={!isEditable}
+                className="flex-1"
+              />
+              {scheduledValue && isEditable && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={clearScheduledTime}
+                  title="Clear scheduled time"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Set a time to let participants know when the draft will begin.
+              You will still need to manually start the draft.
+            </p>
           </div>
 
           {isEditable && (

@@ -6,6 +6,7 @@ import { PlayerPool } from './PlayerPool'
 import { TeamRoster } from './TeamRoster'
 import { DraftControls } from './DraftControls'
 import { DraftQueue } from './DraftQueue'
+import { ScheduledCountdown } from './ScheduledCountdown'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { useToast } from '@/components/ui/Toast'
 import { getCurrentRound } from '@/lib/draft'
@@ -235,6 +236,9 @@ export function DraftBoard({
                 </>
               )}
             </p>
+          )}
+          {league.status === 'not_started' && league.scheduled_start_at && (
+            <ScheduledCountdown scheduledTime={league.scheduled_start_at} className="mt-1" />
           )}
         </div>
 

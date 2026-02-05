@@ -99,3 +99,85 @@ export function formatTime(seconds: number): string {
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
+
+/**
+ * Format scheduled start time for display
+ */
+export function formatScheduledTime(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+/**
+ * Get time remaining until scheduled start
+ */
+export function getTimeUntilStart(dateString: string): {
+  days: number
+  hours: number
+  minutes: number
+  seconds: number
+  totalMs: number
+} | null {
+  const targetTime = new Date(dateString).getTime()
+  const now = Date.now()
+  const diff = targetTime - now
+
+  if (diff <= 0) return null
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  return { days, hours, minutes, seconds, totalMs: diff }
+}
+
+/**
+ * Format countdown for display
+ */
+export function formatCountdown(dateString: string): string {
+  const timeUntil = getTimeUntilStart(dateString)
+
+  if (!timeUntil) return 'Starting soon!'
+
+  const { days, hours, minutes } = timeUntil
+
+  if (days > 0) {
+    return `${days}d ${hours}h`
+  } else if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  } else if (minutes > 0) {
+    return `${minutes}m`
+  } else {
+    return 'Less than a minute'
+  }
+}
+
+/**
+ * Convert ISO string to datetime-local input value
+ */
+export function toDatetimeLocal(dateString: string | null): string {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  // Format: YYYY-MM-DDTHH:mm
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+/**
+ * Convert datetime-local input value to ISO string
+ */
+export function fromDatetimeLocal(value: string): string | null {
+  if (!value) return null
+  return new Date(value).toISOString()
+}

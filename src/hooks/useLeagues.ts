@@ -95,6 +95,7 @@ interface UpdateLeagueInput {
   status?: LeagueStatus
   current_pick_index?: number
   current_pick_started_at?: string | null
+  scheduled_start_at?: string | null
 }
 
 export function useUpdateLeague() {

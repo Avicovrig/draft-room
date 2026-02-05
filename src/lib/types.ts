@@ -15,6 +15,7 @@ export interface Database {
           status: LeagueStatus
           current_pick_index: number
           current_pick_started_at: string | null
+          scheduled_start_at: string | null
           created_at: string
           updated_at: string
         }
@@ -28,6 +29,7 @@ export interface Database {
           status?: LeagueStatus
           current_pick_index?: number
           current_pick_started_at?: string | null
+          scheduled_start_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -41,6 +43,7 @@ export interface Database {
           status?: LeagueStatus
           current_pick_index?: number
           current_pick_started_at?: string | null
+          scheduled_start_at?: string | null
           created_at?: string
           updated_at?: string
         }
