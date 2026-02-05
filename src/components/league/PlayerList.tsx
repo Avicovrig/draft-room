@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { Plus, Trash2, Upload, Pencil, Copy, ExternalLink } from 'lucide-react'
+import { Plus, Trash2, FileSpreadsheet, Pencil, Copy, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Label } from '@/components/ui/Label'
-import { Textarea } from '@/components/ui/Textarea'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { PlayerProfileForm, type ProfileFormData } from '@/components/player/PlayerProfileForm'
-import { useCreatePlayer, useCreatePlayers, useDeletePlayer } from '@/hooks/usePlayers'
+import { SpreadsheetImportModal } from '@/components/spreadsheet/SpreadsheetImportModal'
+import { useCreatePlayer, useDeletePlayer } from '@/hooks/usePlayers'
 import { useUpdatePlayerProfile, useUploadProfilePicture } from '@/hooks/usePlayerProfile'
 import { useUpsertCustomFields } from '@/hooks/useCustomFields'
 import { useToast } from '@/components/ui/Toast'
@@ -28,13 +27,11 @@ function getInitials(name: string): string {
 
 export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
   const [newPlayerName, setNewPlayerName] = useState('')
-  const [bulkInput, setBulkInput] = useState('')
-  const [showBulkAdd, setShowBulkAdd] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
 
   const { addToast } = useToast()
   const createPlayer = useCreatePlayer()
-  const createPlayers = useCreatePlayers()
   const deletePlayer = useDeletePlayer()
   const updateProfile = useUpdatePlayerProfile()
   const uploadPicture = useUploadProfilePicture()
@@ -52,25 +49,6 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
         name: newPlayerName.trim(),
       })
       setNewPlayerName('')
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  async function handleBulkAdd() {
-    const names = bulkInput
-      .split('\n')
-      .map((name) => name.trim())
-      .filter((name) => name.length > 0)
-
-    if (names.length === 0) return
-
-    try {
-      await createPlayers.mutateAsync(
-        names.map((name) => ({ league_id: league.id, name }))
-      )
-      setBulkInput('')
-      setShowBulkAdd(false)
     } catch {
       // Error handled by mutation
     }
@@ -160,53 +138,33 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {showBulkAdd ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bulk">Player Names (one per line)</Label>
-                  <Textarea
-                    id="bulk"
-                    placeholder="John Smith&#10;Jane Doe&#10;Bob Wilson"
-                    value={bulkInput}
-                    onChange={(e) => setBulkInput(e.target.value)}
-                    rows={6}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleBulkAdd}
-                    disabled={createPlayers.isPending || !bulkInput.trim()}
-                  >
-                    {createPlayers.isPending ? 'Adding...' : 'Add All'}
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowBulkAdd(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <form onSubmit={handleAddPlayer} className="flex gap-2">
-                  <Input
-                    placeholder="Player name"
-                    value={newPlayerName}
-                    onChange={(e) => setNewPlayerName(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button type="submit" disabled={createPlayer.isPending || !newPlayerName.trim()}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add
-                  </Button>
-                </form>
-                <Button variant="outline" onClick={() => setShowBulkAdd(true)}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Bulk Add Players
-                </Button>
-              </>
-            )}
+            <form onSubmit={handleAddPlayer} className="flex gap-2">
+              <Input
+                placeholder="Player name"
+                value={newPlayerName}
+                onChange={(e) => setNewPlayerName(e.target.value)}
+                className="flex-1"
+              />
+              <Button type="submit" disabled={createPlayer.isPending || !newPlayerName.trim()}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add
+              </Button>
+            </form>
+            <Button variant="outline" onClick={() => setShowImportModal(true)}>
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Import from Spreadsheet
+            </Button>
           </CardContent>
         </Card>
       )}
+
+      {/* Spreadsheet Import Modal */}
+      <SpreadsheetImportModal
+        leagueId={league.id}
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportComplete={() => setShowImportModal(false)}
+      />
 
       {/* Edit Profile Modal */}
       {editingPlayer && (
