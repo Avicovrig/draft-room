@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Trophy, Users, Zap, Clock, Share2, Check, BarChart3, Timer } from 'lucide-react'
+import { ArrowLeft, Trophy, Users, Zap, Clock, Share2, Check, BarChart3, Timer, Download } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -10,6 +10,7 @@ import { useDraft } from '@/hooks/useDraft'
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber'
 import { useAuth } from '@/context/AuthContext'
 import { playSound, resumeAudioContext } from '@/lib/sounds'
+import { exportDraftResults } from '@/lib/exportDraftResults'
 import type { Captain, Player } from '@/lib/types'
 
 function formatPickTime(seconds: number): string {
@@ -235,21 +236,27 @@ export function Summary() {
           </Card>
         </div>
 
-        {/* Share Button */}
-        {league.status === 'completed' && (
-          <div className="mb-8 flex justify-center">
-            <Button onClick={handleCopyLink} variant="outline" className="gap-2">
-              {copied ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Share2 className="h-4 w-4" />
-                  Share Results
-                </>
-              )}
+        {/* Share & Export Buttons */}
+        {league.draft_picks.length > 0 && (
+          <div className="mb-8 flex justify-center gap-2">
+            {league.status === 'completed' && (
+              <Button onClick={handleCopyLink} variant="outline" className="gap-2">
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="h-4 w-4" />
+                    Share Results
+                  </>
+                )}
+              </Button>
+            )}
+            <Button onClick={() => exportDraftResults(league)} variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
+              Export Results
             </Button>
           </div>
         )}
