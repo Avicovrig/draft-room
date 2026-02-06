@@ -15,12 +15,15 @@ export function DraftView() {
     league,
     isLoading,
     error,
+    isSubscribed,
     currentCaptain,
     availablePlayers,
+    pickOrder,
     startDraft,
     pauseDraft,
     resumeDraft,
     restartDraft,
+    undoLastPick,
     makePick,
   } = useDraft(id)
 
@@ -86,6 +89,8 @@ export function DraftView() {
           league={league}
           currentCaptain={currentCaptain}
           availablePlayers={availablePlayers}
+          pickOrder={pickOrder}
+          isSubscribed={isSubscribed}
           customFieldsMap={customFieldsMap}
           canPick={true}
           isManager={true}
@@ -93,6 +98,7 @@ export function DraftView() {
           onPauseDraft={pauseDraft}
           onResumeDraft={resumeDraft}
           onRestartDraft={restartDraft}
+          onUndoLastPick={undoLastPick}
           onMakePick={makePick}
         />
       </main>

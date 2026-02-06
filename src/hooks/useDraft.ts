@@ -9,6 +9,7 @@ interface UseDraftReturn {
   league: LeagueFull | null | undefined
   isLoading: boolean
   error: Error | null
+  isSubscribed: boolean
   currentCaptain: Captain | undefined
   availablePlayers: Player[]
   pickOrder: string[]
@@ -17,6 +18,7 @@ interface UseDraftReturn {
   pauseDraft: () => Promise<void>
   resumeDraft: () => Promise<void>
   restartDraft: () => Promise<void>
+  undoLastPick: () => Promise<void>
   makePick: (playerId: string, captainId: string) => Promise<void>
 }
 
@@ -176,6 +178,36 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
     })
   }, [league, updateLeague])
 
+  const undoLastPick = useCallback(async () => {
+    if (!league || league.draft_picks.length === 0) return
+    if (league.status !== 'in_progress' && league.status !== 'paused') return
+
+    // Find the last pick
+    const sortedPicks = [...league.draft_picks].sort((a, b) => b.pick_number - a.pick_number)
+    const lastPick = sortedPicks[0]
+
+    // Delete the draft pick
+    await supabase
+      .from('draft_picks')
+      .delete()
+      .eq('id', lastPick.id)
+
+    // Reset the player's draft status
+    await supabase
+      .from('players')
+      .update({ drafted_by_captain_id: null, draft_pick_number: null })
+      .eq('id', lastPick.player_id)
+
+    // Decrement pick index and reset timer
+    await updateLeague.mutateAsync({
+      id: league.id,
+      current_pick_index: league.current_pick_index - 1,
+      current_pick_started_at: league.status === 'in_progress' ? new Date().toISOString() : null,
+    })
+
+    queryClient.invalidateQueries({ queryKey: ['league', league.id] })
+  }, [league, updateLeague, queryClient])
+
   const makePick = useCallback(
     async (playerId: string, captainId: string, captainToken?: string) => {
       if (!league || league.status !== 'in_progress') {
@@ -223,6 +255,7 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
     league,
     isLoading,
     error: error as Error | null,
+    isSubscribed,
     currentCaptain,
     availablePlayers,
     pickOrder,
@@ -231,6 +264,7 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
     pauseDraft,
     resumeDraft,
     restartDraft,
+    undoLastPick,
     makePick,
   }
 }

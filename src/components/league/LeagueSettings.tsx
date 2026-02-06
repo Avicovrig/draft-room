@@ -13,7 +13,7 @@ import { toDatetimeLocal, fromDatetimeLocal } from '@/lib/draft'
 import type { LeagueFull } from '@/lib/types'
 
 const settingsSchema = z.object({
-  name: z.string().min(1, 'League name is required').max(100),
+  name: z.string().trim().min(1, 'League name is required').max(100),
   draft_type: z.enum(['snake', 'round_robin']),
   time_limit_seconds: z.coerce.number().min(15).max(1800),
   scheduled_start_at: z.string().optional().nullable(),

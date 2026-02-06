@@ -15,12 +15,15 @@ export function CaptainView() {
     league,
     isLoading,
     error,
+    isSubscribed,
     currentCaptain,
     availablePlayers,
+    pickOrder,
     startDraft,
     pauseDraft,
     resumeDraft,
     restartDraft,
+    undoLastPick,
     makePick,
   } = useDraft(id)
 
@@ -93,6 +96,8 @@ export function CaptainView() {
           league={league}
           currentCaptain={currentCaptain}
           availablePlayers={availablePlayers}
+          pickOrder={pickOrder}
+          isSubscribed={isSubscribed}
           customFieldsMap={customFieldsMap}
           canPick={canPick}
           isManager={false}
@@ -102,6 +107,7 @@ export function CaptainView() {
           onPauseDraft={pauseDraft}
           onResumeDraft={resumeDraft}
           onRestartDraft={restartDraft}
+          onUndoLastPick={undoLastPick}
           onMakePick={makePick}
         />
       </main>

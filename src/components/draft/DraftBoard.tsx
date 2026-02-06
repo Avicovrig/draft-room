@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Maximize2, Minimize2 } from 'lucide-react'
+import { Maximize2, Minimize2, WifiOff } from 'lucide-react'
 import { PickTimer } from './PickTimer'
 import { PlayerPool } from './PlayerPool'
 import { TeamRoster } from './TeamRoster'
@@ -19,6 +19,8 @@ interface DraftBoardProps {
   league: LeagueFull
   currentCaptain: Captain | undefined
   availablePlayers: LeagueFull['players']
+  pickOrder: string[]
+  isSubscribed: boolean
   customFieldsMap?: Record<string, PlayerCustomField[]>
   canPick: boolean
   isManager: boolean
@@ -28,6 +30,7 @@ interface DraftBoardProps {
   onPauseDraft: () => Promise<void>
   onResumeDraft: () => Promise<void>
   onRestartDraft: () => Promise<void>
+  onUndoLastPick: () => Promise<void>
   onMakePick: (playerId: string, captainId: string, captainToken?: string) => Promise<void>
 }
 
@@ -35,6 +38,8 @@ export function DraftBoard({
   league,
   currentCaptain,
   availablePlayers,
+  pickOrder,
+  isSubscribed,
   customFieldsMap = {},
   canPick,
   isManager,
@@ -44,6 +49,7 @@ export function DraftBoard({
   onPauseDraft,
   onResumeDraft,
   onRestartDraft,
+  onUndoLastPick,
   onMakePick,
 }: DraftBoardProps) {
   const [isPicking, setIsPicking] = useState(false)
@@ -89,6 +95,15 @@ export function DraftBoard({
     availablePlayers.length >= league.captains.length
 
   const isMyTurn = canPick && currentCaptain?.id === viewingAsCaptain?.id
+
+  // Calculate picks until captain's next turn
+  const picksUntilMyTurn = useMemo(() => {
+    if (!viewingAsCaptain || !isActive || isMyTurn) return null
+    for (let i = league.current_pick_index + 1; i < pickOrder.length; i++) {
+      if (pickOrder[i] === viewingAsCaptain.id) return i - league.current_pick_index
+    }
+    return null
+  }, [viewingAsCaptain, isActive, isMyTurn, league.current_pick_index, pickOrder])
   const prevPickIndexRef = useRef(league.current_pick_index)
   const prevIsMyTurnRef = useRef(isMyTurn)
 
@@ -101,14 +116,26 @@ export function DraftBoard({
     prevPickIndexRef.current = league.current_pick_index
   }, [league.current_pick_index])
 
-  // Play sound when it becomes your turn
+  // Play sound and send browser notification when it becomes your turn
   useEffect(() => {
     if (isMyTurn && !prevIsMyTurnRef.current && league.status === 'in_progress') {
       resumeAudioContext()
       playSound('yourTurn')
+
+      // Send browser notification if permitted
+      if (viewingAsCaptain && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification(league.name, { body: "It's your turn to pick!", icon: '/favicon.ico' })
+      }
     }
     prevIsMyTurnRef.current = isMyTurn
-  }, [isMyTurn, league.status])
+  }, [isMyTurn, league.status, league.name, viewingAsCaptain])
+
+  // Request notification permission on first render for captain view
+  useEffect(() => {
+    if (viewingAsCaptain && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [viewingAsCaptain])
 
   async function handlePick(playerId: string) {
     if (!currentCaptain) return
@@ -235,6 +262,11 @@ export function DraftBoard({
               ) : (
                 <>
                   <span className="font-medium">{currentCaptain.name}</span> is picking...
+                  {picksUntilMyTurn !== null && (
+                    <span className="ml-2 text-sm">
+                      ({picksUntilMyTurn === 1 ? 'You pick next' : `${picksUntilMyTurn} picks until your turn`})
+                    </span>
+                  )}
                 </>
               )}
             </p>
@@ -252,6 +284,12 @@ export function DraftBoard({
           <div className="text-sm text-muted-foreground">
             {availablePlayers.length} players remaining
           </div>
+          {!isSubscribed && isActive && (
+            <div className="mt-1 flex items-center justify-end gap-1 text-xs text-yellow-600 dark:text-yellow-400">
+              <WifiOff className="h-3 w-3" />
+              Reconnecting...
+            </div>
+          )}
         </div>
       </div>
 
@@ -327,10 +365,14 @@ export function DraftBoard({
             <DraftControls
               status={league.status}
               canStart={canStartDraft}
+              captainCount={league.captains.length}
+              playerCount={availablePlayers.length}
+              hasPicks={league.draft_picks.length > 0}
               onStart={onStartDraft}
               onPause={onPauseDraft}
               onResume={onResumeDraft}
               onRestart={onRestartDraft}
+              onUndo={onUndoLastPick}
             />
           </CardContent>
         </Card>
@@ -354,7 +396,7 @@ export function DraftBoard({
 
       {/* Expanded Player Pool Modal */}
       {isPlayerPoolExpanded && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <ExpandedPoolModal onClose={() => setIsPlayerPoolExpanded(false)}>
           <Card className="flex h-[90vh] w-full max-w-4xl flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 flex-shrink-0">
               <CardTitle>
@@ -386,8 +428,34 @@ export function DraftBoard({
               />
             </CardContent>
           </Card>
-        </div>
+        </ExpandedPoolModal>
       )}
+    </div>
+  )
+}
+
+function ExpandedPoolModal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleEscape)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handleEscape)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    >
+      {children}
     </div>
   )
 }

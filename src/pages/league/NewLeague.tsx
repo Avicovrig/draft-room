@@ -12,7 +12,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useCreateLeague } from '@/hooks/useLeagues'
 
 const createLeagueSchema = z.object({
-  name: z.string().min(1, 'League name is required').max(100, 'Name is too long'),
+  name: z.string().trim().min(1, 'League name is required').max(100, 'Name is too long'),
   draft_type: z.enum(['snake', 'round_robin']),
   time_limit_seconds: z.coerce.number().min(15).max(1800),
 })

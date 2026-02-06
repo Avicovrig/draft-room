@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, User, Plus } from 'lucide-react'
+import { Search, User, Plus, ArrowUpDown } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
@@ -27,26 +27,59 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
+type SortOption = 'default' | 'name-asc' | 'name-desc' | 'age-asc' | 'age-desc'
+
+const sortLabels: Record<SortOption, string> = {
+  'default': 'Default',
+  'name-asc': 'Name A-Z',
+  'name-desc': 'Name Z-A',
+  'age-asc': 'Youngest',
+  'age-desc': 'Oldest',
+}
+
 export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isPicking, showExpandedDetails = false, onAddToQueue, queuedPlayerIds = new Set(), isAddingToQueue = false }: PlayerPoolProps) {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null)
+  const [sortBy, setSortBy] = useState<SortOption>('default')
 
   const filteredPlayers = players
     .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
-      // First sort by having a profile picture (those with pictures first)
-      const aHasPic = a.profile_picture_url ? 1 : 0
-      const bHasPic = b.profile_picture_url ? 1 : 0
-      if (bHasPic !== aHasPic) return bHasPic - aHasPic
-
-      // Then sort by age (youngest first, null birthdays last)
-      const aAge = calculateAge(a.birthday)
-      const bAge = calculateAge(b.birthday)
-      if (aAge === null && bAge === null) return 0
-      if (aAge === null) return 1
-      if (bAge === null) return -1
-      return aAge - bAge
+      switch (sortBy) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name)
+        case 'name-desc':
+          return b.name.localeCompare(a.name)
+        case 'age-asc': {
+          const aAge = calculateAge(a.birthday)
+          const bAge = calculateAge(b.birthday)
+          if (aAge === null && bAge === null) return 0
+          if (aAge === null) return 1
+          if (bAge === null) return -1
+          return aAge - bAge
+        }
+        case 'age-desc': {
+          const aAge = calculateAge(a.birthday)
+          const bAge = calculateAge(b.birthday)
+          if (aAge === null && bAge === null) return 0
+          if (aAge === null) return 1
+          if (bAge === null) return -1
+          return bAge - aAge
+        }
+        default: {
+          // Default: profile picture first, then youngest
+          const aHasPic = a.profile_picture_url ? 1 : 0
+          const bHasPic = b.profile_picture_url ? 1 : 0
+          if (bHasPic !== aHasPic) return bHasPic - aHasPic
+          const aAge = calculateAge(a.birthday)
+          const bAge = calculateAge(b.birthday)
+          if (aAge === null && bAge === null) return 0
+          if (aAge === null) return 1
+          if (bAge === null) return -1
+          return aAge - bAge
+        }
+      }
     })
 
   function handlePick() {
@@ -68,9 +101,19 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
             className="pl-9"
           />
         </div>
-        <span className="text-sm text-muted-foreground">
-          {filteredPlayers.length} available
-        </span>
+        <div className="relative flex-shrink-0">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="h-9 appearance-none rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            title="Sort players"
+          >
+            {Object.entries(sortLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <ArrowUpDown className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto rounded-lg border border-border">

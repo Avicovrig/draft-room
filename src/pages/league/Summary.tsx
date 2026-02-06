@@ -18,15 +18,18 @@ export function Summary() {
 
   const { league, isLoading, error } = useDraft(id)
 
-  // Play celebration when draft is complete
+  // Play celebration when draft is complete (only once per session)
   useEffect(() => {
     if (league?.status === 'completed') {
       setShowConfetti(true)
-      // Resume audio context and play sound
-      resumeAudioContext()
-      playSound('draftComplete')
+      const celebrationKey = `celebrated-${id}`
+      if (!sessionStorage.getItem(celebrationKey)) {
+        sessionStorage.setItem(celebrationKey, '1')
+        resumeAudioContext()
+        playSound('draftComplete')
+      }
     }
-  }, [league?.status])
+  }, [league?.status, id])
 
   async function handleCopyLink() {
     const url = window.location.href

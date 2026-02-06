@@ -15,12 +15,15 @@ export function SpectatorView() {
     league,
     isLoading,
     error,
+    isSubscribed,
     currentCaptain,
     availablePlayers,
+    pickOrder,
     startDraft,
     pauseDraft,
     resumeDraft,
     restartDraft,
+    undoLastPick,
     makePick,
   } = useDraft(id)
 
@@ -87,6 +90,8 @@ export function SpectatorView() {
           league={league}
           currentCaptain={currentCaptain}
           availablePlayers={availablePlayers}
+          pickOrder={pickOrder}
+          isSubscribed={isSubscribed}
           customFieldsMap={customFieldsMap}
           canPick={false}
           isManager={false}
@@ -94,6 +99,7 @@ export function SpectatorView() {
           onPauseDraft={pauseDraft}
           onResumeDraft={resumeDraft}
           onRestartDraft={restartDraft}
+          onUndoLastPick={undoLastPick}
           onMakePick={makePick}
         />
       </main>
