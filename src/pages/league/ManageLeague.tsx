@@ -4,6 +4,8 @@ import { ArrowLeft, Settings, Users, Crown, Share2, Play, Trash2 } from 'lucide-
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { ManageLeagueSkeleton } from '@/components/ui/Skeleton'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { useLeague, useDeleteLeague } from '@/hooks/useLeagues'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { LeagueSettings } from '@/components/league/LeagueSettings'
@@ -36,9 +38,7 @@ export function ManageLeague() {
     return (
       <div className="min-h-screen">
         <Header />
-        <div className="flex justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
+        <ManageLeagueSkeleton />
       </div>
     )
   }
@@ -48,9 +48,7 @@ export function ManageLeague() {
       <div className="min-h-screen">
         <Header />
         <main className="container mx-auto px-4 py-6 sm:p-8">
-          <div className="rounded-md bg-destructive/10 p-4 text-destructive">
-            League not found or you don't have access.
-          </div>
+          <ErrorAlert message="League not found or you don't have access." />
           <Link to="/dashboard" className="mt-4 inline-block text-primary hover:underline">
             Back to Dashboard
           </Link>

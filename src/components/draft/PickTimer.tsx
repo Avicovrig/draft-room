@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTimer } from '@/hooks/useTimer'
 import { formatTime } from '@/lib/draft'
 import { cn } from '@/lib/utils'
@@ -26,6 +26,8 @@ export function PickTimer({
   const lastPlayedSecondRef = useRef<number | null>(null)
   const pickStartRef = useRef(currentPickStartedAt)
 
+  const [shakeKey, setShakeKey] = useState(0)
+
   const percentage = (remainingTime / timeLimitSeconds) * 100
   const isLow = remainingTime <= 10
   const isCritical = remainingTime <= 5
@@ -50,17 +52,20 @@ export function PickTimer({
       lastPlayedSecondRef.current = wholeSecond
       resumeAudioContext()
       playSound('timerWarning')
+      // Re-trigger shake animation each second
+      setShakeKey((k) => k + 1)
     }
   }, [remainingTime, isActive])
 
   return (
     <div className="text-center">
       <div
+        key={isLow && !isCritical ? shakeKey : undefined}
         className={cn(
           'text-5xl font-bold tabular-nums transition-all',
           isExpired && 'text-destructive',
-          isCritical && !isExpired && 'text-red-500 animate-pulse',
-          isLow && !isCritical && !isExpired && 'text-yellow-500'
+          isCritical && !isExpired && 'text-6xl text-red-500 animate-pulse-fast',
+          isLow && !isCritical && !isExpired && 'text-yellow-500 animate-shake'
         )}
       >
         {isExpired ? '0:00' : formatTime(remainingTime)}

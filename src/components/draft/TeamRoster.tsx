@@ -1,8 +1,18 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Crown, User } from 'lucide-react'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
+import { useAnimatedNumber } from '@/hooks/useAnimatedNumber'
 import { cn } from '@/lib/utils'
 import type { Captain, Player, PlayerCustomField } from '@/lib/types'
+
+function AnimatedCount({ count, label }: { count: number; label: string }) {
+  const display = useAnimatedNumber(count)
+  return (
+    <span className="text-sm text-muted-foreground">
+      {display} {label}
+    </span>
+  )
+}
 
 function getInitials(name: string): string {
   return name
@@ -29,7 +39,31 @@ export function TeamRoster({
   customFieldsMap = {},
 }: TeamRosterProps) {
   const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null)
+  const knownPlayerIdsRef = useRef<Set<string>>(new Set())
+  const [newPlayerIds, setNewPlayerIds] = useState<Set<string>>(new Set())
   const sortedCaptains = [...captains].sort((a, b) => a.draft_position - b.draft_position)
+
+  // Track new picks for animation
+  const allDraftedIds = new Set(
+    players.filter((p) => p.drafted_by_captain_id).map((p) => p.id)
+  )
+
+  useEffect(() => {
+    const newIds = new Set<string>()
+    allDraftedIds.forEach((id) => {
+      if (!knownPlayerIdsRef.current.has(id)) {
+        newIds.add(id)
+      }
+    })
+    if (newIds.size > 0) {
+      setNewPlayerIds(newIds)
+      // Clear animation class after animation completes
+      const timer = setTimeout(() => setNewPlayerIds(new Set()), 1800)
+      knownPlayerIdsRef.current = new Set(allDraftedIds)
+      return () => clearTimeout(timer)
+    }
+    knownPlayerIdsRef.current = new Set(allDraftedIds)
+  }, [allDraftedIds.size]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function getPlayersForCaptain(captainId: string) {
     return players
@@ -54,11 +88,14 @@ export function TeamRoster({
           <div
             key={captain.id}
             className={cn(
-              'rounded-lg border p-4 transition-all',
+              'rounded-lg border border-l-4 p-4 transition-all',
               isCurrentTurn && 'border-primary ring-2 ring-primary/20',
               isHighlighted && !isCurrentTurn && 'border-yellow-500 bg-yellow-500/5',
               !isCurrentTurn && !isHighlighted && 'border-border'
             )}
+            style={{
+              borderLeftColor: captain.team_color || undefined,
+            }}
           >
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -67,12 +104,11 @@ export function TeamRoster({
                     'h-4 w-4',
                     isCurrentTurn ? 'text-primary' : 'text-muted-foreground'
                   )}
+                  style={{ color: captain.team_color || undefined }}
                 />
                 <h3 className="font-semibold">{captain.name}</h3>
               </div>
-              <span className="text-sm text-muted-foreground">
-                {teamPlayers.length} players
-              </span>
+              <AnimatedCount count={teamPlayers.length} label="players" />
             </div>
 
             {isCurrentTurn && (
@@ -110,7 +146,13 @@ export function TeamRoster({
                 </li>
               )}
               {teamPlayers.map((player) => (
-                <li key={player.id} className="flex items-center gap-2 text-sm">
+                <li
+                  key={player.id}
+                  className={cn(
+                    'flex items-center gap-2 text-sm rounded px-1',
+                    newPlayerIds.has(player.id) && 'animate-slide-in-right animate-highlight-pulse'
+                  )}
+                >
                   <span className="flex h-5 w-5 items-center justify-center rounded bg-muted text-xs">
                     {player.draft_pick_number}
                   </span>

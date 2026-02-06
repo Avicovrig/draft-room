@@ -121,6 +121,25 @@ export function useReorderCaptains() {
   })
 }
 
+export function useUpdateCaptainColor() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ captainId, color, leagueId }: { captainId: string; color: string; leagueId: string }) => {
+      const { error } = await supabase
+        .from('captains')
+        .update({ team_color: color })
+        .eq('id', captainId)
+
+      if (error) throw error
+      return { leagueId }
+    },
+    onSuccess: ({ leagueId }) => {
+      queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
+    },
+  })
+}
+
 export function useAssignRandomCaptains() {
   const queryClient = useQueryClient()
 

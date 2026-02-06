@@ -27,7 +27,7 @@ export function LeagueCard({ league }: LeagueCardProps) {
 
   return (
     <Link to={`/league/${league.id}/manage`}>
-      <Card className="transition-colors hover:border-primary/50">
+      <Card className="transition-all duration-200 hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5">
         <CardHeader>
           <div className="flex items-start justify-between">
             <div>

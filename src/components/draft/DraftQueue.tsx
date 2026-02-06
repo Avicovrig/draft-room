@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ChevronUp, ChevronDown, X } from 'lucide-react'
+import { ChevronUp, ChevronDown, X, ListOrdered, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { useDraftQueue, useRemoveFromQueue, useMoveInQueue, useToggleAutoPick } from '@/hooks/useDraftQueue'
@@ -27,6 +27,10 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
   const moveInQueue = useMoveInQueue()
   const toggleAutoPick = useToggleAutoPick()
   const { addToast } = useToast()
+
+  // Drag state
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   // Local state for optimistic UI updates
   const [isAutoPickEnabled, setIsAutoPickEnabled] = useState(captain.auto_pick_enabled)
@@ -65,6 +69,29 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
       captainId: captain.id,
       queueEntryId,
     })
+  }
+
+  function handleDragStart(index: number) {
+    setDragIndex(index)
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverIndex(index)
+  }
+
+  function handleDragEnd() {
+    if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
+      const item = availableQueue[dragIndex]
+      moveInQueue.mutate({
+        captainId: captain.id,
+        queueEntryId: item.id,
+        newPosition: dragOverIndex,
+      })
+    }
+    setDragIndex(null)
+    setDragOverIndex(null)
   }
 
   async function handleToggleAutoPick() {
@@ -130,19 +157,33 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
             Loading queue...
           </div>
         ) : availableQueue.length === 0 ? (
-          <div className="flex h-full items-center justify-center p-8 text-muted-foreground text-center">
-            <div>
-              <p>Your queue is empty</p>
-              <p className="text-xs mt-1">Click the + button on players to add them</p>
-            </div>
+          <div className="flex h-full flex-col items-center justify-center p-8 text-muted-foreground text-center">
+            <ListOrdered className="mb-2 h-8 w-8 text-muted-foreground/50" />
+            <p>Your queue is empty</p>
+            <p className="text-xs mt-1">Click the + button on players to add them</p>
           </div>
         ) : (
           <ul className="divide-y divide-border">
             {availableQueue.map((item, index) => (
               <li
                 key={item.id}
-                className="flex items-center gap-2 px-3 py-2"
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                className={`flex items-center gap-2 px-3 py-2 transition-colors hover:bg-accent/50 ${
+                  dragIndex === index ? 'opacity-50' : ''
+                } ${
+                  dragOverIndex === index && dragIndex !== null && dragIndex !== index
+                    ? dragIndex < index
+                      ? 'border-b-2 border-b-primary'
+                      : 'border-t-2 border-t-primary'
+                    : ''
+                }`}
               >
+                {/* Drag handle */}
+                <GripVertical className="h-4 w-4 flex-shrink-0 cursor-grab text-muted-foreground/50 active:cursor-grabbing" />
+
                 {/* Position number */}
                 <span className="w-6 text-center text-sm font-medium text-muted-foreground">
                   {index + 1}

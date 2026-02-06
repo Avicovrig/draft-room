@@ -39,6 +39,24 @@ export function TableRowSkeleton() {
   )
 }
 
+export function ManageLeagueSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-6 sm:p-8">
+      <Skeleton className="mb-2 h-4 w-24" />
+      <Skeleton className="mb-1 h-8 w-64" />
+      <Skeleton className="mb-6 h-4 w-48" />
+      <div className="mb-6 flex gap-2 border-b border-border pb-2">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-8 w-20" />
+        ))}
+      </div>
+      {[1, 2, 3].map((i) => (
+        <TableRowSkeleton key={i} />
+      ))}
+    </div>
+  )
+}
+
 export function LeagueCardSkeleton() {
   return (
     <div className="rounded-lg border bg-card p-6">

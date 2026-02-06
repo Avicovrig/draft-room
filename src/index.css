@@ -164,3 +164,56 @@ body {
 .animate-scale-in {
   animation: scale-in 0.3s ease-out;
 }
+
+/* Timer urgency */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes pulse-fast {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-fast {
+  animation: pulse-fast 0.5s ease-in-out infinite;
+}
+
+/* Button ripple */
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Draft pick animations */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+@keyframes highlight-pulse {
+  0% { background-color: oklch(0.55 0.2 240 / 0.15); }
+  100% { background-color: transparent; }
+}
+
+.animate-highlight-pulse {
+  animation: highlight-pulse 1.5s ease-out forwards;
+}

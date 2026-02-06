@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Maximize2, Minimize2, WifiOff } from 'lucide-react'
+import { Maximize2, Minimize2, WifiOff, Zap } from 'lucide-react'
 import { useModalFocus } from '@/hooks/useModalFocus'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { KeyboardShortcutsModal } from '@/components/ui/KeyboardShortcutsModal'
 import { PickTimer } from './PickTimer'
 import { PlayerPool, type SortOption } from './PlayerPool'
 import { TeamRoster } from './TeamRoster'
@@ -57,6 +59,9 @@ export function DraftBoard({
   const [isPlayerPoolExpanded, setIsPlayerPoolExpanded] = useState(false)
   const [poolSearch, setPoolSearch] = useState('')
   const [poolSortBy, setPoolSortBy] = useState<SortOption>('default')
+  const [showAutoPickFlash, setShowAutoPickFlash] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const isAutoPickingRef = useRef(false)
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -91,6 +96,16 @@ export function DraftBoard({
   const totalRounds = Math.ceil(
     (availablePlayers.length + league.draft_picks.length) / league.captains.length
   )
+
+  // Keyboard shortcuts
+  const shortcutHandlers = useMemo(() => ({
+    '?': () => setShowShortcuts(true),
+    '/': () => searchInputRef.current?.focus(),
+  }), [])
+  useKeyboardShortcuts(shortcutHandlers)
+
+  const totalPickSlots = availablePlayers.length + league.draft_picks.length
+  const progressPercent = totalPickSlots > 0 ? (league.draft_picks.length / totalPickSlots) * 100 : 0
 
   const canStartDraft =
     league.status === 'not_started' &&
@@ -199,6 +214,9 @@ export function DraftBoard({
           `Auto-picked ${response.data.pick.player} for ${response.data.pick.captain}`,
           'info'
         )
+        // Brief flash animation
+        setShowAutoPickFlash(true)
+        setTimeout(() => setShowAutoPickFlash(false), 1500)
         // Invalidate queries to refresh data
         queryClient.invalidateQueries({ queryKey: ['league', league.id] })
       }
@@ -296,13 +314,28 @@ export function DraftBoard({
         </div>
       </div>
 
+      {/* Draft Progress Bar */}
+      {league.status !== 'not_started' && (
+        <div className="h-2 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full bg-primary transition-all duration-500 ease-out"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      )}
+
       {/* Timer, Player Pool, and Queue */}
       <div className={`grid gap-6 ${viewingAsCaptain ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
-        <Card className="lg:col-span-1">
+        <Card className="relative lg:col-span-1">
           <CardHeader>
             <CardTitle>Timer</CardTitle>
           </CardHeader>
           <CardContent>
+            {showAutoPickFlash && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                <Zap className="h-12 w-12 text-yellow-500 animate-scale-in" />
+              </div>
+            )}
             <PickTimer
               currentPickStartedAt={league.current_pick_started_at}
               timeLimitSeconds={league.time_limit_seconds}
@@ -340,6 +373,7 @@ export function DraftBoard({
               onSearchChange={setPoolSearch}
               sortBy={poolSortBy}
               onSortChange={setPoolSortBy}
+              searchInputRef={searchInputRef}
             />
           </CardContent>
         </Card>
@@ -400,6 +434,11 @@ export function DraftBoard({
           />
         </CardContent>
       </Card>
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />
+      )}
 
       {/* Expanded Player Pool Modal */}
       {isPlayerPoolExpanded && (

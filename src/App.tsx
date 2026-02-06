@@ -18,6 +18,7 @@ import { SpectatorView } from '@/pages/league/SpectatorView'
 import { Summary } from '@/pages/league/Summary'
 import { EditProfile } from '@/pages/player/EditProfile'
 import { NotFound } from '@/pages/NotFound'
+import { PageTransition } from '@/components/layout/PageTransition'
 
 const queryClient = new QueryClient()
 
@@ -30,15 +31,15 @@ function App() {
             <ErrorBoundary>
               <BrowserRouter>
                 <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/auth/login" element={<Login />} />
-              <Route path="/auth/signup" element={<Signup />} />
+              <Route path="/" element={<PageTransition><Landing /></PageTransition>} />
+              <Route path="/auth/login" element={<PageTransition><Login /></PageTransition>} />
+              <Route path="/auth/signup" element={<PageTransition><Signup /></PageTransition>} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <PageTransition><Dashboard /></PageTransition>
                   </ProtectedRoute>
                 }
               />
@@ -46,7 +47,7 @@ function App() {
                 path="/league/new"
                 element={
                   <ProtectedRoute>
-                    <NewLeague />
+                    <PageTransition><NewLeague /></PageTransition>
                   </ProtectedRoute>
                 }
               />
@@ -54,7 +55,7 @@ function App() {
                 path="/league/:id/manage"
                 element={
                   <ProtectedRoute>
-                    <ManageLeague />
+                    <PageTransition><ManageLeague /></PageTransition>
                   </ProtectedRoute>
                 }
               />
@@ -62,16 +63,16 @@ function App() {
                 path="/league/:id/draft"
                 element={
                   <ProtectedRoute>
-                    <DraftView />
+                    <PageTransition><DraftView /></PageTransition>
                   </ProtectedRoute>
                 }
               />
               {/* Token-based routes (no auth required) */}
-              <Route path="/league/:id/captain" element={<CaptainView />} />
-              <Route path="/league/:id/spectate" element={<SpectatorView />} />
-              <Route path="/league/:id/summary" element={<Summary />} />
-              <Route path="/player/:playerId/edit" element={<EditProfile />} />
-              <Route path="*" element={<NotFound />} />
+              <Route path="/league/:id/captain" element={<PageTransition><CaptainView /></PageTransition>} />
+              <Route path="/league/:id/spectate" element={<PageTransition><SpectatorView /></PageTransition>} />
+              <Route path="/league/:id/summary" element={<PageTransition><Summary /></PageTransition>} />
+              <Route path="/player/:playerId/edit" element={<PageTransition><EditProfile /></PageTransition>} />
+              <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
                 </Routes>
               </BrowserRouter>
             </ErrorBoundary>

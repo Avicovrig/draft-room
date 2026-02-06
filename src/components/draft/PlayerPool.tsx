@@ -30,6 +30,7 @@ interface PlayerPoolProps {
   onSearchChange?: (search: string) => void
   sortBy?: SortOption
   onSortChange?: (sort: SortOption) => void
+  searchInputRef?: React.RefObject<HTMLInputElement | null>
 }
 
 function getInitials(name: string): string {
@@ -41,7 +42,7 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isPicking, showExpandedDetails = false, onAddToQueue, queuedPlayerIds = new Set(), isAddingToQueue = false, search: controlledSearch, onSearchChange, sortBy: controlledSortBy, onSortChange }: PlayerPoolProps) {
+export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isPicking, showExpandedDetails = false, onAddToQueue, queuedPlayerIds = new Set(), isAddingToQueue = false, search: controlledSearch, onSearchChange, sortBy: controlledSortBy, onSortChange, searchInputRef: externalSearchRef }: PlayerPoolProps) {
   const [localSearch, setLocalSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null)
@@ -150,7 +151,10 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            ref={searchRef}
+            ref={(el) => {
+              (searchRef as React.MutableRefObject<HTMLInputElement | null>).current = el
+              if (externalSearchRef) (externalSearchRef as React.MutableRefObject<HTMLInputElement | null>).current = el
+            }}
             placeholder="Search players..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}

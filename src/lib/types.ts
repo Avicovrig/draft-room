@@ -58,6 +58,7 @@ export interface Database {
           draft_position: number
           player_id: string | null
           auto_pick_enabled: boolean
+          team_color: string | null
           created_at: string
         }
         Insert: {
@@ -69,6 +70,7 @@ export interface Database {
           draft_position: number
           player_id?: string | null
           auto_pick_enabled?: boolean
+          team_color?: string | null
           created_at?: string
         }
         Update: {
@@ -80,6 +82,7 @@ export interface Database {
           draft_position?: number
           player_id?: string | null
           auto_pick_enabled?: boolean
+          team_color?: string | null
           created_at?: string
         }
       }

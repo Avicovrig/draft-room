@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -8,6 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
+import { useToast } from '@/components/ui/Toast'
 import { useUpdateLeague } from '@/hooks/useLeagues'
 import { toDatetimeLocal, fromDatetimeLocal } from '@/lib/draft'
 import type { LeagueFull } from '@/lib/types'
@@ -26,7 +26,7 @@ interface LeagueSettingsProps {
 
 export function LeagueSettings({ league }: LeagueSettingsProps) {
   const updateLeague = useUpdateLeague()
-  const [success, setSuccess] = useState(false)
+  const { addToast } = useToast()
 
   const {
     register,
@@ -52,7 +52,6 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
     time_limit_seconds: number
     scheduled_start_at?: string | null
   }) {
-    setSuccess(false)
     try {
       await updateLeague.mutateAsync({
         id: league.id,
@@ -61,8 +60,7 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
         time_limit_seconds: data.time_limit_seconds,
         scheduled_start_at: fromDatetimeLocal(data.scheduled_start_at || ''),
       })
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      addToast('Settings saved', 'success')
     } catch {
       // Error handled by mutation
     }
@@ -86,17 +84,12 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {success && (
-            <div className="rounded-md bg-green-500/10 p-3 text-sm text-green-600 dark:text-green-400">
-              Settings saved successfully!
-            </div>
-          )}
-
           <div className="space-y-2">
             <Label htmlFor="name">League Name</Label>
             <Input
               id="name"
               {...register('name')}
+              error={!!errors.name}
               disabled={!isEditable}
             />
             {errors.name && (

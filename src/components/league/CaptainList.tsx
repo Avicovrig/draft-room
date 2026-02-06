@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, Shuffle, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, Shuffle, ChevronUp, ChevronDown, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
@@ -10,6 +10,7 @@ import {
   useDeleteCaptain,
   useAssignRandomCaptains,
   useReorderCaptains,
+  useUpdateCaptainColor,
 } from '@/hooks/useCaptains'
 import type { LeagueFull } from '@/lib/types'
 
@@ -30,6 +31,9 @@ export function CaptainList({ league }: CaptainListProps) {
   const deleteCaptain = useDeleteCaptain()
   const assignRandom = useAssignRandomCaptains()
   const reorderCaptains = useReorderCaptains()
+  const updateColor = useUpdateCaptainColor()
+
+  const defaultColors = ['#3B82F6', '#EF4444', '#22C55E', '#A855F7']
 
   const isEditable = league.status === 'not_started'
   const sortedCaptains = [...league.captains].sort((a, b) => a.draft_position - b.draft_position)
@@ -319,9 +323,12 @@ export function CaptainList({ league }: CaptainListProps) {
         </CardHeader>
         <CardContent>
           {sortedCaptains.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No captains added yet. Add captains above or use random assignment.
-            </p>
+            <div className="py-6 text-center">
+              <Crown className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">
+                No captains added yet. Add from players above or use random assignment.
+              </p>
+            </div>
           ) : (
             <ul className="space-y-2">
               {sortedCaptains.map((captain, index) => (
@@ -355,6 +362,27 @@ export function CaptainList({ league }: CaptainListProps) {
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
                       {index + 1}
                     </span>
+                    {isEditable && (
+                      <input
+                        type="color"
+                        value={captain.team_color || defaultColors[index % defaultColors.length]}
+                        onChange={(e) =>
+                          updateColor.mutate({
+                            captainId: captain.id,
+                            color: e.target.value,
+                            leagueId: league.id,
+                          })
+                        }
+                        className="h-6 w-6 cursor-pointer rounded border-0 p-0"
+                        title="Team color"
+                      />
+                    )}
+                    {!isEditable && captain.team_color && (
+                      <span
+                        className="h-4 w-4 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: captain.team_color }}
+                      />
+                    )}
                     <div>
                       <span className="font-medium">{captain.name}</span>
                       {captain.player_id ? (

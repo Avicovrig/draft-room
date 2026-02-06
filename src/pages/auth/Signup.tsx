@@ -82,6 +82,7 @@ export function Signup() {
               id="email"
               type="email"
               placeholder="you@example.com"
+              error={!!errors.email}
               {...register('email')}
             />
             {errors.email && (
@@ -94,6 +95,7 @@ export function Signup() {
             <Input
               id="password"
               type="password"
+              error={!!errors.password}
               {...register('password')}
             />
             {errors.password && (
@@ -106,6 +108,7 @@ export function Signup() {
             <Input
               id="confirmPassword"
               type="password"
+              error={!!errors.confirmPassword}
               {...register('confirmPassword')}
             />
             {errors.confirmPassword && (

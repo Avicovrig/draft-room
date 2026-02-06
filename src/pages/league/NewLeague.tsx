@@ -78,6 +78,7 @@ export function NewLeague() {
                 <Input
                   id="name"
                   placeholder="My Awesome League"
+                  error={!!errors.name}
                   {...register('name')}
                 />
                 {errors.name && (

@@ -1,14 +1,35 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Trophy, Users, Zap, Clock, Share2, Check } from 'lucide-react'
+import { ArrowLeft, Trophy, Users, Zap, Clock, Share2, Check, BarChart3, Timer } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Confetti } from '@/components/ui/Confetti'
 import { useDraft } from '@/hooks/useDraft'
+import { useAnimatedNumber } from '@/hooks/useAnimatedNumber'
 import { useAuth } from '@/context/AuthContext'
 import { playSound, resumeAudioContext } from '@/lib/sounds'
 import type { Captain, Player } from '@/lib/types'
+
+function formatPickTime(seconds: number): string {
+  if (seconds >= 60) {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.round(seconds % 60)
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
+  }
+  return `${Math.round(seconds)}s`
+}
+
+function AnimatedStat({ value, delay = 0 }: { value: number; delay?: number }) {
+  const [started, setStarted] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setStarted(true), delay * 1000)
+    return () => clearTimeout(timer)
+  }, [delay])
+  const display = useAnimatedNumber(started ? value : 0, 600)
+  return <>{display}</>
+}
 
 export function Summary() {
   const { id } = useParams<{ id: string }>()
@@ -61,9 +82,7 @@ export function Summary() {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-4 py-8">
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center text-destructive">
-            {error?.message || 'League not found'}
-          </div>
+          <ErrorAlert message={error?.message || 'League not found'} />
         </main>
       </div>
     )
@@ -94,6 +113,20 @@ export function Summary() {
   // Calculate draft stats
   const totalAutoPicks = league.draft_picks.filter((p) => p.is_auto_pick).length
   const totalRounds = Math.ceil(league.draft_picks.length / league.captains.length)
+
+  // Pick time analytics
+  const sortedPicks = [...league.draft_picks].sort((a, b) => a.pick_number - b.pick_number)
+  const pickDeltas: { seconds: number; captainId: string; pickNumber: number }[] = []
+  for (let i = 1; i < sortedPicks.length; i++) {
+    const delta = (new Date(sortedPicks[i].picked_at).getTime() - new Date(sortedPicks[i - 1].picked_at).getTime()) / 1000
+    if (delta > 0 && delta < league.time_limit_seconds * 2) {
+      pickDeltas.push({ seconds: delta, captainId: sortedPicks[i].captain_id, pickNumber: sortedPicks[i].pick_number })
+    }
+  }
+  const avgPickTime = pickDeltas.length > 0 ? pickDeltas.reduce((sum, d) => sum + d.seconds, 0) / pickDeltas.length : 0
+  const fastestPick = pickDeltas.length > 0 ? pickDeltas.reduce((min, d) => d.seconds < min.seconds ? d : min) : null
+  const slowestPick = pickDeltas.length > 0 ? pickDeltas.reduce((max, d) => d.seconds > max.seconds ? d : max) : null
+  const autoPickRate = league.draft_picks.length > 0 ? (totalAutoPicks / league.draft_picks.length) * 100 : 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -155,7 +188,7 @@ export function Summary() {
                   <Zap className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <div className="text-3xl font-bold">{league.draft_picks.length}</div>
+                  <div className="text-3xl font-bold"><AnimatedStat value={league.draft_picks.length} delay={0.1} /></div>
                   <div className="text-sm text-muted-foreground">Total Picks</div>
                 </div>
               </div>
@@ -168,7 +201,7 @@ export function Summary() {
                   <Users className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <div className="text-3xl font-bold">{league.captains.length}</div>
+                  <div className="text-3xl font-bold"><AnimatedStat value={league.captains.length} delay={0.2} /></div>
                   <div className="text-sm text-muted-foreground">Teams</div>
                 </div>
               </div>
@@ -181,7 +214,7 @@ export function Summary() {
                   <Clock className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <div className="text-3xl font-bold">{totalRounds}</div>
+                  <div className="text-3xl font-bold"><AnimatedStat value={totalRounds} delay={0.3} /></div>
                   <div className="text-sm text-muted-foreground">Rounds</div>
                 </div>
               </div>
@@ -194,7 +227,7 @@ export function Summary() {
                   <Zap className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
                 <div>
-                  <div className="text-3xl font-bold">{totalAutoPicks}</div>
+                  <div className="text-3xl font-bold"><AnimatedStat value={totalAutoPicks} delay={0.4} /></div>
                   <div className="text-sm text-muted-foreground">Auto Picks</div>
                 </div>
               </div>
@@ -221,6 +254,72 @@ export function Summary() {
           </div>
         )}
 
+        {/* Draft Analytics */}
+        {pickDeltas.length > 0 && (
+          <Card className="mb-8 animate-slide-up" style={{ animationDelay: '0.5s' }}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Draft Analytics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <Timer className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold">{formatPickTime(avgPickTime)}</div>
+                    <div className="text-sm text-muted-foreground">Avg Pick Time</div>
+                  </div>
+                </div>
+
+                {fastestPick && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10">
+                      <Zap className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <div className="text-lg font-semibold">{formatPickTime(fastestPick.seconds)}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Fastest (Pick #{fastestPick.pickNumber} — {league.captains.find((c) => c.id === fastestPick.captainId)?.name})
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {slowestPick && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
+                      <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <div>
+                      <div className="text-lg font-semibold">{formatPickTime(slowestPick.seconds)}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Slowest (Pick #{slowestPick.pickNumber} — {league.captains.find((c) => c.id === slowestPick.captainId)?.name})
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Auto-pick Rate</span>
+                    <span className="font-medium">{autoPickRate.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full bg-yellow-500 transition-all duration-500"
+                      style={{ width: `${autoPickRate}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <h2 className="mb-4 text-xl font-semibold">Team Rosters</h2>
         <div className="grid gap-6 md:grid-cols-2">
           {sortedCaptains.map((captain, index) => {
@@ -233,10 +332,16 @@ export function Summary() {
                 className="animate-slide-up overflow-hidden"
                 style={{ animationDelay: `${0.1 * (index + 1)}s` }}
               >
-                <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent">
+                <CardHeader
+                  className="bg-gradient-to-r from-primary/10 to-transparent"
+                  style={captain.team_color ? { background: `linear-gradient(to right, ${captain.team_color}20, transparent)` } : undefined}
+                >
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                      <div
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
+                        style={captain.team_color ? { backgroundColor: captain.team_color } : undefined}
+                      >
                         {captain.draft_position}
                       </div>
                       <span>{captain.name}</span>
