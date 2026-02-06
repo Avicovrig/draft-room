@@ -110,6 +110,19 @@ export function CaptainList({ league }: CaptainListProps) {
     }
   }
 
+  async function handleRandomizeOrder() {
+    if (sortedCaptains.length < 2) return
+    const shuffled = [...sortedCaptains]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    await reorderCaptains.mutateAsync({
+      leagueId: league.id,
+      captainIds: shuffled.map((c) => c.id),
+    })
+  }
+
   async function handleRandomAssign() {
     const count = parseInt(randomCount, 10)
     const playerIds = league.players.map((p) => p.id)
@@ -286,7 +299,20 @@ export function CaptainList({ league }: CaptainListProps) {
       {/* Captain List / Draft Order */}
       <Card>
         <CardHeader>
-          <CardTitle>Draft Order ({sortedCaptains.length} Captains)</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Draft Order ({sortedCaptains.length} Captains)</CardTitle>
+            {isEditable && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRandomizeOrder}
+                disabled={sortedCaptains.length < 2 || reorderCaptains.isPending}
+              >
+                <Shuffle className="mr-2 h-4 w-4" />
+                Randomize
+              </Button>
+            )}
+          </div>
           <CardDescription>
             Captains will pick in this order. {league.draft_type === 'snake' ? 'Order reverses each round.' : 'Same order every round.'}
           </CardDescription>

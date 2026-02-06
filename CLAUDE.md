@@ -13,59 +13,77 @@ Draft Room is a custom league draft application. League managers can create leag
 - `npm run dev` - Start development server (http://localhost:5173)
 - `npm run build` - Type-check with TypeScript then build for production
 - `npm run lint` - Run ESLint
+- `supabase functions deploy <function-name>` - Deploy a single edge function
+- No test framework is configured
 
 ## Architecture
 
-See `docs/architecture.md` for full technical details including database schema and state machine.
+### Frontend
 
-**Key patterns:**
-- **Routing**: React Router v7 in `App.tsx`
-- **State**: TanStack Query for server state, React Context for auth/theme
-- **Styling**: Tailwind v4 with CSS variables in `index.css`, shadcn/ui-style components
-- **Path aliases**: `@/*` maps to `src/*`
+- **Routing**: React Router v7, configured in `App.tsx`. Protected routes use `<ProtectedRoute>` wrapper (requires Supabase auth). Token-based routes (captain, spectator) have no auth.
+- **State**: TanStack Query for all server state. Hooks in `src/hooks/` wrap Supabase queries as TanStack Query hooks (`useQuery`/`useMutation`). React Context only for auth (`AuthContext`) and theme (`ThemeContext`).
+- **Styling**: Tailwind v4 with CSS variables defined in `index.css`. Components follow shadcn/ui patterns using `class-variance-authority` for variants. Use `cn()` from `@/lib/utils` for conditional classNames.
+- **Path aliases**: `@/*` maps to `src/*` (configured in `tsconfig.app.json` and `vite.config.ts`)
+- **Forms**: React Hook Form + Zod validation
 
-**Directory structure:**
+### Backend (Supabase Edge Functions)
+
+All draft-critical mutations go through Deno edge functions in `supabase/functions/` that use `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS:
+
+- **`make-pick`** - Captain or manager makes a pick. Validates turn order, player availability, captain token. Handles race conditions via unique constraint on `pick_number`.
+- **`auto-pick`** - Called on timer expiry or when captain has `auto_pick_enabled`. Picks from captain's draft queue first, falls back to random. Has 2-second grace period on timer validation. Uses `expectedPickIndex` for idempotency.
+- **`toggle-auto-pick`** - Toggles a captain's auto-pick setting
+- **`update-player-profile`** - Player self-service profile updates via edit token
+
+### Real-time Data Flow
+
+The `useDraft` hook (`src/hooks/useDraft.ts`) is the central draft state manager:
+1. Subscribes to Supabase realtime on `leagues`, `players`, `draft_picks`, and `captains` tables
+2. On any change, invalidates the TanStack Query cache to trigger a refetch
+3. Falls back to 2-second polling when realtime subscription isn't connected
+
+### Draft Logic
+
+Core draft order logic lives in `src/lib/draft.ts`:
+- **Snake**: Order reverses each round `[1,2,3,4,4,3,2,1,1,2,3,4,...]`
+- **Round Robin**: Same order every round `[1,2,3,4,1,2,3,4,...]`
+- Same logic is duplicated in edge functions (`make-pick`, `auto-pick`) for server-side validation
+
+### Timer System
+
+Server-authoritative: `leagues.current_pick_started_at` is the source of truth. All clients compute remaining time as `time_limit_seconds - elapsed`. When timer hits zero, client calls the `auto-pick` edge function. The edge function validates the timer server-side (with 2s grace period).
+
+### Database Schema
+
+Six tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_picks`, `captain_draft_queues`. Full schema in `docs/architecture.md`. Types in `src/lib/types.ts` mirror the DB schema with `Database` interface and convenience aliases (`League`, `Captain`, `Player`, etc.).
+
+Migrations are in `supabase/migrations/` (001-007), applied sequentially.
+
+### Draft State Machine
+
 ```
-src/
-├── lib/          # Utilities (supabase client, types, cn helper)
-├── hooks/        # Custom React hooks
-├── context/      # React contexts (Auth, Theme)
-├── components/
-│   ├── ui/       # Base UI components (Button, etc.)
-│   ├── layout/   # Layout components (Header, ProtectedRoute)
-│   ├── league/   # League-related components
-│   └── draft/    # Draft-related components
-└── pages/        # Route page components
+NOT_STARTED → IN_PROGRESS (start)
+IN_PROGRESS → PAUSED (pause)
+PAUSED → IN_PROGRESS (resume)
+PAUSED → NOT_STARTED (restart, deletes all picks)
+IN_PROGRESS → COMPLETED (all players drafted)
 ```
+
+### Access Model
+
+- **Manager**: Authenticated via Supabase Auth. Full control over league, draft, players.
+- **Captain**: Token-based URL (`/league/:id/captain?token=<access_token>`). Can make picks during their turn.
+- **Spectator**: Token-based URL (`/league/:id/spectate?token=<spectator_token>`). Read-only view.
+- **Player**: Token-based URL (`/player/:playerId/edit?token=<edit_token>`). Can edit own profile.
 
 ## Code Conventions
 
 - Use `@/` path alias for imports from src
 - Components use named exports
-- Use `cn()` from `@/lib/utils` for conditional classNames
 - Dark mode: toggle via ThemeContext, uses `.dark` class on `<html>`
 - Toast notifications: use `useToast()` hook from `@/components/ui/Toast`
 - Wrap route content with ErrorBoundary for graceful error handling
-
-## Key Features
-
-- **Draft Types**: Snake draft (order reverses each round) or Round Robin
-- **Real-time Updates**: Supabase realtime subscriptions for live draft state
-- **Server-authoritative Timer**: `current_pick_started_at` timestamp ensures synced timers
-- **Auto-pick**: Edge function at `supabase/functions/auto-pick` handles timer expiry
-- **Token-based Access**: Captains and spectators access via URL tokens (no auth required)
-
-## Routes
-
-- `/` - Landing page
-- `/auth/login`, `/auth/signup` - Authentication
-- `/dashboard` - Manager's league list (protected)
-- `/league/new` - Create new league (protected)
-- `/league/:id/manage` - League settings and setup (protected)
-- `/league/:id/draft` - Manager's draft control view (protected)
-- `/league/:id/captain?token=<token>` - Captain draft view (token-based)
-- `/league/:id/spectate?token=<token>` - Spectator view (token-based)
-- `/league/:id/summary` - Post-draft summary
+- Hooks follow the pattern: `use<Entity>` for queries, `useCreate<Entity>`/`useUpdate<Entity>`/`useDelete<Entity>` for mutations
 
 ## Environment Variables
 
@@ -73,8 +91,10 @@ Copy `.env.example` to `.env.local` and set:
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
 
+Edge functions use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (set automatically by Supabase).
+
 ## Supabase Setup
 
-1. Run migration from `supabase/migrations/001_initial_schema.sql`
-2. Deploy edge function: `supabase functions deploy auto-pick`
-3. Enable realtime on tables: leagues, players, draft_picks
+1. Run migrations from `supabase/migrations/` in order
+2. Deploy edge functions: `supabase functions deploy auto-pick`, etc.
+3. Enable realtime on tables: `leagues`, `players`, `draft_picks`, `captains`
