@@ -47,7 +47,7 @@ export function LeagueCard({ league }: LeagueCardProps) {
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <Users className="h-4 w-4" />
-              <span>{league.time_limit_seconds}s per pick</span>
+              <span>{league.time_limit_seconds >= 60 && league.time_limit_seconds % 60 === 0 ? `${league.time_limit_seconds / 60}m` : `${league.time_limit_seconds}s`} per pick</span>
             </div>
             {league.status === 'not_started' ? (
               <div className="flex items-center gap-1">

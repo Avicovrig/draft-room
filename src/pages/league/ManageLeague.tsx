@@ -88,7 +88,7 @@ export function ManageLeague() {
               <h1 className="text-3xl font-bold">{league.name}</h1>
               <p className="mt-1 text-muted-foreground">
                 {league.draft_type === 'snake' ? 'Snake Draft' : 'Round Robin'} •{' '}
-                {league.time_limit_seconds}s per pick
+                {league.time_limit_seconds >= 60 && league.time_limit_seconds % 60 === 0 ? `${league.time_limit_seconds / 60}m` : `${league.time_limit_seconds}s`} per pick
               </p>
             </div>
             <div className="flex gap-2">
