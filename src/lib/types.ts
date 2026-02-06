@@ -16,6 +16,7 @@ export interface Database {
           current_pick_index: number
           current_pick_started_at: string | null
           scheduled_start_at: string | null
+          allow_player_custom_fields: boolean
           created_at: string
           updated_at: string
         }
@@ -30,6 +31,7 @@ export interface Database {
           current_pick_index?: number
           current_pick_started_at?: string | null
           scheduled_start_at?: string | null
+          allow_player_custom_fields?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -44,6 +46,7 @@ export interface Database {
           current_pick_index?: number
           current_pick_started_at?: string | null
           scheduled_start_at?: string | null
+          allow_player_custom_fields?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -94,10 +97,6 @@ export interface Database {
           drafted_by_captain_id: string | null
           draft_pick_number: number | null
           bio: string | null
-          height: string | null
-          weight: string | null
-          birthday: string | null
-          hometown: string | null
           profile_picture_url: string | null
           edit_token: string
           created_at: string
@@ -109,10 +108,6 @@ export interface Database {
           drafted_by_captain_id?: string | null
           draft_pick_number?: number | null
           bio?: string | null
-          height?: string | null
-          weight?: string | null
-          birthday?: string | null
-          hometown?: string | null
           profile_picture_url?: string | null
           edit_token?: string
           created_at?: string
@@ -124,10 +119,6 @@ export interface Database {
           drafted_by_captain_id?: string | null
           draft_pick_number?: number | null
           bio?: string | null
-          height?: string | null
-          weight?: string | null
-          birthday?: string | null
-          hometown?: string | null
           profile_picture_url?: string | null
           edit_token?: string
           created_at?: string
@@ -298,15 +289,3 @@ export interface PlayerWithCustomFields extends Player {
   custom_fields: PlayerCustomField[]
 }
 
-// Helper function to calculate age from birthday
-export function calculateAge(birthday: string | null): number | null {
-  if (!birthday) return null
-  const birthDate = new Date(birthday)
-  const today = new Date()
-  let age = today.getFullYear() - birthDate.getFullYear()
-  const monthDiff = today.getMonth() - birthDate.getMonth()
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--
-  }
-  return age
-}

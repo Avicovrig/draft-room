@@ -31,7 +31,7 @@ export function exportPlayersToSpreadsheet(
   }
 
   // Build headers: standard + schema + freeform
-  const headers = ['Name', 'Status', 'Height', 'Weight', 'Birthday', 'Hometown', 'Bio', ...schemaFieldNames, ...freeformFieldNames]
+  const headers = ['Name', 'Status', 'Bio', ...schemaFieldNames, ...freeformFieldNames]
 
   // Build rows
   const rows = players.map((player) => {
@@ -63,10 +63,6 @@ export function exportPlayersToSpreadsheet(
     return [
       player.name,
       status,
-      player.height || '',
-      player.weight || '',
-      player.birthday || '',
-      player.hometown || '',
       player.bio || '',
       ...schemaValues,
       ...freeformValues,
@@ -80,10 +76,6 @@ export function exportPlayersToSpreadsheet(
   worksheet['!cols'] = [
     { wch: 20 }, // Name
     { wch: 18 }, // Status
-    { wch: 10 }, // Height
-    { wch: 12 }, // Weight
-    { wch: 12 }, // Birthday
-    { wch: 15 }, // Hometown
     { wch: 40 }, // Bio
     ...schemaFieldNames.map(() => ({ wch: 15 })),
     ...freeformFieldNames.map(() => ({ wch: 15 })),

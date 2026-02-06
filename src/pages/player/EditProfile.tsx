@@ -86,10 +86,6 @@ export function EditProfile() {
           playerId,
           editToken: token,
           bio: data.bio,
-          height: data.height,
-          weight: data.weight,
-          birthday: data.birthday,
-          hometown: data.hometown,
           profile_picture_url: profilePictureUrl,
           customFields: data.customFields,
           deletedCustomFieldIds: data.deletedCustomFieldIds,
@@ -159,6 +155,7 @@ export function EditProfile() {
                   player={player}
                   customFields={player.custom_fields}
                   fieldSchemas={fieldSchemas}
+                  allowFreeformFields={league?.allow_player_custom_fields ?? true}
                   onSave={handleSave}
                   onCancel={() => window.history.back()}
                 />

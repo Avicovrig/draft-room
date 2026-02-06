@@ -99,10 +99,6 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
       await updateProfile.mutateAsync({
         playerId: editingPlayer.id,
         bio: data.bio,
-        height: data.height,
-        weight: data.weight,
-        birthday: data.birthday,
-        hometown: data.hometown,
         profile_picture_url: profilePictureUrl,
       })
 
@@ -210,6 +206,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
               player={editingPlayer}
               customFields={customFieldsMap[editingPlayer.id] || []}
               fieldSchemas={fieldSchemas}
+              allowFreeformFields={league.allow_player_custom_fields}
               onSave={handleSaveProfile}
               onCancel={() => setEditingPlayer(null)}
             />

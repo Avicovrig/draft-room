@@ -10,15 +10,11 @@ import type {
 } from '@/lib/spreadsheetTypes'
 import type { LeagueFieldSchema } from '@/lib/types'
 
-const STANDARD_FIELDS: StandardPlayerField[] = ['name', 'height', 'weight', 'birthday', 'hometown', 'bio']
+const STANDARD_FIELDS: StandardPlayerField[] = ['name', 'bio']
 
 // Auto-detection patterns for column headers
 const FIELD_PATTERNS: Record<StandardPlayerField, RegExp[]> = {
   name: [/^name$/i, /^player$/i, /player\s*name/i, /full\s*name/i],
-  height: [/^height$/i],
-  weight: [/^weight$/i],
-  birthday: [/^birthday$/i, /^dob$/i, /birth\s*date/i, /date\s*of\s*birth/i],
-  hometown: [/^hometown$/i, /^city$/i, /^from$/i, /^location$/i],
   bio: [/^bio$/i, /^about$/i, /^description$/i],
 }
 
@@ -148,18 +144,6 @@ export function transformData(
           case 'name':
             player.name = value
             break
-          case 'height':
-            player.height = value || undefined
-            break
-          case 'weight':
-            player.weight = value || undefined
-            break
-          case 'birthday':
-            player.birthday = value || undefined
-            break
-          case 'hometown':
-            player.hometown = value || undefined
-            break
           case 'bio':
             player.bio = value || undefined
             break
@@ -214,10 +198,6 @@ export function useImportPlayers({ leagueId }: UseImportPlayersOptions) {
       const playersToInsert = validPlayers.map((p) => ({
         league_id: leagueId,
         name: p.name,
-        height: p.height || null,
-        weight: p.weight || null,
-        birthday: p.birthday || null,
-        hometown: p.hometown || null,
         bio: p.bio || null,
       }))
 

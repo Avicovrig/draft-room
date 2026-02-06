@@ -1,4 +1,4 @@
-import { calculateAge, type Player, type PlayerCustomField } from '@/lib/types'
+import type { Player, PlayerCustomField } from '@/lib/types'
 
 interface PlayerProfileViewProps {
   player: Player
@@ -15,7 +15,6 @@ function getInitials(name: string): string {
 }
 
 export function PlayerProfileView({ player, customFields = [] }: PlayerProfileViewProps) {
-  const age = calculateAge(player.birthday)
   const sortedCustomFields = [...customFields].sort((a, b) => a.field_order - b.field_order)
 
   return (
@@ -35,35 +34,8 @@ export function PlayerProfileView({ player, customFields = [] }: PlayerProfileVi
         )}
         <div>
           <h3 className="text-xl font-bold">{player.name}</h3>
-          {age !== null && (
-            <p className="text-muted-foreground">{age} years old</p>
-          )}
         </div>
       </div>
-
-      {/* Stats Grid */}
-      {(player.height || player.weight || player.hometown) && (
-        <div className="grid grid-cols-3 gap-4">
-          {player.height && (
-            <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
-              <div className="text-sm text-muted-foreground">Height</div>
-              <div className="font-semibold">{player.height}</div>
-            </div>
-          )}
-          {player.weight && (
-            <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
-              <div className="text-sm text-muted-foreground">Weight</div>
-              <div className="font-semibold">{player.weight}</div>
-            </div>
-          )}
-          {player.hometown && (
-            <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
-              <div className="text-sm text-muted-foreground">Hometown</div>
-              <div className="font-semibold">{player.hometown}</div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Bio */}
       {player.bio && (
@@ -76,7 +48,7 @@ export function PlayerProfileView({ player, customFields = [] }: PlayerProfileVi
       {/* Custom Fields */}
       {sortedCustomFields.length > 0 && (
         <div>
-          <h4 className="mb-2 font-semibold">Additional Info</h4>
+          <h4 className="mb-2 font-semibold">Details</h4>
           <dl className="space-y-2">
             {sortedCustomFields.map((field) => (
               <div key={field.id} className="flex justify-between rounded-lg border border-border bg-muted/50 px-3 py-2">
@@ -89,7 +61,7 @@ export function PlayerProfileView({ player, customFields = [] }: PlayerProfileVi
       )}
 
       {/* Empty State */}
-      {!player.bio && !player.height && !player.weight && !player.hometown && sortedCustomFields.length === 0 && (
+      {!player.bio && sortedCustomFields.length === 0 && (
         <p className="text-center text-muted-foreground">No profile information available</p>
       )}
     </div>

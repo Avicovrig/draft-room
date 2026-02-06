@@ -17,6 +17,7 @@ const settingsSchema = z.object({
   draft_type: z.enum(['snake', 'round_robin']),
   time_limit_seconds: z.coerce.number().min(15).max(1800),
   scheduled_start_at: z.string().optional().nullable(),
+  allow_player_custom_fields: z.boolean(),
 })
 
 
@@ -41,6 +42,7 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
       draft_type: league.draft_type as 'snake' | 'round_robin',
       time_limit_seconds: league.time_limit_seconds,
       scheduled_start_at: toDatetimeLocal(league.scheduled_start_at),
+      allow_player_custom_fields: league.allow_player_custom_fields,
     },
   })
 
@@ -51,6 +53,7 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
     draft_type: 'snake' | 'round_robin'
     time_limit_seconds: number
     scheduled_start_at?: string | null
+    allow_player_custom_fields: boolean
   }) {
     try {
       await updateLeague.mutateAsync({
@@ -59,6 +62,7 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
         draft_type: data.draft_type,
         time_limit_seconds: data.time_limit_seconds,
         scheduled_start_at: fromDatetimeLocal(data.scheduled_start_at || ''),
+        allow_player_custom_fields: data.allow_player_custom_fields,
       })
       addToast('Settings saved', 'success')
     } catch {
@@ -152,6 +156,22 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
               Set a time to let participants know when the draft will begin.
               You will still need to manually start the draft.
             </p>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <input
+              id="allow_player_custom_fields"
+              type="checkbox"
+              {...register('allow_player_custom_fields')}
+              disabled={!isEditable}
+              className="mt-1 h-4 w-4 rounded border-border"
+            />
+            <div>
+              <Label htmlFor="allow_player_custom_fields">Allow player custom fields</Label>
+              <p className="text-sm text-muted-foreground">
+                When enabled, players can add their own custom fields to their profiles.
+              </p>
+            </div>
           </div>
 
           {isEditable && (

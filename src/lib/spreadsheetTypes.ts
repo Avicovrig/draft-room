@@ -1,4 +1,4 @@
-export type StandardPlayerField = 'name' | 'height' | 'weight' | 'birthday' | 'hometown' | 'bio'
+export type StandardPlayerField = 'name' | 'bio'
 
 export type PlayerFieldMapping =
   | { type: 'standard'; field: StandardPlayerField }
@@ -15,10 +15,6 @@ export interface SpreadsheetData {
 export interface ParsedPlayer {
   rowNumber: number
   name: string
-  height?: string
-  weight?: string
-  birthday?: string
-  hometown?: string
   bio?: string
   customFields: Array<{ field_name: string; field_value: string; schema_id?: string }>
   isValid: boolean

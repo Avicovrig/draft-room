@@ -4,16 +4,14 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { cn } from '@/lib/utils'
-import { calculateAge, type Player, type PlayerCustomField, type LeagueFieldSchema } from '@/lib/types'
+import type { Player, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
-export type SortOption = 'default' | 'name-asc' | 'name-desc' | 'age-asc' | 'age-desc'
+export type SortOption = 'default' | 'name-asc' | 'name-desc'
 
 const sortLabels: Record<SortOption, string> = {
   'default': 'Default',
   'name-asc': 'Name A-Z',
   'name-desc': 'Name Z-A',
-  'age-asc': 'Youngest',
-  'age-desc': 'Oldest',
 }
 
 interface PlayerPoolProps {
@@ -83,33 +81,12 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
           return a.name.localeCompare(b.name)
         case 'name-desc':
           return b.name.localeCompare(a.name)
-        case 'age-asc': {
-          const aAge = calculateAge(a.birthday)
-          const bAge = calculateAge(b.birthday)
-          if (aAge === null && bAge === null) return 0
-          if (aAge === null) return 1
-          if (bAge === null) return -1
-          return aAge - bAge
-        }
-        case 'age-desc': {
-          const aAge = calculateAge(a.birthday)
-          const bAge = calculateAge(b.birthday)
-          if (aAge === null && bAge === null) return 0
-          if (aAge === null) return 1
-          if (bAge === null) return -1
-          return bAge - aAge
-        }
         default: {
-          // Default: profile picture first, then youngest
+          // Default: profile picture first, then name
           const aHasPic = a.profile_picture_url ? 1 : 0
           const bHasPic = b.profile_picture_url ? 1 : 0
           if (bHasPic !== aHasPic) return bHasPic - aHasPic
-          const aAge = calculateAge(a.birthday)
-          const bAge = calculateAge(b.birthday)
-          if (aAge === null && bAge === null) return 0
-          if (aAge === null) return 1
-          if (bAge === null) return -1
-          return aAge - bAge
+          return a.name.localeCompare(b.name)
         }
       }
     })
@@ -276,9 +253,8 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
         ) : (
           <ul className="divide-y divide-border">
             {filteredPlayers.map((player) => {
-              const age = calculateAge(player.birthday)
               const customFields = customFieldsMap[player.id] || []
-              const hasExpandableContent = player.bio || player.weight || player.hometown || customFields.length > 0
+              const hasExpandableContent = player.bio || customFields.length > 0
 
               return (
                 <li
@@ -324,13 +300,6 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                     {/* Player Info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-base truncate">{player.name}</div>
-                      {(age !== null || player.height) && (
-                        <div className="text-sm text-muted-foreground">
-                          {age !== null && <span>{age} yrs</span>}
-                          {age !== null && player.height && <span> · </span>}
-                          {player.height && <span>{player.height}</span>}
-                        </div>
-                      )}
                     </div>
 
                     {/* View Profile Button */}
@@ -425,22 +394,6 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                   {/* Expanded Content (only in fullscreen mode) */}
                   {showExpandedDetails && hasExpandableContent && (
                     <div className="border-t border-border/50 bg-muted/30 px-4 py-3 pl-6">
-                      {/* Stats Row */}
-                      {(player.weight || player.hometown) && (
-                        <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                          {player.weight && (
-                            <span>
-                              <span className="text-muted-foreground">Weight:</span> {player.weight}
-                            </span>
-                          )}
-                          {player.hometown && (
-                            <span>
-                              <span className="text-muted-foreground">From:</span> {player.hometown}
-                            </span>
-                          )}
-                        </div>
-                      )}
-
                       {/* Bio */}
                       {player.bio && (
                         <p className="mb-2 text-sm text-muted-foreground line-clamp-3">

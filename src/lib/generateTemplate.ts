@@ -10,9 +10,9 @@ export function downloadPlayerTemplate(fieldSchemas?: LeagueFieldSchema[]) {
   const schemaHeaders = sortedSchemas.map((s) => s.is_required ? `${s.field_name} *` : s.field_name)
 
   // Define headers and example data
-  const headers = ['Name', 'Height', 'Weight', 'Birthday', 'Hometown', 'Bio', ...schemaHeaders]
-  const exampleRow1 = ['John Smith', '6\'2"', '185 lbs', '1995-03-15', 'New York', 'Team captain with 5 years experience', ...schemaHeaders.map(() => '')]
-  const exampleRow2 = ['Jane Doe', '5\'8"', '150 lbs', '1998-07-22', 'Los Angeles', '', ...schemaHeaders.map(() => '')]
+  const headers = ['Name', 'Bio', ...schemaHeaders]
+  const exampleRow1 = ['John Smith', 'Team captain with 5 years experience', ...schemaHeaders.map(() => '')]
+  const exampleRow2 = ['Jane Doe', '', ...schemaHeaders.map(() => '')]
 
   const data = [headers, exampleRow1, exampleRow2]
 
@@ -22,10 +22,6 @@ export function downloadPlayerTemplate(fieldSchemas?: LeagueFieldSchema[]) {
   // Set column widths for better readability
   worksheet['!cols'] = [
     { wch: 20 }, // Name
-    { wch: 10 }, // Height
-    { wch: 12 }, // Weight
-    { wch: 12 }, // Birthday
-    { wch: 15 }, // Hometown
     { wch: 40 }, // Bio
     ...schemaHeaders.map(() => ({ wch: 15 })),
   ]

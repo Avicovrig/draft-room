@@ -41,10 +41,7 @@ export function ImportPreview({ players, onToggleRow }: ImportPreviewProps) {
               <th className="px-3 py-2 text-left font-medium">Include</th>
               <th className="px-3 py-2 text-left font-medium">Row</th>
               <th className="px-3 py-2 text-left font-medium">Name</th>
-              <th className="px-3 py-2 text-left font-medium">Height</th>
-              <th className="px-3 py-2 text-left font-medium">Weight</th>
-              <th className="px-3 py-2 text-left font-medium">Birthday</th>
-              <th className="px-3 py-2 text-left font-medium">Hometown</th>
+              <th className="px-3 py-2 text-left font-medium">Bio</th>
               <th className="px-3 py-2 text-left font-medium">Custom Fields</th>
               <th className="px-3 py-2 text-left font-medium">Status</th>
             </tr>
@@ -71,10 +68,7 @@ export function ImportPreview({ players, onToggleRow }: ImportPreviewProps) {
                 <td className="px-3 py-2 font-medium">
                   {player.name || <span className="text-destructive italic">Missing</span>}
                 </td>
-                <td className="px-3 py-2">{player.height || '-'}</td>
-                <td className="px-3 py-2">{player.weight || '-'}</td>
-                <td className="px-3 py-2">{player.birthday || '-'}</td>
-                <td className="px-3 py-2">{player.hometown || '-'}</td>
+                <td className="px-3 py-2">{player.bio || '-'}</td>
                 <td className="px-3 py-2">
                   {player.customFields.length > 0 ? (
                     <span className="text-muted-foreground">

@@ -73,10 +73,6 @@ export function usePlayerByEditToken(playerId: string | undefined, editToken: st
 interface UpdatePlayerProfileInput {
   playerId: string
   bio?: string | null
-  height?: string | null
-  weight?: string | null
-  birthday?: string | null
-  hometown?: string | null
   profile_picture_url?: string | null
 }
 

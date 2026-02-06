@@ -18,10 +18,6 @@ Deno.serve(async (req) => {
       playerId,
       editToken,
       bio,
-      height,
-      weight,
-      birthday,
-      hometown,
       profile_picture_url,
       customFields,
       deletedCustomFieldIds,
@@ -99,10 +95,6 @@ Deno.serve(async (req) => {
     // Update player profile
     const updateData: Record<string, unknown> = {}
     if (bio !== undefined) updateData.bio = bio
-    if (height !== undefined) updateData.height = height
-    if (weight !== undefined) updateData.weight = weight
-    if (birthday !== undefined) updateData.birthday = birthday
-    if (hometown !== undefined) updateData.hometown = hometown
     if (profile_picture_url !== undefined) updateData.profile_picture_url = profile_picture_url
 
     if (Object.keys(updateData).length > 0) {

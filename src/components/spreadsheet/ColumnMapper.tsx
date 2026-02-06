@@ -12,10 +12,6 @@ interface ColumnMapperProps {
 
 const STANDARD_FIELD_LABELS: Record<StandardPlayerField, string> = {
   name: 'Name (Required)',
-  height: 'Height',
-  weight: 'Weight',
-  birthday: 'Birthday',
-  hometown: 'Hometown',
   bio: 'Bio',
 }
 

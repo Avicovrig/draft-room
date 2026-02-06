@@ -12,16 +12,13 @@ interface PlayerProfileFormProps {
   player: Player
   customFields?: PlayerCustomField[]
   fieldSchemas?: LeagueFieldSchema[]
+  allowFreeformFields?: boolean
   onSave: (data: ProfileFormData) => Promise<void>
   onCancel: () => void
 }
 
 export interface ProfileFormData {
   bio: string | null
-  height: string | null
-  weight: string | null
-  birthday: string | null
-  hometown: string | null
   profilePictureBlob?: Blob | null
   customFields: Array<{ id?: string; field_name: string; field_value: string; field_order: number; schema_id?: string | null }>
   deletedCustomFieldIds: string[]
@@ -40,15 +37,12 @@ export function PlayerProfileForm({
   player,
   customFields = [],
   fieldSchemas = [],
+  allowFreeformFields = true,
   onSave,
   onCancel,
 }: PlayerProfileFormProps) {
   const { addToast } = useToast()
   const [bio, setBio] = useState(player.bio || '')
-  const [height, setHeight] = useState(player.height || '')
-  const [weight, setWeight] = useState(player.weight || '')
-  const [birthday, setBirthday] = useState(player.birthday || '')
-  const [hometown, setHometown] = useState(player.hometown || '')
   const [profilePictureBlob, setProfilePictureBlob] = useState<Blob | null>(null)
   const [previewUrl, setPreviewUrl] = useState(player.profile_picture_url || '')
   const [showCropper, setShowCropper] = useState(false)
@@ -159,10 +153,6 @@ export function PlayerProfileForm({
 
       await onSave({
         bio: bio || null,
-        height: height || null,
-        weight: weight || null,
-        birthday: birthday || null,
-        hometown: hometown || null,
         profilePictureBlob,
         customFields: [...schemaFields, ...freeformFields],
         deletedCustomFieldIds: deletedFieldIds,
@@ -221,50 +211,6 @@ export function PlayerProfileForm({
         />
       </div>
 
-      {/* Default Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="height">Height</Label>
-          <Input
-            id="height"
-            placeholder="e.g., 6'2&quot;"
-            value={height}
-            onChange={(e) => setHeight(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="weight">Weight</Label>
-          <Input
-            id="weight"
-            placeholder="e.g., 185 lbs"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="birthday">Birthday</Label>
-          <Input
-            id="birthday"
-            type="date"
-            value={birthday}
-            onChange={(e) => setBirthday(e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="hometown">Hometown</Label>
-          <Input
-            id="hometown"
-            placeholder="e.g., Detroit, MI"
-            value={hometown}
-            onChange={(e) => setHometown(e.target.value)}
-          />
-        </div>
-      </div>
-
       {/* Schema Fields (manager-defined) */}
       {fieldSchemas.length > 0 && (
         <div className="space-y-3">
@@ -294,7 +240,7 @@ export function PlayerProfileForm({
       )}
 
       {/* Freeform Custom Fields */}
-      <div className="space-y-3">
+      {allowFreeformFields && <div className="space-y-3">
         <div className="flex items-center justify-between">
           <Label>Additional Info</Label>
           <Button
@@ -339,7 +285,7 @@ export function PlayerProfileForm({
             </Button>
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Actions */}
       <div className="flex gap-2">
