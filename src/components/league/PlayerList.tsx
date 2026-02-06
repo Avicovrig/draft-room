@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Plus, Trash2, FileSpreadsheet, Download, Pencil, Copy, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -9,6 +9,7 @@ import { useCreatePlayer, useDeletePlayer } from '@/hooks/usePlayers'
 import { useUpdatePlayerProfile, useUploadProfilePicture } from '@/hooks/usePlayerProfile'
 import { useUpsertCustomFields } from '@/hooks/useCustomFields'
 import { useToast } from '@/components/ui/Toast'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { getAvailablePlayers } from '@/lib/draft'
 import { exportPlayersToSpreadsheet } from '@/lib/exportPlayers'
 import type { LeagueFull, Player, PlayerCustomField } from '@/lib/types'
@@ -28,24 +29,11 @@ function getInitials(name: string): string {
 }
 
 function EditProfileModal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  const overlayRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleEscape)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', handleEscape)
-      document.body.style.overflow = ''
-    }
-  }, [onClose])
+  const { overlayProps } = useModalFocus({ onClose })
 
   return (
     <div
-      ref={overlayRef}
-      onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
+      {...overlayProps}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
       {children}

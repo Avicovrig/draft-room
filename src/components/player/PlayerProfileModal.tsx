@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { PlayerProfileView } from './PlayerProfileView'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import type { Player, PlayerCustomField } from '@/lib/types'
 
 interface PlayerProfileModalProps {
@@ -10,34 +10,11 @@ interface PlayerProfileModalProps {
 }
 
 export function PlayerProfileModal({ player, customFields = [], onClose }: PlayerProfileModalProps) {
-  const overlayRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    document.addEventListener('keydown', handleEscape)
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape)
-      document.body.style.overflow = ''
-    }
-  }, [onClose])
-
-  function handleOverlayClick(e: React.MouseEvent) {
-    if (e.target === overlayRef.current) {
-      onClose()
-    }
-  }
+  const { overlayProps } = useModalFocus({ onClose })
 
   return (
     <div
-      ref={overlayRef}
-      onClick={handleOverlayClick}
+      {...overlayProps}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
       <div className="relative flex max-h-[90vh] w-full max-w-md flex-col rounded-lg border border-border bg-background shadow-lg">

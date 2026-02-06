@@ -162,8 +162,8 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
           </div>
 
           {isEditable && (
-            <Button type="submit" disabled={isSubmitting || !isDirty}>
-              {isSubmitting ? 'Saving...' : 'Save Settings'}
+            <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
+              Save Settings
             </Button>
           )}
         </form>

@@ -1,10 +1,20 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Search, User, Plus, ArrowUpDown } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { cn } from '@/lib/utils'
 import { calculateAge, type Player, type PlayerCustomField } from '@/lib/types'
+
+export type SortOption = 'default' | 'name-asc' | 'name-desc' | 'age-asc' | 'age-desc'
+
+const sortLabels: Record<SortOption, string> = {
+  'default': 'Default',
+  'name-asc': 'Name A-Z',
+  'name-desc': 'Name Z-A',
+  'age-asc': 'Youngest',
+  'age-desc': 'Oldest',
+}
 
 interface PlayerPoolProps {
   players: Player[]
@@ -16,6 +26,10 @@ interface PlayerPoolProps {
   onAddToQueue?: (playerId: string) => void
   queuedPlayerIds?: Set<string>
   isAddingToQueue?: boolean
+  search?: string
+  onSearchChange?: (search: string) => void
+  sortBy?: SortOption
+  onSortChange?: (sort: SortOption) => void
 }
 
 function getInitials(name: string): string {
@@ -27,21 +41,20 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-type SortOption = 'default' | 'name-asc' | 'name-desc' | 'age-asc' | 'age-desc'
-
-const sortLabels: Record<SortOption, string> = {
-  'default': 'Default',
-  'name-asc': 'Name A-Z',
-  'name-desc': 'Name Z-A',
-  'age-asc': 'Youngest',
-  'age-desc': 'Oldest',
-}
-
-export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isPicking, showExpandedDetails = false, onAddToQueue, queuedPlayerIds = new Set(), isAddingToQueue = false }: PlayerPoolProps) {
-  const [search, setSearch] = useState('')
+export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isPicking, showExpandedDetails = false, onAddToQueue, queuedPlayerIds = new Set(), isAddingToQueue = false, search: controlledSearch, onSearchChange, sortBy: controlledSortBy, onSortChange }: PlayerPoolProps) {
+  const [localSearch, setLocalSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null)
-  const [sortBy, setSortBy] = useState<SortOption>('default')
+  const [localSortBy, setLocalSortBy] = useState<SortOption>('default')
+
+  const searchRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // Use controlled values when provided, otherwise local state
+  const search = controlledSearch ?? localSearch
+  const setSearch = onSearchChange ?? setLocalSearch
+  const sortBy = controlledSortBy ?? localSortBy
+  const setSortBy = onSortChange ?? setLocalSortBy
 
   const filteredPlayers = players
     .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
@@ -89,15 +102,59 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
     }
   }
 
+  const scrollToItem = useCallback((index: number) => {
+    const list = listRef.current
+    if (!list) return
+    const items = list.querySelectorAll('li')
+    items[index]?.scrollIntoView({ block: 'nearest' })
+  }, [])
+
+  function handleSearchKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'ArrowDown' && filteredPlayers.length > 0) {
+      e.preventDefault()
+      setSelectedId(filteredPlayers[0].id)
+      listRef.current?.focus()
+      scrollToItem(0)
+    }
+  }
+
+  function handleListKeyDown(e: React.KeyboardEvent) {
+    if (!canPick || isPicking || filteredPlayers.length === 0) return
+
+    const currentIndex = selectedId
+      ? filteredPlayers.findIndex((p) => p.id === selectedId)
+      : -1
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      const nextIndex = currentIndex < filteredPlayers.length - 1 ? currentIndex + 1 : 0
+      setSelectedId(filteredPlayers[nextIndex].id)
+      scrollToItem(nextIndex)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : filteredPlayers.length - 1
+      setSelectedId(filteredPlayers[prevIndex].id)
+      scrollToItem(prevIndex)
+    } else if (e.key === 'Enter' && selectedId) {
+      e.preventDefault()
+      handlePick()
+    } else if (e.key === 'Escape') {
+      setSelectedId(null)
+      searchRef.current?.focus()
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4 flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            ref={searchRef}
             placeholder="Search players..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
             className="pl-9"
           />
         </div>
@@ -105,7 +162,7 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="h-9 appearance-none rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="h-10 appearance-none rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             title="Sort players"
           >
             {Object.entries(sortLabels).map(([value, label]) => (
@@ -116,7 +173,15 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto rounded-lg border border-border">
+      <div
+        ref={listRef}
+        tabIndex={canPick ? 0 : undefined}
+        onKeyDown={handleListKeyDown}
+        role="listbox"
+        aria-activedescendant={selectedId ? `player-${selectedId}` : undefined}
+        aria-label="Available players"
+        className="flex-1 overflow-y-auto rounded-lg border border-border focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
         {filteredPlayers.length === 0 ? (
           <div className="flex h-full items-center justify-center p-8 text-muted-foreground">
             {search ? 'No players match your search' : 'No players available'}
@@ -129,7 +194,12 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
               const hasExpandableContent = player.bio || player.weight || player.hometown || customFields.length > 0
 
               return (
-                <li key={player.id}>
+                <li
+                  key={player.id}
+                  id={`player-${player.id}`}
+                  role="option"
+                  aria-selected={selectedId === player.id}
+                >
                   <div
                     className={cn(
                       'flex items-center gap-3 px-4 py-3 transition-colors min-h-[52px]',
@@ -143,6 +213,7 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                     {/* Profile Picture */}
                     <button
                       type="button"
+                      tabIndex={-1}
                       onClick={(e) => {
                         e.stopPropagation()
                         setViewingPlayer(player)
@@ -178,11 +249,12 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                     {/* View Profile Button */}
                     <button
                       type="button"
+                      tabIndex={-1}
                       onClick={(e) => {
                         e.stopPropagation()
                         setViewingPlayer(player)
                       }}
-                      className="flex-shrink-0 p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
+                      className="flex-shrink-0 p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
                       title="View full profile"
                     >
                       <User className="h-4 w-4" />
@@ -192,13 +264,14 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                     {onAddToQueue && (
                       <button
                         type="button"
+                        tabIndex={-1}
                         onClick={(e) => {
                           e.stopPropagation()
                           onAddToQueue(player.id)
                         }}
                         disabled={queuedPlayerIds.has(player.id) || isAddingToQueue}
                         className={cn(
-                          'flex-shrink-0 p-2 rounded-md',
+                          'flex-shrink-0 p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md',
                           queuedPlayerIds.has(player.id)
                             ? 'text-primary cursor-default'
                             : 'text-muted-foreground hover:text-foreground hover:bg-accent'
@@ -259,13 +332,12 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
         <div className="mt-4 flex-shrink-0">
           <Button
             onClick={handlePick}
-            disabled={!selectedId || isPicking}
+            disabled={!selectedId}
+            loading={isPicking}
             className="w-full min-h-[52px] text-base touch-manipulation"
             size="lg"
           >
-            {isPicking
-              ? 'Picking...'
-              : selectedId
+            {selectedId
               ? `Draft ${filteredPlayers.find((p) => p.id === selectedId)?.name}`
               : 'Select a player to draft'}
           </Button>

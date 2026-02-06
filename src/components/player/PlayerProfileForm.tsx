@@ -263,8 +263,8 @@ export function PlayerProfileForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSaving} className="flex-1">
-          {isSaving ? 'Saving...' : 'Save'}
+        <Button type="submit" loading={isSaving} className="flex-1">
+          Save
         </Button>
       </div>
     </form>

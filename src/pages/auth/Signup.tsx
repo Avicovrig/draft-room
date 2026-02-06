@@ -113,8 +113,8 @@ export function Signup() {
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? 'Creating account...' : 'Create Account'}
+          <Button type="submit" className="w-full" loading={isSubmitting}>
+            Create Account
           </Button>
         </form>
 

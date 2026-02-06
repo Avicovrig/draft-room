@@ -116,8 +116,8 @@ export function NewLeague() {
               </div>
 
               <div className="flex gap-4">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Creating...' : 'Create League'}
+                <Button type="submit" loading={isSubmitting}>
+                  Create League
                 </Button>
                 <Button
                   type="button"

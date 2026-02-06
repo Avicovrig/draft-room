@@ -67,12 +67,13 @@ export function DraftControls({
       <div className="space-y-2">
         <Button
           onClick={() => handleAction(onStart)}
-          disabled={!canStart || isLoading}
+          disabled={!canStart}
+          loading={isLoading}
           size="lg"
           className="w-full"
         >
           <Play className="mr-2 h-5 w-5" />
-          {isLoading ? 'Starting...' : 'Start Draft'}
+          Start Draft
         </Button>
         {!canStart && reasons.length > 0 && (
           <div className="rounded-md bg-yellow-500/10 p-3 text-sm text-yellow-600 dark:text-yellow-400">
@@ -93,11 +94,11 @@ export function DraftControls({
         <div className="flex gap-2">
           <Button
             onClick={() => handleAction(onResume)}
-            disabled={isLoading}
+            loading={isLoading}
             className="flex-1"
           >
             <Play className="mr-2 h-4 w-4" />
-            {isLoading ? 'Resuming...' : 'Resume Draft'}
+            Resume Draft
           </Button>
 
           {showRestartConfirm ? (
@@ -105,10 +106,10 @@ export function DraftControls({
               <Button
                 variant="destructive"
                 onClick={handleRestart}
-                disabled={isLoading}
+                loading={isLoading}
                 className="flex-1"
               >
-                {isLoading ? 'Restarting...' : 'Confirm Restart'}
+                Confirm Restart
               </Button>
               <Button
                 variant="outline"
@@ -144,18 +145,18 @@ export function DraftControls({
     <div className="flex gap-2">
       <Button
         onClick={() => handleAction(onPause)}
-        disabled={isLoading}
+        loading={isLoading}
         variant="outline"
         size="lg"
         className="flex-1"
       >
         <Pause className="mr-2 h-5 w-5" />
-        {isLoading ? 'Pausing...' : 'Pause Draft'}
+        Pause Draft
       </Button>
       {hasPicks && (
         <Button
           onClick={() => handleAction(onUndo)}
-          disabled={isLoading}
+          loading={isLoading}
           variant="outline"
           size="lg"
           title="Undo last pick"

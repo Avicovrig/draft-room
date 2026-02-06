@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Maximize2, Minimize2, WifiOff } from 'lucide-react'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { PickTimer } from './PickTimer'
-import { PlayerPool } from './PlayerPool'
+import { PlayerPool, type SortOption } from './PlayerPool'
 import { TeamRoster } from './TeamRoster'
 import { DraftControls } from './DraftControls'
 import { DraftQueue } from './DraftQueue'
@@ -54,6 +55,8 @@ export function DraftBoard({
 }: DraftBoardProps) {
   const [isPicking, setIsPicking] = useState(false)
   const [isPlayerPoolExpanded, setIsPlayerPoolExpanded] = useState(false)
+  const [poolSearch, setPoolSearch] = useState('')
+  const [poolSortBy, setPoolSortBy] = useState<SortOption>('default')
   const isAutoPickingRef = useRef(false)
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -333,6 +336,10 @@ export function DraftBoard({
               onAddToQueue={viewingAsCaptain ? handleAddToQueue : undefined}
               queuedPlayerIds={queuedPlayerIds}
               isAddingToQueue={addToQueue.isPending}
+              search={poolSearch}
+              onSearchChange={setPoolSearch}
+              sortBy={poolSortBy}
+              onSortChange={setPoolSortBy}
             />
           </CardContent>
         </Card>
@@ -425,6 +432,10 @@ export function DraftBoard({
                 onAddToQueue={viewingAsCaptain ? handleAddToQueue : undefined}
                 queuedPlayerIds={queuedPlayerIds}
                 isAddingToQueue={addToQueue.isPending}
+                search={poolSearch}
+                onSearchChange={setPoolSearch}
+                sortBy={poolSortBy}
+                onSortChange={setPoolSortBy}
               />
             </CardContent>
           </Card>
@@ -435,24 +446,11 @@ export function DraftBoard({
 }
 
 function ExpandedPoolModal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  const overlayRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleEscape)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', handleEscape)
-      document.body.style.overflow = ''
-    }
-  }, [onClose])
+  const { overlayProps } = useModalFocus({ onClose })
 
   return (
     <div
-      ref={overlayRef}
-      onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
+      {...overlayProps}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
     >
       {children}

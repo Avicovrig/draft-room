@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { X, Download, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { useToast } from '@/components/ui/Toast'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { FileDropZone } from './FileDropZone'
 import { ColumnMapper } from './ColumnMapper'
 import { ImportPreview } from './ImportPreview'
@@ -128,32 +129,12 @@ export function SpreadsheetImportModal({
 
   const validPlayerCount = parsedPlayers.filter((p) => p.isValid && p.isSelected).length
 
-  const overlayRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!isOpen) return
-
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === 'Escape') resetAndClose()
-    }
-
-    document.addEventListener('keydown', handleEscape)
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape)
-      document.body.style.overflow = ''
-    }
-  }, [isOpen, resetAndClose])
-
-  function handleOverlayClick(e: React.MouseEvent) {
-    if (e.target === overlayRef.current) resetAndClose()
-  }
+  const { overlayProps } = useModalFocus({ onClose: resetAndClose, enabled: isOpen })
 
   if (!isOpen) return null
 
   return (
-    <div ref={overlayRef} onClick={handleOverlayClick} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div {...overlayProps} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <Card className="flex max-h-[90vh] w-full max-w-4xl flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 flex-shrink-0">
           <CardTitle>Import Players from Spreadsheet</CardTitle>
@@ -298,11 +279,10 @@ export function SpreadsheetImportModal({
             {step === 'preview' && (
               <Button
                 onClick={handleImport}
-                disabled={validPlayerCount === 0 || importPlayers.isPending}
+                disabled={validPlayerCount === 0}
+                loading={importPlayers.isPending}
               >
-                {importPlayers.isPending
-                  ? 'Importing...'
-                  : `Import ${validPlayerCount} Player${validPlayerCount !== 1 ? 's' : ''}`}
+                Import {validPlayerCount} Player{validPlayerCount !== 1 ? 's' : ''}
               </Button>
             )}
           </div>
