@@ -347,6 +347,7 @@ export function DraftBoard({
             players={league.players}
             currentCaptainId={currentCaptain?.id}
             highlightCaptainId={viewingAsCaptain?.id}
+            customFieldsMap={customFieldsMap}
           />
         </CardContent>
       </Card>

@@ -30,10 +30,12 @@ Draft Room is a custom league draft application. League managers can create leag
 
 All draft-critical mutations go through Deno edge functions in `supabase/functions/` that use `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS:
 
-- **`make-pick`** - Captain or manager makes a pick. Validates turn order, player availability, captain token. Handles race conditions via unique constraint on `pick_number`.
-- **`auto-pick`** - Called on timer expiry or when captain has `auto_pick_enabled`. Picks from captain's draft queue first, falls back to random. Has 2-second grace period on timer validation. Uses `expectedPickIndex` for idempotency.
-- **`toggle-auto-pick`** - Toggles a captain's auto-pick setting
+- **`make-pick`** - Captain or manager makes a pick. Validates turn order, player availability, captain token. Handles race conditions via unique constraint on `pick_number`. Rolls back pick/player writes if later steps fail.
+- **`auto-pick`** - Called on timer expiry or when captain has `auto_pick_enabled`. Picks from captain's draft queue first, falls back to random. Has 2-second grace period on timer validation. Uses `expectedPickIndex` for idempotency. Rolls back on partial failure.
+- **`toggle-auto-pick`** - Toggles a captain's auto-pick setting. Validates captain belongs to the specified league.
 - **`update-player-profile`** - Player self-service profile updates via edit token
+
+All edge functions validate UUID format on ID parameters before hitting the database.
 
 ### Real-time Data Flow
 
@@ -47,15 +49,18 @@ The `useDraft` hook (`src/hooks/useDraft.ts`) is the central draft state manager
 Core draft order logic lives in `src/lib/draft.ts`:
 - **Snake**: Order reverses each round `[1,2,3,4,4,3,2,1,1,2,3,4,...]`
 - **Round Robin**: Same order every round `[1,2,3,4,1,2,3,4,...]`
-- Same logic is duplicated in edge functions (`make-pick`, `auto-pick`) for server-side validation
+- Same logic is duplicated in edge functions (`make-pick`, `auto-pick`) for server-side validation — changes must be made in both places
+- `getAvailablePlayers()` in `src/lib/draft.ts` filters out drafted and captain-linked players — also duplicated in edge functions (with cross-reference comments)
 
 ### Timer System
 
-Server-authoritative: `leagues.current_pick_started_at` is the source of truth. All clients compute remaining time as `time_limit_seconds - elapsed`. When timer hits zero, client calls the `auto-pick` edge function. The edge function validates the timer server-side (with 2s grace period).
+Server-authoritative: `leagues.current_pick_started_at` is the source of truth. All clients compute remaining time as `time_limit_seconds - elapsed`. When timer hits zero, client waits 2 seconds then calls the `auto-pick` edge function. The edge function validates the timer server-side (with matching 2s grace period). Only managers and captains trigger auto-pick calls — spectators never make API calls.
 
 ### Database Schema
 
 Six tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_picks`, `captain_draft_queues`. Full schema in `docs/architecture.md`. Types in `src/lib/types.ts` mirror the DB schema with `Database` interface and convenience aliases (`League`, `Captain`, `Player`, etc.).
+
+**Important**: `useLeague` selects explicit columns (not `*`) from related tables to minimize payload. When adding new columns to the schema, they must also be added to the select in `src/hooks/useLeagues.ts`.
 
 Migrations are in `supabase/migrations/` (001-007), applied sequentially.
 
@@ -84,6 +89,7 @@ IN_PROGRESS → COMPLETED (all players drafted)
 - Toast notifications: use `useToast()` hook from `@/components/ui/Toast`
 - Wrap route content with ErrorBoundary for graceful error handling
 - Hooks follow the pattern: `use<Entity>` for queries, `useCreate<Entity>`/`useUpdate<Entity>`/`useDelete<Entity>` for mutations
+- Tables with unique constraints on position columns (`captains.draft_position`, `captain_draft_queues.position`) use two-phase updates: set positions to negative temps first, then final values
 
 ## Environment Variables
 
