@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, FileSpreadsheet, Pencil, Copy, ExternalLink } from 'lucide-react'
+import { Plus, Trash2, FileSpreadsheet, Download, Pencil, Copy, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
@@ -10,6 +10,7 @@ import { useUpdatePlayerProfile, useUploadProfilePicture } from '@/hooks/usePlay
 import { useUpsertCustomFields } from '@/hooks/useCustomFields'
 import { useToast } from '@/components/ui/Toast'
 import { getAvailablePlayers } from '@/lib/draft'
+import { exportPlayersToSpreadsheet } from '@/lib/exportPlayers'
 import type { LeagueFull, Player, PlayerCustomField } from '@/lib/types'
 
 interface PlayerListProps {
@@ -157,10 +158,21 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
                 Add
               </Button>
             </form>
-            <Button variant="outline" onClick={() => setShowImportModal(true)}>
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Import from Spreadsheet
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => setShowImportModal(true)}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Import from Spreadsheet
+              </Button>
+              {league.players.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => exportPlayersToSpreadsheet(league.name, league.players, league.captains, customFieldsMap)}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Spreadsheet
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
