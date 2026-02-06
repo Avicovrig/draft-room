@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link, useSearchParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Trophy, Users, Zap, Clock, Share2, Check } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
@@ -12,8 +12,6 @@ import type { Captain, Player } from '@/lib/types'
 
 export function Summary() {
   const { id } = useParams<{ id: string }>()
-  const [searchParams] = useSearchParams()
-  const token = searchParams.get('token')
   const { user } = useAuth()
   const [showConfetti, setShowConfetti] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -101,21 +99,14 @@ export function Summary() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          {isManager ? (
+          {isManager && (
             <Link to="/dashboard">
               <Button variant="ghost" size="sm" className="mb-4">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Dashboard
               </Button>
             </Link>
-          ) : token ? (
-            <Link to={`/league/${id}/spectate?token=${token}`}>
-              <Button variant="ghost" size="sm" className="mb-4">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Draft
-              </Button>
-            </Link>
-          ) : null}
+          )}
 
           {/* Hero Header for Completed Draft */}
           {league.status === 'completed' ? (
