@@ -38,9 +38,9 @@ export function useLeague(id: string | undefined, options?: UseLeagueOptions) {
         .from('leagues')
         .select(`
           *,
-          captains (*),
-          players (*),
-          draft_picks (*)
+          captains (id, league_id, name, is_participant, access_token, draft_position, player_id, auto_pick_enabled, created_at),
+          players (id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, height, weight, birthday, hometown, profile_picture_url, edit_token, created_at),
+          draft_picks (id, captain_id, player_id, pick_number, is_auto_pick)
         `)
         .eq('id', id)
         .single()

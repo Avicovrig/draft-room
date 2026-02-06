@@ -154,6 +154,7 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
                     <img
                       src={item.player.profile_picture_url}
                       alt={item.player.name}
+                      loading="lazy"
                       className="h-8 w-8 rounded-full object-cover flex-shrink-0"
                     />
                   ) : (

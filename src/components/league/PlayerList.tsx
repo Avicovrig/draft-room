@@ -205,6 +205,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
                     <img
                       src={player.profile_picture_url}
                       alt={player.name}
+                      loading="lazy"
                       className="h-10 w-10 rounded-full object-cover flex-shrink-0"
                     />
                   ) : (

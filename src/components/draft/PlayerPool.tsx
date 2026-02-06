@@ -110,6 +110,7 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                         <img
                           src={player.profile_picture_url}
                           alt={player.name}
+                          loading="lazy"
                           className="h-10 w-10 rounded-full object-cover"
                         />
                       ) : (
