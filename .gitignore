@@ -2,6 +2,9 @@
 .env
 .env.local
 .env.*.local
+.env.production
+.env.qa
+.env.development
 
 # Supabase temp files
 supabase/.temp/
