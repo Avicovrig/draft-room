@@ -86,7 +86,7 @@ export function DraftBoard({
   const canStartDraft =
     league.status === 'not_started' &&
     league.captains.length >= 2 &&
-    league.players.length >= league.captains.length
+    availablePlayers.length >= league.captains.length
 
   const isMyTurn = canPick && currentCaptain?.id === viewingAsCaptain?.id
   const prevPickIndexRef = useRef(league.current_pick_index)
@@ -184,9 +184,11 @@ export function DraftBoard({
   // This runs when:
   // 1. Pick index changes (new turn) and new captain has auto-pick enabled
   // 2. Current captain enables auto-pick during their turn
-  // Any connected client can trigger this - edge function idempotency prevents duplicates
+  // Only managers and captains trigger this - spectators don't make API calls
   const lastAutoPickKeyRef = useRef<string | null>(null)
   useEffect(() => {
+    // Only managers and captains should trigger auto-pick
+    if (!isManager && !viewingAsCaptain) return
     // Only when draft is in progress
     if (league.status !== 'in_progress') return
     // Only if there's a current captain with auto-pick enabled
@@ -212,7 +214,7 @@ export function DraftBoard({
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [league.status, league.current_pick_index, currentCaptain?.id, currentCaptain?.auto_pick_enabled, availablePlayers.length, handleTimerExpire])
+  }, [isManager, viewingAsCaptain, league.status, league.current_pick_index, currentCaptain?.id, currentCaptain?.auto_pick_enabled, availablePlayers.length, handleTimerExpire])
 
   return (
     <div className="space-y-6">
@@ -264,7 +266,7 @@ export function DraftBoard({
               currentPickStartedAt={league.current_pick_started_at}
               timeLimitSeconds={league.time_limit_seconds}
               isActive={isActive}
-              onExpire={handleTimerExpire}
+              onExpire={isManager || viewingAsCaptain ? handleTimerExpire : undefined}
             />
           </CardContent>
         </Card>
