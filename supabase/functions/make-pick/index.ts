@@ -5,6 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -17,6 +19,13 @@ Deno.serve(async (req) => {
     if (!leagueId || !captainId || !playerId) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!UUID_RE.test(leagueId) || !UUID_RE.test(captainId) || !UUID_RE.test(playerId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid field format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -162,6 +171,7 @@ Deno.serve(async (req) => {
     }
 
     // Count remaining available players (exclude drafted and captain-linked players)
+    // NOTE: Keep in sync with getAvailablePlayers() in src/lib/draft.ts
     const captainPlayerIds = league.captains
       .filter((c: { player_id: string | null }) => c.player_id)
       .map((c: { player_id: string }) => c.player_id)

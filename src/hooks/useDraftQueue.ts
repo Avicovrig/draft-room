@@ -154,13 +154,14 @@ export function useToggleAutoPick() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ captainId, enabled, captainToken }: ToggleAutoPickInput) => {
+    mutationFn: async ({ captainId, enabled, captainToken, leagueId }: ToggleAutoPickInput) => {
       // Use edge function to bypass RLS (captains aren't authenticated users)
       const response = await supabase.functions.invoke('toggle-auto-pick', {
         body: {
           captainId,
           enabled,
           captainToken,
+          leagueId,
         },
       })
 

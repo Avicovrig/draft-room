@@ -1,4 +1,4 @@
-import type { LeagueStatus, DraftType, Captain } from './types'
+import type { LeagueStatus, DraftType, Captain, Player } from './types'
 
 /**
  * Calculate the pick order for a draft
@@ -180,4 +180,16 @@ export function toDatetimeLocal(dateString: string | null): string {
 export function fromDatetimeLocal(value: string): string | null {
   if (!value) return null
   return new Date(value).toISOString()
+}
+
+/**
+ * Get players available for drafting (not drafted and not linked to a captain).
+ * NOTE: This logic is duplicated in edge functions (make-pick, auto-pick) for
+ * server-side validation. Keep them in sync when modifying.
+ */
+export function getAvailablePlayers(players: Player[], captains: Captain[]): Player[] {
+  const captainPlayerIds = new Set(
+    captains.filter((c) => c.player_id).map((c) => c.player_id)
+  )
+  return players.filter((p) => !p.drafted_by_captain_id && !captainPlayerIds.has(p.id))
 }

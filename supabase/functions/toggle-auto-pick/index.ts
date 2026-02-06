@@ -5,6 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -12,11 +14,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { captainId, enabled, captainToken } = await req.json()
+    const { captainId, enabled, captainToken, leagueId } = await req.json()
 
-    if (!captainId || enabled === undefined) {
+    if (!captainId || enabled === undefined || !leagueId) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!UUID_RE.test(captainId) || !UUID_RE.test(leagueId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid field format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -28,16 +37,17 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } }
     )
 
-    // Get the captain to validate token
+    // Get the captain and verify it belongs to the specified league
     const { data: captain, error: captainError } = await supabaseAdmin
       .from('captains')
       .select('*')
       .eq('id', captainId)
+      .eq('league_id', leagueId)
       .single()
 
     if (captainError || !captain) {
       return new Response(
-        JSON.stringify({ error: 'Captain not found' }),
+        JSON.stringify({ error: 'Captain not found in this league' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

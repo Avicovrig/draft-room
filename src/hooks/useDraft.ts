@@ -2,7 +2,7 @@ import { useEffect, useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useLeague, useUpdateLeague } from './useLeagues'
-import { getPickOrder, getCaptainAtPick } from '@/lib/draft'
+import { getPickOrder, getCaptainAtPick, getAvailablePlayers } from '@/lib/draft'
 import type { LeagueFull, Player, Captain } from '@/lib/types'
 
 interface UseDraftReturn {
@@ -98,19 +98,9 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
   }, [leagueId, queryClient])
 
   // Calculate derived values with memoization
-  // Get player IDs that are linked to captains (player-captains)
-  const captainPlayerIds = useMemo(
-    () => new Set(league?.captains.filter((c) => c.player_id).map((c) => c.player_id)),
-    [league?.captains]
-  )
-
-  // Filter available players: not drafted AND not a captain
   const availablePlayers = useMemo(
-    () =>
-      league?.players.filter(
-        (p) => !p.drafted_by_captain_id && !captainPlayerIds.has(p.id)
-      ) ?? [],
-    [league?.players, captainPlayerIds]
+    () => (league ? getAvailablePlayers(league.players, league.captains) : []),
+    [league?.players, league?.captains]
   )
 
   const totalPicks = useMemo(
