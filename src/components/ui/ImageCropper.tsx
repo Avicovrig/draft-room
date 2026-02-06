@@ -3,10 +3,13 @@ import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-cr
 import 'react-image-crop/dist/ReactCrop.css'
 import { Button } from './Button'
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+
 interface ImageCropperProps {
   onCropComplete: (croppedBlob: Blob) => void
   onCancel: () => void
   aspectRatio?: number
+  onFileTooLarge?: () => void
 }
 
 function centerAspectCrop(
@@ -33,6 +36,7 @@ export function ImageCropper({
   onCropComplete,
   onCancel,
   aspectRatio = 1,
+  onFileTooLarge,
 }: ImageCropperProps) {
   const [imgSrc, setImgSrc] = useState('')
   const [crop, setCrop] = useState<Crop>()
@@ -42,11 +46,17 @@ export function ImageCropper({
 
   function onSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
     if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0]
+      if (file.size > MAX_FILE_SIZE) {
+        onFileTooLarge?.()
+        e.target.value = ''
+        return
+      }
       const reader = new FileReader()
       reader.addEventListener('load', () =>
         setImgSrc(reader.result?.toString() || '')
       )
-      reader.readAsDataURL(e.target.files[0])
+      reader.readAsDataURL(file)
     }
   }
 
@@ -94,7 +104,7 @@ export function ImageCropper({
       canvas.toBlob(
         (blob) => resolve(blob),
         'image/jpeg',
-        0.9
+        0.75
       )
     })
   }, [completedCrop])

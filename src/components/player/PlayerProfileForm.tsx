@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/Label'
 import { Textarea } from '@/components/ui/Textarea'
 import { ImageCropper } from '@/components/ui/ImageCropper'
 import { X, Plus, Camera } from 'lucide-react'
+import { useToast } from '@/components/ui/Toast'
 import type { Player, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 interface PlayerProfileFormProps {
@@ -42,6 +43,7 @@ export function PlayerProfileForm({
   onSave,
   onCancel,
 }: PlayerProfileFormProps) {
+  const { addToast } = useToast()
   const [bio, setBio] = useState(player.bio || '')
   const [height, setHeight] = useState(player.height || '')
   const [weight, setWeight] = useState(player.weight || '')
@@ -175,6 +177,7 @@ export function PlayerProfileForm({
       <ImageCropper
         onCropComplete={handleCropComplete}
         onCancel={() => setShowCropper(false)}
+        onFileTooLarge={() => addToast('Image must be under 10MB', 'error')}
       />
     )
   }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Trophy, Users, Zap, Clock, Share2, Check, BarChart3, Timer, Download } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
@@ -401,51 +401,90 @@ export function Summary() {
           })}
         </div>
 
-        {league.draft_picks.length > 0 && (
-          <>
-            <h2 className="mb-4 mt-8 text-xl font-semibold">Pick History</h2>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="max-h-96 overflow-y-auto">
-                  <table className="w-full">
-                    <thead className="sticky top-0 bg-card">
-                      <tr className="border-b text-left text-sm text-muted-foreground">
-                        <th className="pb-2 pr-4">#</th>
-                        <th className="pb-2 pr-4">Captain</th>
-                        <th className="pb-2 pr-4">Player</th>
-                        <th className="pb-2">Type</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...league.draft_picks]
-                        .sort((a, b) => a.pick_number - b.pick_number)
-                        .map((pick) => {
+        {league.draft_picks.length > 0 && (() => {
+          const captainCount = league.captains.length
+          const historyPicks = [...league.draft_picks].sort((a, b) => a.pick_number - b.pick_number)
+
+          return (
+            <>
+              <h2 className="mb-4 mt-8 text-xl font-semibold">Pick History</h2>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="max-h-[32rem] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="sticky top-0 bg-card">
+                        <tr className="border-b text-left text-sm text-muted-foreground">
+                          <th className="pb-2 pr-4">#</th>
+                          <th className="pb-2 pr-4">Captain</th>
+                          <th className="pb-2 pr-4">Player</th>
+                          <th className="pb-2 pr-4">Time</th>
+                          <th className="pb-2">Type</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {historyPicks.map((pick, i) => {
                           const captain = league.captains.find((c) => c.id === pick.captain_id)
                           const player = league.players.find((p) => p.id === pick.player_id)
+                          const round = Math.floor((pick.pick_number - 1) / captainCount) + 1
+                          const prevRound = i > 0 ? Math.floor((historyPicks[i - 1].pick_number - 1) / captainCount) + 1 : 0
+                          const showRoundHeader = round !== prevRound
+
+                          // Time delta from previous pick
+                          let timeDelta = ''
+                          if (i > 0) {
+                            const delta = (new Date(pick.picked_at).getTime() - new Date(historyPicks[i - 1].picked_at).getTime()) / 1000
+                            if (delta > 0 && delta < league.time_limit_seconds * 2) {
+                              timeDelta = formatPickTime(delta)
+                            }
+                          }
+
                           return (
-                            <tr key={pick.id} className="border-b last:border-0">
-                              <td className="py-2 pr-4 font-medium">{pick.pick_number}</td>
-                              <td className="py-2 pr-4">{captain?.name ?? 'Unknown'}</td>
-                              <td className="py-2 pr-4">{player?.name ?? 'Unknown'}</td>
-                              <td className="py-2">
-                                {pick.is_auto_pick ? (
-                                  <span className="rounded bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-600 dark:text-yellow-400">
-                                    Auto
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">Manual</span>
-                                )}
-                              </td>
-                            </tr>
+                            <Fragment key={pick.id}>
+                              {showRoundHeader && (
+                                <tr>
+                                  <td colSpan={5} className="bg-muted/50 px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                                    Round {round}
+                                  </td>
+                                </tr>
+                              )}
+                              <tr className="border-b last:border-0">
+                                <td className="py-2 pr-4 font-medium">{pick.pick_number}</td>
+                                <td className="py-2 pr-4">
+                                  <div className="flex items-center gap-2">
+                                    {captain?.team_color && (
+                                      <span
+                                        className="h-3 w-3 flex-shrink-0 rounded-full"
+                                        style={{ backgroundColor: captain.team_color }}
+                                      />
+                                    )}
+                                    {captain?.name ?? 'Unknown'}
+                                  </div>
+                                </td>
+                                <td className="py-2 pr-4">{player?.name ?? 'Unknown'}</td>
+                                <td className="py-2 pr-4 text-sm text-muted-foreground">
+                                  {i === 0 ? '—' : timeDelta || '—'}
+                                </td>
+                                <td className="py-2">
+                                  {pick.is_auto_pick ? (
+                                    <span className="rounded bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-600 dark:text-yellow-400">
+                                      Auto
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">Manual</span>
+                                  )}
+                                </td>
+                              </tr>
+                            </Fragment>
                           )
                         })}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )
+        })()}
 
         {/* Action buttons */}
         {isManager && league.status === 'completed' && (
