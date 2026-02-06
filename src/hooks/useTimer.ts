@@ -47,11 +47,11 @@ export function useTimer(
 
       if (remaining <= 0 && !hasExpiredRef.current) {
         hasExpiredRef.current = true
-        // Add 1 second delay before calling onExpire to account for client-server time skew
-        // This ensures the server also considers the timer expired
+        // Add 2 second delay before calling onExpire to match the server's 2s grace period
+        // The auto-pick edge function requires (elapsed >= time_limit - 2s) to accept the call
         setTimeout(() => {
           expireCallbackRef.current?.()
-        }, 1000)
+        }, 2000)
       }
     }
 

@@ -159,30 +159,23 @@ Deno.serve(async (req) => {
       console.error('Queue cleanup error:', cleanupError)
     }
 
-    // Count remaining available players
-    const { count: remainingCount } = await supabaseAdmin
+    // Count remaining available players (exclude drafted and captain-linked players)
+    const captainPlayerIds = league.captains
+      .filter((c: { player_id: string | null }) => c.player_id)
+      .map((c: { player_id: string }) => c.player_id)
+
+    let query = supabaseAdmin
       .from('players')
       .select('*', { count: 'exact', head: true })
       .eq('league_id', leagueId)
       .is('drafted_by_captain_id', null)
 
-    // Also exclude player-captains from count
-    const captainPlayerIds = league.captains
-      .filter((c: { player_id: string | null }) => c.player_id)
-      .map((c: { player_id: string }) => c.player_id)
-
-    let actualRemaining = remainingCount ?? 0
     if (captainPlayerIds.length > 0) {
-      const { count: captainPlayerCount } = await supabaseAdmin
-        .from('players')
-        .select('*', { count: 'exact', head: true })
-        .eq('league_id', leagueId)
-        .is('drafted_by_captain_id', null)
-        .in('id', captainPlayerIds)
-      actualRemaining -= (captainPlayerCount ?? 0)
+      query = query.not('id', 'in', `(${captainPlayerIds.join(',')})`)
     }
 
-    const isComplete = actualRemaining <= 0
+    const { count: remainingCount } = await query
+    const isComplete = (remainingCount ?? 0) <= 0
 
     // Update league
     const { error: updateLeagueError } = await supabaseAdmin

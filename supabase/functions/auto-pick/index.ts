@@ -117,9 +117,15 @@ Deno.serve(async (req) => {
       console.log(`[auto-pick] Captain ${currentCaptain.name} has auto_pick_enabled, skipping timer validation`)
     }
 
-    // Get available players
+    // Get available players (exclude drafted and captain-linked players)
+    const captainPlayerIds = new Set(
+      league.captains
+        .filter((c: { player_id: string | null }) => c.player_id)
+        .map((c: { player_id: string }) => c.player_id)
+    )
     const availablePlayers = league.players.filter(
-      (p: { drafted_by_captain_id: string | null }) => !p.drafted_by_captain_id
+      (p: { id: string; drafted_by_captain_id: string | null }) =>
+        !p.drafted_by_captain_id && !captainPlayerIds.has(p.id)
     )
 
     if (availablePlayers.length === 0) {
