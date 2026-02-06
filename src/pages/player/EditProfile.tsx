@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -14,11 +14,13 @@ export function EditProfile() {
   const { playerId } = useParams<{ playerId: string }>()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
+  const navigate = useNavigate()
   const { addToast } = useToast()
   const [saved, setSaved] = useState(false)
 
   const { data: player, isLoading, error, refetch } = usePlayerByEditToken(playerId, token)
   const { data: league } = useLeague(player?.league_id)
+  const linkedCaptain = league?.captains.find((c) => c.player_id === player?.id)
 
   if (isLoading) {
     return (
@@ -109,9 +111,14 @@ export function EditProfile() {
     }
   }
 
-  function handleWatchDraft() {
+  function handleGoToDraft() {
     if (!player || !league) return
-    window.open(`/league/${player.league_id}/spectate?token=${league.spectator_token}`, '_blank')
+
+    if (linkedCaptain) {
+      navigate(`/league/${player.league_id}/captain?token=${linkedCaptain.access_token}`)
+    } else {
+      window.open(`/league/${player.league_id}/spectate?token=${league.spectator_token}`, '_blank')
+    }
   }
 
   return (
@@ -133,10 +140,16 @@ export function EditProfile() {
                     <Button onClick={() => setSaved(false)}>
                       Edit Again
                     </Button>
-                    <Button variant="outline" onClick={handleWatchDraft}>
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Watch Draft
-                    </Button>
+                    {linkedCaptain ? (
+                      <Button variant="outline" onClick={handleGoToDraft}>
+                        Go to Draft Room
+                      </Button>
+                    ) : (
+                      <Button variant="outline" onClick={handleGoToDraft}>
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Watch Draft
+                      </Button>
+                    )}
                   </div>
                 </div>
               ) : (

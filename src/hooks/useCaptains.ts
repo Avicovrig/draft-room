@@ -140,6 +140,41 @@ export function useUpdateCaptainColor() {
   })
 }
 
+export function useUpdateCaptainColorAsCaptain() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      captainId,
+      color,
+      captainToken,
+      leagueId,
+    }: {
+      captainId: string
+      color: string
+      captainToken: string
+      leagueId: string
+    }) => {
+      const response = await supabase.functions.invoke('update-captain-color', {
+        body: { captainId, color, captainToken, leagueId },
+      })
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to update team color')
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error)
+      }
+
+      return response.data
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['league', variables.leagueId] })
+    },
+  })
+}
+
 export function useAssignRandomCaptains() {
   const queryClient = useQueryClient()
 
