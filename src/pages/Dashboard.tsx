@@ -14,7 +14,7 @@ export function Dashboard() {
     <div className="min-h-screen">
       <Header />
       <main className="container mx-auto px-4 py-6 sm:p-8">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Your Leagues</h1>
             <p className="mt-1 text-muted-foreground">
@@ -23,9 +23,9 @@ export function Dashboard() {
           </div>
           <Link
             to="/league/new"
-            className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+            className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4 flex-shrink-0" />
             Create League
           </Link>
         </div>
