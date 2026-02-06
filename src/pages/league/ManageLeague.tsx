@@ -8,11 +8,13 @@ import { ManageLeagueSkeleton } from '@/components/ui/Skeleton'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { useLeague, useDeleteLeague } from '@/hooks/useLeagues'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
+import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { LeagueSettings } from '@/components/league/LeagueSettings'
 import { PlayerList } from '@/components/league/PlayerList'
 import { CaptainList } from '@/components/league/CaptainList'
 import { ShareLinks } from '@/components/league/ShareLinks'
 import { FieldSchemaList } from '@/components/league/FieldSchemaList'
+import { DraftReadinessChecklist } from '@/components/league/DraftReadinessChecklist'
 
 type Tab = 'settings' | 'players' | 'captains' | 'fields' | 'share'
 
@@ -21,6 +23,7 @@ export function ManageLeague() {
   const navigate = useNavigate()
   const { data: league, isLoading, error } = useLeague(id)
   const { data: customFieldsMap } = useLeagueCustomFields(id)
+  const { data: fieldSchemas = [] } = useLeagueFieldSchemas(id)
   const deleteLeague = useDeleteLeague()
   const [activeTab, setActiveTab] = useState<Tab>('players')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -96,7 +99,6 @@ export function ManageLeague() {
                 <Button
                   onClick={() => navigate(`/league/${id}/draft`)}
                   disabled={!canStartDraft}
-                  title={!canStartDraft ? 'Add at least 2 captains and enough players to start' : ''}
                 >
                   <Play className="mr-2 h-4 w-4" />
                   Start Draft
@@ -110,6 +112,14 @@ export function ManageLeague() {
               )}
             </div>
           </div>
+
+          {league.status === 'not_started' && (
+            <DraftReadinessChecklist
+              league={league}
+              fieldSchemas={fieldSchemas}
+              customFieldsMap={customFieldsMap}
+            />
+          )}
         </div>
 
         {/* Tabs */}
