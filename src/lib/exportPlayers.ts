@@ -1,11 +1,12 @@
 import * as XLSX from 'xlsx'
-import type { Player, Captain, PlayerCustomField } from './types'
+import type { Player, Captain, PlayerCustomField, LeagueFieldSchema } from './types'
 
 export function exportPlayersToSpreadsheet(
   leagueName: string,
   players: Player[],
   captains: Captain[],
-  customFieldsMap: Record<string, PlayerCustomField[]>
+  customFieldsMap: Record<string, PlayerCustomField[]>,
+  fieldSchemas: LeagueFieldSchema[] = []
 ) {
   // Build set of captain-linked player IDs
   const captainByPlayerId = new Map<string, Captain>()
@@ -13,21 +14,24 @@ export function exportPlayersToSpreadsheet(
     if (c.player_id) captainByPlayerId.set(c.player_id, c)
   }
 
-  // Collect all unique custom field names (ordered by first appearance)
-  const customFieldNames: string[] = []
+  // Schema field columns first (always present, in field_order)
+  const sortedSchemas = [...fieldSchemas].sort((a, b) => a.field_order - b.field_order)
+  const schemaFieldNames = sortedSchemas.map((s) => s.is_required ? `${s.field_name} *` : s.field_name)
+  // Collect freeform custom field names (non-schema, ordered by first appearance)
+  const freeformFieldNames: string[] = []
   const seenFields = new Set<string>()
   for (const player of players) {
     const fields = customFieldsMap[player.id] || []
     for (const f of fields) {
-      if (!seenFields.has(f.field_name)) {
+      if (!f.schema_id && !seenFields.has(f.field_name)) {
         seenFields.add(f.field_name)
-        customFieldNames.push(f.field_name)
+        freeformFieldNames.push(f.field_name)
       }
     }
   }
 
-  // Build headers
-  const headers = ['Name', 'Status', 'Height', 'Weight', 'Birthday', 'Hometown', 'Bio', ...customFieldNames]
+  // Build headers: standard + schema + freeform
+  const headers = ['Name', 'Status', 'Height', 'Weight', 'Birthday', 'Hometown', 'Bio', ...schemaFieldNames, ...freeformFieldNames]
 
   // Build rows
   const rows = players.map((player) => {
@@ -42,10 +46,17 @@ export function exportPlayersToSpreadsheet(
       status = 'Available'
     }
 
-    // Build custom field values in the same order as headers
-    const customValues = customFieldNames.map((fieldName) => {
-      const fields = customFieldsMap[player.id] || []
-      const field = fields.find((f) => f.field_name === fieldName)
+    const playerFields = customFieldsMap[player.id] || []
+
+    // Schema field values (by schema_id)
+    const schemaValues = sortedSchemas.map((schema) => {
+      const field = playerFields.find((f) => f.schema_id === schema.id)
+      return field?.field_value || ''
+    })
+
+    // Freeform field values (non-schema)
+    const freeformValues = freeformFieldNames.map((fieldName) => {
+      const field = playerFields.find((f) => !f.schema_id && f.field_name === fieldName)
       return field?.field_value || ''
     })
 
@@ -57,7 +68,8 @@ export function exportPlayersToSpreadsheet(
       player.birthday || '',
       player.hometown || '',
       player.bio || '',
-      ...customValues,
+      ...schemaValues,
+      ...freeformValues,
     ]
   })
 
@@ -73,7 +85,8 @@ export function exportPlayersToSpreadsheet(
     { wch: 12 }, // Birthday
     { wch: 15 }, // Hometown
     { wch: 40 }, // Bio
-    ...customFieldNames.map(() => ({ wch: 15 })),
+    ...schemaFieldNames.map(() => ({ wch: 15 })),
+    ...freeformFieldNames.map(() => ({ wch: 15 })),
   ]
 
   // Create workbook and download

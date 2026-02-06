@@ -1,11 +1,13 @@
 import { Select } from '@/components/ui/Select'
 import type { PlayerFieldMapping, StandardPlayerField } from '@/lib/spreadsheetTypes'
+import type { LeagueFieldSchema } from '@/lib/types'
 
 interface ColumnMapperProps {
   columns: string[]
   mappings: Record<string, PlayerFieldMapping>
   onMappingChange: (column: string, mapping: PlayerFieldMapping) => void
   sampleData: string[][] // First few rows for preview
+  fieldSchemas?: LeagueFieldSchema[]
 }
 
 const STANDARD_FIELD_LABELS: Record<StandardPlayerField, string> = {
@@ -20,14 +22,20 @@ const STANDARD_FIELD_LABELS: Record<StandardPlayerField, string> = {
 function getMappingValue(mapping: PlayerFieldMapping): string {
   if (mapping.type === 'skip') return 'skip'
   if (mapping.type === 'standard') return `standard:${mapping.field}`
+  if (mapping.type === 'schema') return `schema:${mapping.schemaId}`
   return `custom:${mapping.fieldName}`
 }
 
-function parseMappingValue(value: string, columnName: string): PlayerFieldMapping {
+function parseMappingValue(value: string, columnName: string, fieldSchemas?: LeagueFieldSchema[]): PlayerFieldMapping {
   if (value === 'skip') return { type: 'skip' }
   if (value.startsWith('standard:')) {
     const field = value.replace('standard:', '') as StandardPlayerField
     return { type: 'standard', field }
+  }
+  if (value.startsWith('schema:')) {
+    const schemaId = value.replace('schema:', '')
+    const schema = fieldSchemas?.find((s) => s.id === schemaId)
+    return { type: 'schema', schemaId, fieldName: schema?.field_name || columnName }
   }
   // Custom field - use the column name as the field name
   return { type: 'custom', fieldName: columnName }
@@ -38,12 +46,16 @@ export function ColumnMapper({
   mappings,
   onMappingChange,
   sampleData,
+  fieldSchemas = [],
 }: ColumnMapperProps) {
   // Check which standard fields are already mapped
   const usedStandardFields = new Set<StandardPlayerField>()
+  const usedSchemaIds = new Set<string>()
   Object.values(mappings).forEach((mapping) => {
     if (mapping.type === 'standard') {
       usedStandardFields.add(mapping.field)
+    } else if (mapping.type === 'schema') {
+      usedSchemaIds.add(mapping.schemaId)
     }
   })
 
@@ -85,7 +97,7 @@ export function ColumnMapper({
                 <Select
                   value={getMappingValue(mapping)}
                   onChange={(e) => {
-                    const newMapping = parseMappingValue(e.target.value, column)
+                    const newMapping = parseMappingValue(e.target.value, column, fieldSchemas)
                     onMappingChange(column, newMapping)
                   }}
                   className="w-48"
@@ -110,6 +122,26 @@ export function ColumnMapper({
                       }
                     )}
                   </optgroup>
+                  {fieldSchemas.length > 0 && (
+                    <optgroup label="League Fields">
+                      {fieldSchemas.map((schema) => {
+                        const isUsed = usedSchemaIds.has(schema.id)
+                        const isCurrentMapping =
+                          mapping.type === 'schema' && mapping.schemaId === schema.id
+                        return (
+                          <option
+                            key={schema.id}
+                            value={`schema:${schema.id}`}
+                            disabled={isUsed && !isCurrentMapping}
+                          >
+                            {schema.field_name}
+                            {schema.is_required ? ' (Required)' : ''}
+                            {isUsed && !isCurrentMapping ? ' (already mapped)' : ''}
+                          </option>
+                        )
+                      })}
+                    </optgroup>
+                  )}
                   <option value={`custom:${column}`}>Custom Field: {column}</option>
                 </Select>
 

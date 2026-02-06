@@ -8,6 +8,7 @@ import { SpreadsheetImportModal } from '@/components/spreadsheet/SpreadsheetImpo
 import { useCreatePlayer, useDeletePlayer } from '@/hooks/usePlayers'
 import { useUpdatePlayerProfile, useUploadProfilePicture } from '@/hooks/usePlayerProfile'
 import { useUpsertCustomFields } from '@/hooks/useCustomFields'
+import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { useToast } from '@/components/ui/Toast'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { getAvailablePlayers } from '@/lib/draft'
@@ -47,6 +48,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
 
   const { addToast } = useToast()
+  const { data: fieldSchemas } = useLeagueFieldSchemas(league.id)
   const createPlayer = useCreatePlayer()
   const deletePlayer = useDeletePlayer()
   const updateProfile = useUpdatePlayerProfile()
@@ -180,7 +182,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
               {league.players.length > 0 && (
                 <Button
                   variant="outline"
-                  onClick={() => exportPlayersToSpreadsheet(league.name, league.players, league.captains, customFieldsMap)}
+                  onClick={() => exportPlayersToSpreadsheet(league.name, league.players, league.captains, customFieldsMap, fieldSchemas)}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Export Spreadsheet
@@ -207,6 +209,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
             <PlayerProfileForm
               player={editingPlayer}
               customFields={customFieldsMap[editingPlayer.id] || []}
+              fieldSchemas={fieldSchemas}
               onSave={handleSaveProfile}
               onCancel={() => setEditingPlayer(null)}
             />

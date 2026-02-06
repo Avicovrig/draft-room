@@ -5,11 +5,12 @@ import { Label } from '@/components/ui/Label'
 import { Textarea } from '@/components/ui/Textarea'
 import { ImageCropper } from '@/components/ui/ImageCropper'
 import { X, Plus, Camera } from 'lucide-react'
-import type { Player, PlayerCustomField } from '@/lib/types'
+import type { Player, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 interface PlayerProfileFormProps {
   player: Player
   customFields?: PlayerCustomField[]
+  fieldSchemas?: LeagueFieldSchema[]
   onSave: (data: ProfileFormData) => Promise<void>
   onCancel: () => void
 }
@@ -21,7 +22,7 @@ export interface ProfileFormData {
   birthday: string | null
   hometown: string | null
   profilePictureBlob?: Blob | null
-  customFields: Array<{ id?: string; field_name: string; field_value: string; field_order: number }>
+  customFields: Array<{ id?: string; field_name: string; field_value: string; field_order: number; schema_id?: string | null }>
   deletedCustomFieldIds: string[]
 }
 
@@ -37,6 +38,7 @@ function getInitials(name: string): string {
 export function PlayerProfileForm({
   player,
   customFields = [],
+  fieldSchemas = [],
   onSave,
   onCancel,
 }: PlayerProfileFormProps) {
@@ -49,10 +51,25 @@ export function PlayerProfileForm({
   const [previewUrl, setPreviewUrl] = useState(player.profile_picture_url || '')
   const [showCropper, setShowCropper] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [schemaErrors, setSchemaErrors] = useState<Record<string, boolean>>({})
 
-  // Custom fields state
+  // Schema-backed fields state (manager-defined)
+  const [schemaFieldValues, setSchemaFieldValues] = useState<Record<string, { id?: string; value: string }>>(() => {
+    const map: Record<string, { id?: string; value: string }> = {}
+    for (const schema of fieldSchemas) {
+      const existing = customFields.find((f) => f.schema_id === schema.id)
+      map[schema.id] = {
+        id: existing?.id,
+        value: existing?.field_value || '',
+      }
+    }
+    return map
+  })
+
+  // Freeform custom fields state (player-defined, schema_id is null)
+  const freeformCustomFields = customFields.filter((f) => !f.schema_id)
   const [fields, setFields] = useState<Array<{ id?: string; field_name: string; field_value: string; field_order: number }>>(
-    customFields.map((f) => ({
+    freeformCustomFields.map((f) => ({
       id: f.id,
       field_name: f.field_name,
       field_value: f.field_value || '',
@@ -92,11 +109,52 @@ export function PlayerProfileForm({
     setFields(fields.filter((_, i) => i !== index))
   }
 
+  function updateSchemaField(schemaId: string, value: string) {
+    setSchemaFieldValues((prev) => ({
+      ...prev,
+      [schemaId]: { ...prev[schemaId], value },
+    }))
+    if (schemaErrors[schemaId]) {
+      setSchemaErrors((prev) => ({ ...prev, [schemaId]: false }))
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    // Validate required schema fields
+    const errors: Record<string, boolean> = {}
+    for (const schema of fieldSchemas) {
+      if (schema.is_required && !schemaFieldValues[schema.id]?.value?.trim()) {
+        errors[schema.id] = true
+      }
+    }
+    if (Object.keys(errors).length > 0) {
+      setSchemaErrors(errors)
+      return
+    }
+
     setIsSaving(true)
 
     try {
+      // Assemble schema-backed fields
+      const schemaFields = fieldSchemas.map((schema, index) => ({
+        id: schemaFieldValues[schema.id]?.id,
+        field_name: schema.field_name,
+        field_value: schemaFieldValues[schema.id]?.value || '',
+        field_order: index,
+        schema_id: schema.id,
+      }))
+
+      // Assemble freeform fields (with offset order after schema fields)
+      const freeformFields = fields
+        .filter((f) => f.field_name.trim())
+        .map((f, index) => ({
+          ...f,
+          field_order: fieldSchemas.length + index,
+          schema_id: null as string | null,
+        }))
+
       await onSave({
         bio: bio || null,
         height: height || null,
@@ -104,7 +162,7 @@ export function PlayerProfileForm({
         birthday: birthday || null,
         hometown: hometown || null,
         profilePictureBlob,
-        customFields: fields.filter((f) => f.field_name.trim()),
+        customFields: [...schemaFields, ...freeformFields],
         deletedCustomFieldIds: deletedFieldIds,
       })
     } finally {
@@ -204,10 +262,38 @@ export function PlayerProfileForm({
         </div>
       </div>
 
-      {/* Custom Fields */}
+      {/* Schema Fields (manager-defined) */}
+      {fieldSchemas.length > 0 && (
+        <div className="space-y-3">
+          <Label>League Fields</Label>
+          {fieldSchemas.map((schema) => (
+            <div key={schema.id} className="space-y-1">
+              <label className="text-sm font-medium">
+                {schema.field_name}
+                {schema.is_required && (
+                  <span className="ml-1 text-destructive">*</span>
+                )}
+              </label>
+              <Input
+                placeholder={`Enter ${schema.field_name.toLowerCase()}`}
+                value={schemaFieldValues[schema.id]?.value || ''}
+                onChange={(e) => updateSchemaField(schema.id, e.target.value)}
+                className={schemaErrors[schema.id] ? 'border-destructive' : ''}
+              />
+              {schemaErrors[schema.id] && (
+                <p className="text-xs text-destructive">
+                  {schema.field_name} is required
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Freeform Custom Fields */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label>Custom Fields</Label>
+          <Label>Additional Info</Label>
           <Button
             type="button"
             variant="ghost"
@@ -221,7 +307,7 @@ export function PlayerProfileForm({
 
         {fields.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            No custom fields yet. Add one to include additional info.
+            No additional fields yet. Add one to include extra info.
           </p>
         )}
 

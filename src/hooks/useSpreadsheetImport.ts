@@ -8,6 +8,7 @@ import type {
   ImportResult,
   StandardPlayerField,
 } from '@/lib/spreadsheetTypes'
+import type { LeagueFieldSchema } from '@/lib/types'
 
 const STANDARD_FIELDS: StandardPlayerField[] = ['name', 'height', 'weight', 'birthday', 'hometown', 'bio']
 
@@ -68,9 +69,10 @@ export function parseFile(file: File): Promise<SpreadsheetData> {
   })
 }
 
-export function suggestMappings(headers: string[]): Record<string, PlayerFieldMapping> {
+export function suggestMappings(headers: string[], fieldSchemas: LeagueFieldSchema[] = []): Record<string, PlayerFieldMapping> {
   const mappings: Record<string, PlayerFieldMapping> = {}
   const usedFields = new Set<StandardPlayerField>()
+  const usedSchemaIds = new Set<string>()
 
   for (const header of headers) {
     if (!header) {
@@ -78,7 +80,7 @@ export function suggestMappings(headers: string[]): Record<string, PlayerFieldMa
       continue
     }
 
-    // Try to match against known patterns
+    // Try to match against known standard field patterns
     let matched = false
     for (const field of STANDARD_FIELDS) {
       if (usedFields.has(field)) continue
@@ -89,6 +91,19 @@ export function suggestMappings(headers: string[]): Record<string, PlayerFieldMa
         usedFields.add(field)
         matched = true
         break
+      }
+    }
+
+    // Try to match against league field schemas (case-insensitive)
+    if (!matched) {
+      const headerLower = header.toLowerCase().replace(/\s*\*\s*$/, '').trim()
+      const matchingSchema = fieldSchemas.find(
+        (s) => !usedSchemaIds.has(s.id) && s.field_name.toLowerCase() === headerLower
+      )
+      if (matchingSchema) {
+        mappings[header] = { type: 'schema', schemaId: matchingSchema.id, fieldName: matchingSchema.field_name }
+        usedSchemaIds.add(matchingSchema.id)
+        matched = true
       }
     }
 
@@ -149,6 +164,12 @@ export function transformData(
             player.bio = value || undefined
             break
         }
+      } else if (mapping.type === 'schema' && value) {
+        player.customFields.push({
+          field_name: mapping.fieldName,
+          field_value: value,
+          schema_id: mapping.schemaId,
+        })
       } else if (mapping.type === 'custom' && value) {
         player.customFields.push({
           field_name: mapping.fieldName,
@@ -219,6 +240,7 @@ export function useImportPlayers({ leagueId }: UseImportPlayersOptions) {
         field_name: string
         field_value: string
         field_order: number
+        schema_id?: string | null
       }> = []
 
       createdPlayers.forEach((createdPlayer, index) => {
@@ -229,6 +251,7 @@ export function useImportPlayers({ leagueId }: UseImportPlayersOptions) {
             field_name: cf.field_name,
             field_value: cf.field_value,
             field_order: fieldIndex,
+            schema_id: cf.schema_id || null,
           })
         })
       })

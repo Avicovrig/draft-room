@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Settings, Users, Crown, Share2, Play, Trash2 } from 'lucide-react'
+import { ArrowLeft, Settings, Users, Crown, Share2, Play, Trash2, ListChecks } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -12,8 +12,9 @@ import { LeagueSettings } from '@/components/league/LeagueSettings'
 import { PlayerList } from '@/components/league/PlayerList'
 import { CaptainList } from '@/components/league/CaptainList'
 import { ShareLinks } from '@/components/league/ShareLinks'
+import { FieldSchemaList } from '@/components/league/FieldSchemaList'
 
-type Tab = 'settings' | 'players' | 'captains' | 'share'
+type Tab = 'settings' | 'players' | 'captains' | 'fields' | 'share'
 
 export function ManageLeague() {
   const { id } = useParams<{ id: string }>()
@@ -64,6 +65,7 @@ export function ManageLeague() {
   const tabs = [
     { id: 'players' as const, label: 'Players', icon: Users, count: league.players.length },
     { id: 'captains' as const, label: 'Captains', icon: Crown, count: league.captains.length },
+    { id: 'fields' as const, label: 'Fields', icon: ListChecks },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
     { id: 'share' as const, label: 'Share', icon: Share2 },
   ]
@@ -136,6 +138,7 @@ export function ManageLeague() {
         {/* Tab Content */}
         {activeTab === 'players' && <PlayerList league={league} customFieldsMap={customFieldsMap} />}
         {activeTab === 'captains' && <CaptainList league={league} />}
+        {activeTab === 'fields' && <FieldSchemaList league={league} />}
         {activeTab === 'settings' && <LeagueSettings league={league} />}
         {activeTab === 'share' && <ShareLinks league={league} />}
 

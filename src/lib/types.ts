@@ -140,6 +140,7 @@ export interface Database {
           field_name: string
           field_value: string | null
           field_order: number
+          schema_id: string | null
           created_at: string
         }
         Insert: {
@@ -148,6 +149,7 @@ export interface Database {
           field_name: string
           field_value?: string | null
           field_order?: number
+          schema_id?: string | null
           created_at?: string
         }
         Update: {
@@ -156,6 +158,7 @@ export interface Database {
           field_name?: string
           field_value?: string | null
           field_order?: number
+          schema_id?: string | null
           created_at?: string
         }
       }
@@ -211,6 +214,35 @@ export interface Database {
           created_at?: string
         }
       }
+      league_field_schemas: {
+        Row: {
+          id: string
+          league_id: string
+          field_name: string
+          field_type: string
+          is_required: boolean
+          field_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          league_id: string
+          field_name: string
+          field_type?: string
+          is_required?: boolean
+          field_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          league_id?: string
+          field_name?: string
+          field_type?: string
+          is_required?: boolean
+          field_order?: number
+          created_at?: string
+        }
+      }
     }
   }
 }
@@ -239,6 +271,9 @@ export type PlayerCustomFieldUpdate = Database['public']['Tables']['player_custo
 export type CaptainDraftQueue = Database['public']['Tables']['captain_draft_queues']['Row']
 export type CaptainDraftQueueInsert = Database['public']['Tables']['captain_draft_queues']['Insert']
 export type CaptainDraftQueueUpdate = Database['public']['Tables']['captain_draft_queues']['Update']
+
+export type LeagueFieldSchema = Database['public']['Tables']['league_field_schemas']['Row']
+export type LeagueFieldSchemaInsert = Database['public']['Tables']['league_field_schemas']['Insert']
 
 // Extended types with relations
 export interface LeagueWithCaptains extends League {

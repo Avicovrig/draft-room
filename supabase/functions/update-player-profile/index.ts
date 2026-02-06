@@ -63,6 +63,39 @@ Deno.serve(async (req) => {
       )
     }
 
+    // Validate required schema fields
+    if (customFields && customFields.length > 0) {
+      const { data: requiredSchemas } = await supabaseAdmin
+        .from('league_field_schemas')
+        .select('id, field_name')
+        .eq('league_id', player.league_id)
+        .eq('is_required', true)
+
+      if (requiredSchemas && requiredSchemas.length > 0) {
+        const submittedBySchemaId = new Map<string, string>()
+        for (const field of customFields) {
+          if (field.schema_id) {
+            submittedBySchemaId.set(field.schema_id, field.field_value || '')
+          }
+        }
+
+        const missingFields: string[] = []
+        for (const schema of requiredSchemas) {
+          const value = submittedBySchemaId.get(schema.id)
+          if (!value || !value.trim()) {
+            missingFields.push(schema.field_name)
+          }
+        }
+
+        if (missingFields.length > 0) {
+          return new Response(
+            JSON.stringify({ error: `Required fields missing: ${missingFields.join(', ')}` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+      }
+    }
+
     // Update player profile
     const updateData: Record<string, unknown> = {}
     if (bio !== undefined) updateData.bio = bio
@@ -111,6 +144,7 @@ Deno.serve(async (req) => {
               field_name: field.field_name,
               field_value: field.field_value || null,
               field_order: field.field_order,
+              schema_id: field.schema_id || null,
             })
             .eq('id', field.id)
             .eq('player_id', playerId)
@@ -127,6 +161,7 @@ Deno.serve(async (req) => {
               field_name: field.field_name,
               field_value: field.field_value || null,
               field_order: field.field_order,
+              schema_id: field.schema_id || null,
             })
 
           if (error) {

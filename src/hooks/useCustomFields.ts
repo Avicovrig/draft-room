@@ -131,6 +131,7 @@ interface UpsertCustomFieldsInput {
     field_name: string
     field_value: string
     field_order: number
+    schema_id?: string | null
   }>
   deletedIds: string[]
 }
@@ -160,6 +161,7 @@ export function useUpsertCustomFields() {
               field_name: field.field_name,
               field_value: field.field_value || null,
               field_order: field.field_order,
+              schema_id: field.schema_id ?? null,
             })
             .eq('id', field.id)
 
@@ -173,6 +175,7 @@ export function useUpsertCustomFields() {
               field_name: field.field_name,
               field_value: field.field_value || null,
               field_order: field.field_order,
+              schema_id: field.schema_id ?? null,
             })
 
           if (error) throw error

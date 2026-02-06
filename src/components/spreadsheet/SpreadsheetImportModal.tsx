@@ -14,6 +14,7 @@ import {
   transformData,
   useImportPlayers,
 } from '@/hooks/useSpreadsheetImport'
+import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import type { SpreadsheetData, PlayerFieldMapping, ParsedPlayer } from '@/lib/spreadsheetTypes'
 
 interface SpreadsheetImportModalProps {
@@ -39,6 +40,7 @@ export function SpreadsheetImportModal({
   const [parsedPlayers, setParsedPlayers] = useState<ParsedPlayer[]>([])
 
   const { addToast } = useToast()
+  const { data: fieldSchemas } = useLeagueFieldSchemas(leagueId)
   const importPlayers = useImportPlayers({ leagueId })
 
   const handleFileSelect = useCallback(
@@ -65,8 +67,8 @@ export function SpreadsheetImportModal({
         const data = await parseFile(file)
         setSpreadsheetData(data)
 
-        // Auto-suggest mappings based on headers
-        const suggestedMappings = suggestMappings(data.headers)
+        // Auto-suggest mappings based on headers (includes league field schemas)
+        const suggestedMappings = suggestMappings(data.headers, fieldSchemas)
         setMappings(suggestedMappings)
 
         setStep('configure')
@@ -76,7 +78,7 @@ export function SpreadsheetImportModal({
         setIsLoading(false)
       }
     },
-    [addToast]
+    [addToast, fieldSchemas]
   )
 
   const handleMappingChange = useCallback((column: string, mapping: PlayerFieldMapping) => {
@@ -152,7 +154,7 @@ export function SpreadsheetImportModal({
           {step === 'upload' && (
             <div className="space-y-6">
               <div className="flex justify-center">
-                <Button variant="outline" onClick={downloadPlayerTemplate}>
+                <Button variant="outline" onClick={() => downloadPlayerTemplate(fieldSchemas)}>
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </Button>
@@ -230,6 +232,7 @@ export function SpreadsheetImportModal({
               mappings={mappings}
               onMappingChange={handleMappingChange}
               sampleData={spreadsheetData.rows}
+              fieldSchemas={fieldSchemas}
             />
           )}
 

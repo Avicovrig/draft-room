@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { PlayerProfileForm, type ProfileFormData } from '@/components/player/PlayerProfileForm'
 import { usePlayerByEditToken } from '@/hooks/usePlayerProfile'
 import { useLeague } from '@/hooks/useLeagues'
+import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { useToast } from '@/components/ui/Toast'
 import { supabase } from '@/lib/supabase'
 
@@ -20,6 +21,7 @@ export function EditProfile() {
 
   const { data: player, isLoading, error, refetch } = usePlayerByEditToken(playerId, token)
   const { data: league } = useLeague(player?.league_id)
+  const { data: fieldSchemas } = useLeagueFieldSchemas(player?.league_id)
   const linkedCaptain = league?.captains.find((c) => c.player_id === player?.id)
 
   if (isLoading) {
@@ -156,6 +158,7 @@ export function EditProfile() {
                 <PlayerProfileForm
                   player={player}
                   customFields={player.custom_fields}
+                  fieldSchemas={fieldSchemas}
                   onSave={handleSave}
                   onCancel={() => window.history.back()}
                 />

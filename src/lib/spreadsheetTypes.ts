@@ -3,6 +3,7 @@ export type StandardPlayerField = 'name' | 'height' | 'weight' | 'birthday' | 'h
 export type PlayerFieldMapping =
   | { type: 'standard'; field: StandardPlayerField }
   | { type: 'custom'; fieldName: string }
+  | { type: 'schema'; schemaId: string; fieldName: string }
   | { type: 'skip' }
 
 export interface SpreadsheetData {
@@ -19,7 +20,7 @@ export interface ParsedPlayer {
   birthday?: string
   hometown?: string
   bio?: string
-  customFields: Array<{ field_name: string; field_value: string }>
+  customFields: Array<{ field_name: string; field_value: string; schema_id?: string }>
   isValid: boolean
   errors: string[]
   isSelected: boolean
