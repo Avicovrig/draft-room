@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verify player is available
+    // Verify player is available (not drafted and not linked to a captain)
     const { data: player, error: playerError } = await supabaseAdmin
       .from('players')
       .select('*')
@@ -107,6 +107,18 @@ Deno.serve(async (req) => {
     if (playerError || !player) {
       return new Response(
         JSON.stringify({ error: 'Player not available' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Reject captain-linked players (they are on teams already as captains)
+    // NOTE: Keep in sync with getAvailablePlayers() in src/lib/draft.ts
+    const isCaptainPlayer = league.captains.some(
+      (c: { player_id: string | null }) => c.player_id === playerId
+    )
+    if (isCaptainPlayer) {
+      return new Response(
+        JSON.stringify({ error: 'Cannot draft a captain' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

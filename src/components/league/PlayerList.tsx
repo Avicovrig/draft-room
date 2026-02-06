@@ -9,6 +9,7 @@ import { useCreatePlayer, useDeletePlayer } from '@/hooks/usePlayers'
 import { useUpdatePlayerProfile, useUploadProfilePicture } from '@/hooks/usePlayerProfile'
 import { useUpsertCustomFields } from '@/hooks/useCustomFields'
 import { useToast } from '@/components/ui/Toast'
+import { getAvailablePlayers } from '@/lib/draft'
 import type { LeagueFull, Player, PlayerCustomField } from '@/lib/types'
 
 interface PlayerListProps {
@@ -123,7 +124,13 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
     window.open(url, '_blank')
   }
 
-  const availablePlayers = league.players.filter((p) => !p.drafted_by_captain_id)
+  const captainPlayerIds = new Set(
+    league.captains.filter((c) => c.player_id).map((c) => c.player_id)
+  )
+  const availablePlayers = getAvailablePlayers(league.players, league.captains)
+  const captainPlayers = league.players.filter(
+    (p) => !p.drafted_by_captain_id && captainPlayerIds.has(p.id)
+  )
   const draftedPlayers = league.players.filter((p) => p.drafted_by_captain_id)
 
   return (
@@ -263,6 +270,75 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Captain Players (linked to captains, not in draft pool) */}
+      {captainPlayers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Captain Players ({captainPlayers.length})</CardTitle>
+            <CardDescription>
+              These players are captains and won't appear in the draft pool.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-border">
+              {captainPlayers.map((player) => {
+                const captain = league.captains.find((c) => c.player_id === player.id)
+                return (
+                  <li key={player.id} className="flex items-center gap-3 py-3">
+                    {player.profile_picture_url ? (
+                      <img
+                        src={player.profile_picture_url}
+                        alt={player.name}
+                        loading="lazy"
+                        className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground flex-shrink-0">
+                        {getInitials(player.name)}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{player.name}</div>
+                      {captain && (
+                        <div className="text-xs text-muted-foreground">
+                          Captain · Draft position {captain.draft_position}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingPlayer(player)}
+                        title="Edit profile"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleCopyPlayerUrl(player)}
+                        title="Copy profile link"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleOpenPlayerUrl(player)}
+                        title="Open profile link in new tab"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Drafted Players */}
       {draftedPlayers.length > 0 && (
