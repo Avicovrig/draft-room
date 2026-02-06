@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/Header'
 import { DraftBoard } from '@/components/draft/DraftBoard'
 import { useDraft, useSpectatorAccess } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
+import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 
 export function SpectatorView() {
   const { id } = useParams<{ id: string }>()
@@ -29,6 +30,7 @@ export function SpectatorView() {
 
   const hasAccess = useSpectatorAccess(id, token)
   const { data: customFieldsMap } = useLeagueCustomFields(id)
+  const { data: fieldSchemas = [] } = useLeagueFieldSchemas(id)
 
   // Auto-redirect to summary page when draft completes
   useEffect(() => {
@@ -93,6 +95,7 @@ export function SpectatorView() {
           pickOrder={pickOrder}
           isSubscribed={isSubscribed}
           customFieldsMap={customFieldsMap}
+          fieldSchemas={fieldSchemas}
           canPick={false}
           isManager={false}
           onStartDraft={startDraft}

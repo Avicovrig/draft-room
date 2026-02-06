@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback } from 'react'
-import { Search, User, Plus, ArrowUpDown } from 'lucide-react'
+import { Search, User, Plus, ArrowUpDown, StickyNote, Filter, X } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { cn } from '@/lib/utils'
-import { calculateAge, type Player, type PlayerCustomField } from '@/lib/types'
+import { calculateAge, type Player, type PlayerCustomField, type LeagueFieldSchema } from '@/lib/types'
 
 export type SortOption = 'default' | 'name-asc' | 'name-desc' | 'age-asc' | 'age-desc'
 
@@ -31,6 +31,12 @@ interface PlayerPoolProps {
   sortBy?: SortOption
   onSortChange?: (sort: SortOption) => void
   searchInputRef?: React.RefObject<HTMLInputElement | null>
+  notes?: Record<string, string>
+  onNoteChange?: (playerId: string, note: string) => void
+  fieldSchemas?: LeagueFieldSchema[]
+  filters?: Record<string, string>
+  onFilterChange?: (schemaId: string, value: string) => void
+  onClearFilters?: () => void
 }
 
 function getInitials(name: string): string {
@@ -42,11 +48,14 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isPicking, showExpandedDetails = false, onAddToQueue, queuedPlayerIds = new Set(), isAddingToQueue = false, search: controlledSearch, onSearchChange, sortBy: controlledSortBy, onSortChange, searchInputRef: externalSearchRef }: PlayerPoolProps) {
+export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isPicking, showExpandedDetails = false, onAddToQueue, queuedPlayerIds = new Set(), isAddingToQueue = false, search: controlledSearch, onSearchChange, sortBy: controlledSortBy, onSortChange, searchInputRef: externalSearchRef, notes = {}, onNoteChange, fieldSchemas = [], filters = {}, onFilterChange, onClearFilters }: PlayerPoolProps) {
   const [localSearch, setLocalSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null)
   const [localSortBy, setLocalSortBy] = useState<SortOption>('default')
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const activeFilterCount = Object.values(filters).filter(v => v.trim()).length
 
   const searchRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -59,6 +68,15 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
 
   const filteredPlayers = players
     .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+    .filter((p) => {
+      if (activeFilterCount === 0) return true
+      const playerFields = customFieldsMap[p.id] || []
+      return Object.entries(filters).every(([schemaId, filterText]) => {
+        if (!filterText.trim()) return true
+        const field = playerFields.find(f => f.schema_id === schemaId)
+        return field?.field_value?.toLowerCase().includes(filterText.toLowerCase())
+      })
+    })
     .sort((a, b) => {
       switch (sortBy) {
         case 'name-asc':
@@ -175,7 +193,72 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
           </select>
           <ArrowUpDown className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         </div>
+        {fieldSchemas.length > 0 && onFilterChange && (
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              'relative flex-shrink-0 h-10 rounded-md border border-input px-2.5 text-sm hover:bg-accent',
+              showFilters && 'bg-accent',
+            )}
+            title="Filter by fields"
+          >
+            <Filter className="h-4 w-4" />
+            {activeFilterCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && fieldSchemas.length > 0 && onFilterChange && (
+        <div className="mb-3 rounded-lg border border-border bg-muted/30 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Filter by fields</span>
+            {activeFilterCount > 0 && onClearFilters && (
+              <button
+                type="button"
+                onClick={onClearFilters}
+                className="text-xs text-primary hover:underline"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+          <div className="grid gap-2">
+            {fieldSchemas
+              .sort((a, b) => a.field_order - b.field_order)
+              .map((schema) => (
+                <div key={schema.id} className="flex items-center gap-2">
+                  <label className="w-24 shrink-0 truncate text-xs text-muted-foreground" title={schema.field_name}>
+                    {schema.field_name}
+                  </label>
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder={`Filter...`}
+                      value={filters[schema.id] || ''}
+                      onChange={(e) => onFilterChange(schema.id, e.target.value)}
+                      className="h-7 w-full rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    {filters[schema.id] && (
+                      <button
+                        type="button"
+                        onClick={() => onFilterChange(schema.id, '')}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       <div
         ref={listRef}
@@ -264,6 +347,27 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                       <User className="h-4 w-4" />
                     </button>
 
+                    {/* Note Button */}
+                    {onNoteChange && (
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingNoteId(editingNoteId === player.id ? null : player.id)
+                        }}
+                        className={cn(
+                          'flex-shrink-0 p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md',
+                          notes[player.id]
+                            ? 'text-yellow-600 dark:text-yellow-400'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                        )}
+                        title={notes[player.id] ? 'Edit note' : 'Add note'}
+                      >
+                        <StickyNote className="h-4 w-4" />
+                      </button>
+                    )}
+
                     {/* Add to Queue Button */}
                     {onAddToQueue && (
                       <button
@@ -286,6 +390,37 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                       </button>
                     )}
                   </div>
+
+                  {/* Inline Note Editor */}
+                  {editingNoteId === player.id && onNoteChange && (
+                    <div className="border-t border-border/50 bg-yellow-50/50 px-4 py-2 dark:bg-yellow-950/20">
+                      <textarea
+                        autoFocus
+                        rows={2}
+                        placeholder="Add a note about this player..."
+                        value={notes[player.id] || ''}
+                        onChange={(e) => onNoteChange(player.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            e.stopPropagation()
+                            setEditingNoteId(null)
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full resize-none rounded border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    </div>
+                  )}
+
+                  {/* Note Preview (when not editing, in expanded mode) */}
+                  {showExpandedDetails && notes[player.id] && editingNoteId !== player.id && (
+                    <div className="border-t border-border/50 bg-yellow-50/50 px-4 py-2 dark:bg-yellow-950/20">
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 line-clamp-2">
+                        <StickyNote className="mr-1 inline h-3 w-3" />
+                        {notes[player.id]}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Expanded Content (only in fullscreen mode) */}
                   {showExpandedDetails && hasExpandableContent && (
@@ -353,6 +488,7 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
         <PlayerProfileModal
           player={viewingPlayer}
           customFields={customFieldsMap[viewingPlayer.id] || []}
+          note={notes[viewingPlayer.id]}
           onClose={() => setViewingPlayer(null)}
         />
       )}

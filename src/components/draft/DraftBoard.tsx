@@ -16,7 +16,9 @@ import { getCurrentRound } from '@/lib/draft'
 import { supabase } from '@/lib/supabase'
 import { playSound, resumeAudioContext } from '@/lib/sounds'
 import { useDraftQueue, useAddToQueue } from '@/hooks/useDraftQueue'
-import type { LeagueFull, Captain, PlayerCustomField } from '@/lib/types'
+import { useDraftNotes } from '@/hooks/useDraftNotes'
+import { useAuth } from '@/context/AuthContext'
+import type { LeagueFull, Captain, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 interface DraftBoardProps {
   league: LeagueFull
@@ -34,6 +36,7 @@ interface DraftBoardProps {
   onResumeDraft: () => Promise<void>
   onRestartDraft: () => Promise<void>
   onUndoLastPick: () => Promise<void>
+  fieldSchemas?: LeagueFieldSchema[]
   onMakePick: (playerId: string, captainId: string, captainToken?: string) => Promise<void>
 }
 
@@ -53,18 +56,37 @@ export function DraftBoard({
   onResumeDraft,
   onRestartDraft,
   onUndoLastPick,
+  fieldSchemas = [],
   onMakePick,
 }: DraftBoardProps) {
   const [isPicking, setIsPicking] = useState(false)
   const [isPlayerPoolExpanded, setIsPlayerPoolExpanded] = useState(false)
   const [poolSearch, setPoolSearch] = useState('')
   const [poolSortBy, setPoolSortBy] = useState<SortOption>('default')
+  const [poolFilters, setPoolFilters] = useState<Record<string, string>>({})
+  const handleFilterChange = useCallback((schemaId: string, value: string) => {
+    setPoolFilters(prev => {
+      const next = { ...prev }
+      if (value) {
+        next[schemaId] = value
+      } else {
+        delete next[schemaId]
+      }
+      return next
+    })
+  }, [])
+  const handleClearFilters = useCallback(() => setPoolFilters({}), [])
   const [showAutoPickFlash, setShowAutoPickFlash] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const isAutoPickingRef = useRef(false)
   const queryClient = useQueryClient()
   const { addToast } = useToast()
+  const { user } = useAuth()
+
+  // Draft notes (localStorage-backed, private per captain/manager)
+  const notesOwnerId = viewingAsCaptain?.id ?? user?.id
+  const { notes, setNote } = useDraftNotes(league.id, notesOwnerId)
 
   // Draft queue hooks (only for captain view)
   const { data: queueData = [] } = useDraftQueue(viewingAsCaptain?.id)
@@ -122,6 +144,15 @@ export function DraftBoard({
     }
     return null
   }, [viewingAsCaptain, isActive, isMyTurn, league.current_pick_index, pickOrder])
+  // Compute the "on deck" captain (next to pick)
+  const onDeckCaptain = useMemo(() => {
+    if (!isActive) return undefined
+    const nextIndex = league.current_pick_index + 1
+    if (nextIndex >= pickOrder.length) return undefined
+    const nextId = pickOrder[nextIndex]
+    return league.captains.find(c => c.id === nextId)
+  }, [isActive, league.current_pick_index, pickOrder, league.captains])
+
   const prevPickIndexRef = useRef(league.current_pick_index)
   const prevIsMyTurnRef = useRef(isMyTurn)
 
@@ -292,6 +323,14 @@ export function DraftBoard({
               )}
             </p>
           )}
+          {isActive && onDeckCaptain && (
+            <p className="text-sm text-muted-foreground">
+              On deck: <span className="font-medium">{onDeckCaptain.name}</span>
+              {viewingAsCaptain?.id === onDeckCaptain.id && (
+                <span className="ml-1 font-medium text-primary">(you)</span>
+              )}
+            </p>
+          )}
           {league.status === 'not_started' && league.scheduled_start_at && (
             <ScheduledCountdown scheduledTime={league.scheduled_start_at} className="mt-1" />
           )}
@@ -374,6 +413,12 @@ export function DraftBoard({
               sortBy={poolSortBy}
               onSortChange={setPoolSortBy}
               searchInputRef={searchInputRef}
+              notes={notes}
+              onNoteChange={setNote}
+              fieldSchemas={fieldSchemas}
+              filters={poolFilters}
+              onFilterChange={handleFilterChange}
+              onClearFilters={handleClearFilters}
             />
           </CardContent>
         </Card>
@@ -475,6 +520,12 @@ export function DraftBoard({
                 onSearchChange={setPoolSearch}
                 sortBy={poolSortBy}
                 onSortChange={setPoolSortBy}
+                notes={notes}
+                onNoteChange={setNote}
+                fieldSchemas={fieldSchemas}
+                filters={poolFilters}
+                onFilterChange={handleFilterChange}
+                onClearFilters={handleClearFilters}
               />
             </CardContent>
           </Card>

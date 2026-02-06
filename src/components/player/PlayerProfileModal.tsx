@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { X, StickyNote } from 'lucide-react'
 import { PlayerProfileView } from './PlayerProfileView'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import type { Player, PlayerCustomField } from '@/lib/types'
@@ -6,10 +6,11 @@ import type { Player, PlayerCustomField } from '@/lib/types'
 interface PlayerProfileModalProps {
   player: Player
   customFields?: PlayerCustomField[]
+  note?: string
   onClose: () => void
 }
 
-export function PlayerProfileModal({ player, customFields = [], onClose }: PlayerProfileModalProps) {
+export function PlayerProfileModal({ player, customFields = [], note, onClose }: PlayerProfileModalProps) {
   const { overlayProps } = useModalFocus({ onClose })
 
   return (
@@ -30,6 +31,14 @@ export function PlayerProfileModal({ player, customFields = [], onClose }: Playe
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto p-6">
+          {note && (
+            <div className="mb-4 rounded-lg bg-yellow-50/50 p-3 dark:bg-yellow-950/20">
+              <div className="flex items-start gap-2 text-sm text-yellow-700 dark:text-yellow-300">
+                <StickyNote className="mt-0.5 h-4 w-4 shrink-0" />
+                <p className="whitespace-pre-wrap">{note}</p>
+              </div>
+            </div>
+          )}
           <PlayerProfileView player={player} customFields={customFields} />
         </div>
       </div>

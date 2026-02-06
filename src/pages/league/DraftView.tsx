@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header'
 import { DraftBoard } from '@/components/draft/DraftBoard'
 import { useDraft } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
+import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { useAuth } from '@/context/AuthContext'
 
 export function DraftView() {
@@ -28,6 +29,7 @@ export function DraftView() {
   } = useDraft(id)
 
   const { data: customFieldsMap } = useLeagueCustomFields(id)
+  const { data: fieldSchemas = [] } = useLeagueFieldSchemas(id)
 
   // Auto-redirect to summary page when draft completes
   useEffect(() => {
@@ -92,6 +94,7 @@ export function DraftView() {
           pickOrder={pickOrder}
           isSubscribed={isSubscribed}
           customFieldsMap={customFieldsMap}
+          fieldSchemas={fieldSchemas}
           canPick={true}
           isManager={true}
           onStartDraft={startDraft}

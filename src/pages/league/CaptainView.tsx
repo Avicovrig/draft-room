@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { useDraft, useCaptainByToken } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
+import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { useUpdateCaptainColorAsCaptain } from '@/hooks/useCaptains'
 
 export function CaptainView() {
@@ -33,6 +34,7 @@ export function CaptainView() {
 
   const captain = useCaptainByToken(id, token)
   const { data: customFieldsMap } = useLeagueCustomFields(id)
+  const { data: fieldSchemas = [] } = useLeagueFieldSchemas(id)
   const updateColor = useUpdateCaptainColorAsCaptain()
   const { addToast } = useToast()
 
@@ -162,6 +164,7 @@ export function CaptainView() {
           pickOrder={pickOrder}
           isSubscribed={isSubscribed}
           customFieldsMap={customFieldsMap}
+          fieldSchemas={fieldSchemas}
           canPick={canPick}
           isManager={false}
           viewingAsCaptain={captain}
