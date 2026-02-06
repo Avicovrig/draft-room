@@ -141,7 +141,9 @@ Deno.serve(async (req) => {
       .eq('id', playerId)
 
     if (updatePlayerError) {
-      console.error('Failed to update player:', updatePlayerError)
+      // Roll back the pick insert to avoid inconsistent state
+      console.error('Failed to update player, rolling back pick:', updatePlayerError)
+      await supabaseAdmin.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
       return new Response(
         JSON.stringify({ error: 'Failed to update player' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -188,7 +190,10 @@ Deno.serve(async (req) => {
       .eq('id', leagueId)
 
     if (updateLeagueError) {
-      console.error('Failed to update league:', updateLeagueError)
+      // Roll back pick and player update to avoid inconsistent state
+      console.error('Failed to update league, rolling back:', updateLeagueError)
+      await supabaseAdmin.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
+      await supabaseAdmin.from('players').update({ drafted_by_captain_id: null, draft_pick_number: null }).eq('id', playerId)
       return new Response(
         JSON.stringify({ error: 'Failed to update league' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

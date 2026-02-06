@@ -118,27 +118,24 @@ export function useMoveInQueue() {
       const [item] = queue.splice(currentIndex, 1)
       queue.splice(newPosition, 0, item)
 
-      // Update all positions
-      const updates = queue.map((q, index) => ({
-        id: q.id,
-        captain_id: q.captain_id,
-        player_id: q.player_id,
-        position: index,
-      }))
+      // Two-phase update to avoid unique constraint violations on (captain_id, position):
+      // Phase 1: Set all positions to negative temporary values
+      for (let i = 0; i < queue.length; i++) {
+        const { error } = await supabase
+          .from('captain_draft_queues')
+          .update({ position: -(i + 1) })
+          .eq('id', queue[i].id)
+        if (error) throw error
+      }
 
-      // Delete and re-insert to handle unique constraint
-      const { error: deleteError } = await supabase
-        .from('captain_draft_queues')
-        .delete()
-        .eq('captain_id', captainId)
-
-      if (deleteError) throw deleteError
-
-      const { error: insertError } = await supabase
-        .from('captain_draft_queues')
-        .insert(updates)
-
-      if (insertError) throw insertError
+      // Phase 2: Set final positive positions
+      for (let i = 0; i < queue.length; i++) {
+        const { error } = await supabase
+          .from('captain_draft_queues')
+          .update({ position: i })
+          .eq('id', queue[i].id)
+        if (error) throw error
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['draft-queue', variables.captainId] })

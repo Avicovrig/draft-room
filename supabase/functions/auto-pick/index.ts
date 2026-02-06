@@ -202,6 +202,9 @@ Deno.serve(async (req) => {
       .eq('id', selectedPlayer.id)
 
     if (playerError) {
+      // Roll back the pick insert to avoid inconsistent state
+      console.error('[auto-pick] Failed to update player, rolling back pick:', playerError)
+      await supabase.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
       throw playerError
     }
 
@@ -230,6 +233,10 @@ Deno.serve(async (req) => {
       .eq('id', leagueId)
 
     if (updateError) {
+      // Roll back pick and player update to avoid inconsistent state
+      console.error('[auto-pick] Failed to update league, rolling back:', updateError)
+      await supabase.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
+      await supabase.from('players').update({ drafted_by_captain_id: null, draft_pick_number: null }).eq('id', selectedPlayer.id)
       throw updateError
     }
 
