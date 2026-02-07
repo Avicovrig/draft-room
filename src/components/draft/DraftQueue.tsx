@@ -213,7 +213,7 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
                     size="icon"
                     className="h-7 w-7"
                     onClick={() => handleMoveUp(index)}
-                    disabled={index === 0 || moveInQueue.isPending}
+                    disabled={index === 0}
                     title="Move up"
                   >
                     <ChevronUp className="h-4 w-4" />
@@ -223,7 +223,7 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
                     size="icon"
                     className="h-7 w-7"
                     onClick={() => handleMoveDown(index)}
-                    disabled={index === availableQueue.length - 1 || moveInQueue.isPending}
+                    disabled={index === availableQueue.length - 1}
                     title="Move down"
                   >
                     <ChevronDown className="h-4 w-4" />

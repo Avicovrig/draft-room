@@ -137,7 +137,35 @@ export function useMoveInQueue() {
         if (error) throw error
       }
     },
-    onSuccess: (_, variables) => {
+    onMutate: async ({ captainId, queueEntryId, newPosition }) => {
+      // Cancel outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['draft-queue', captainId] })
+
+      // Snapshot previous value
+      const previous = queryClient.getQueryData<QueuedPlayer[]>(['draft-queue', captainId])
+
+      // Optimistically reorder the cache
+      if (previous) {
+        const updated = [...previous]
+        const currentIndex = updated.findIndex((q) => q.id === queueEntryId)
+        if (currentIndex !== -1) {
+          const [item] = updated.splice(currentIndex, 1)
+          updated.splice(newPosition, 0, item)
+          // Update position values to match new order
+          updated.forEach((q, i) => { q.position = i })
+          queryClient.setQueryData(['draft-queue', captainId], updated)
+        }
+      }
+
+      return { previous }
+    },
+    onError: (_err, variables, context) => {
+      // Roll back to previous state on error
+      if (context?.previous) {
+        queryClient.setQueryData(['draft-queue', variables.captainId], context.previous)
+      }
+    },
+    onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['draft-queue', variables.captainId] })
     },
   })
