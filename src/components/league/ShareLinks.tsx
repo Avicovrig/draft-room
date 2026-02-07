@@ -59,6 +59,7 @@ export function ShareLinks({ league }: ShareLinksProps) {
                 variant="outline"
                 size="icon"
                 onClick={() => copyToClipboard(spectatorUrl, 'spectator')}
+                aria-label="Copy spectator link"
               >
                 {copiedId === 'spectator' ? (
                   <Check className="h-4 w-4 text-green-500" />
@@ -70,6 +71,7 @@ export function ShareLinks({ league }: ShareLinksProps) {
                 variant="outline"
                 size="icon"
                 onClick={() => openInNewTab(spectatorUrl)}
+                aria-label="Open spectator link in new tab"
               >
                 <ExternalLink className="h-4 w-4" />
               </Button>
@@ -115,6 +117,7 @@ export function ShareLinks({ league }: ShareLinksProps) {
                         variant="outline"
                         size="icon"
                         onClick={() => copyToClipboard(captainUrl, captainId)}
+                        aria-label={`Copy link for ${captain.name}`}
                       >
                         {copiedId === captainId ? (
                           <Check className="h-4 w-4 text-green-500" />
@@ -126,6 +129,7 @@ export function ShareLinks({ league }: ShareLinksProps) {
                         variant="outline"
                         size="icon"
                         onClick={() => openInNewTab(captainUrl)}
+                        aria-label={`Open link for ${captain.name} in new tab`}
                       >
                         <ExternalLink className="h-4 w-4" />
                       </Button>

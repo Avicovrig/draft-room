@@ -1,13 +1,14 @@
-import * as XLSX from 'xlsx'
 import type { Player, Captain, PlayerCustomField, LeagueFieldSchema } from './types'
 
-export function exportPlayersToSpreadsheet(
+export async function exportPlayersToSpreadsheet(
   leagueName: string,
   players: Player[],
   captains: Captain[],
   customFieldsMap: Record<string, PlayerCustomField[]>,
   fieldSchemas: LeagueFieldSchema[] = []
 ) {
+  const XLSX = await import('xlsx')
+
   // Build set of captain-linked player IDs
   const captainByPlayerId = new Map<string, Captain>()
   for (const c of captains) {

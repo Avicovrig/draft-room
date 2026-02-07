@@ -192,6 +192,7 @@ export function PlayerProfileForm({
             type="button"
             onClick={() => setShowCropper(true)}
             className="absolute bottom-0 right-0 rounded-full bg-primary p-2 text-primary-foreground shadow-md hover:bg-primary/90"
+            aria-label="Upload photo"
           >
             <Camera className="h-4 w-4" />
           </button>
@@ -280,6 +281,7 @@ export function PlayerProfileForm({
               size="icon"
               onClick={() => removeCustomField(index)}
               className="mt-1 text-muted-foreground hover:text-destructive"
+              aria-label="Remove field"
             >
               <X className="h-4 w-4" />
             </Button>

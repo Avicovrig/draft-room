@@ -147,6 +147,7 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
                   size="icon"
                   onClick={clearScheduledTime}
                   title="Clear scheduled time"
+                  aria-label="Clear scheduled time"
                 >
                   <X className="h-4 w-4" />
                 </Button>

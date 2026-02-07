@@ -1,7 +1,8 @@
-import * as XLSX from 'xlsx'
 import type { LeagueFieldSchema } from './types'
 
-export function downloadPlayerTemplate(fieldSchemas?: LeagueFieldSchema[]) {
+export async function downloadPlayerTemplate(fieldSchemas?: LeagueFieldSchema[]) {
+  const XLSX = await import('xlsx')
+
   // Create workbook and worksheet
   const workbook = XLSX.utils.book_new()
 

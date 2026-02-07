@@ -208,13 +208,9 @@ export function DraftBoard({
     if (!currentCaptain || availablePlayers.length === 0) return
 
     // Prevent multiple simultaneous auto-pick calls
-    if (isAutoPickingRef.current) {
-      console.log('[DraftBoard] Auto-pick already in progress, skipping')
-      return
-    }
+    if (isAutoPickingRef.current) return
 
     isAutoPickingRef.current = true
-    console.log('[DraftBoard] Triggering auto-pick for pick index:', league.current_pick_index)
 
     try {
       // Call the edge function for auto-pick with idempotency key
@@ -232,15 +228,12 @@ export function DraftBoard({
           addToast('Auto-pick failed. Please make a manual selection.', 'error')
         }
       } else if (response.data?.error) {
-        // Handle application-level errors from the edge function
-        console.log('Auto-pick not executed:', response.data.error)
         // Don't show toast for expected race condition errors
         const expectedErrors = ['Pick already made', 'Timer has not expired yet', 'Draft is not in progress']
         if (!expectedErrors.includes(response.data.error)) {
           addToast(`Auto-pick failed: ${response.data.error}`, 'error')
         }
       } else if (response.data?.success) {
-        console.log('[DraftBoard] Auto-pick success:', response.data.pick)
         addToast(
           `Auto-picked ${response.data.pick.player} for ${response.data.pick.captain}`,
           'info'
@@ -284,8 +277,6 @@ export function DraftBoard({
 
     // Mark this key as being processed
     lastAutoPickKeyRef.current = autoPickKey
-
-    console.log('[DraftBoard] Captain has auto_pick_enabled, triggering immediate auto-pick')
 
     // Small delay to allow UI to update and prevent race conditions
     const timeoutId = setTimeout(() => {
@@ -394,6 +385,7 @@ export function DraftBoard({
               onClick={() => setIsPlayerPoolExpanded(true)}
               className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
               title="Expand player list"
+              aria-label="Expand player list"
             >
               <Maximize2 className="h-4 w-4" />
             </button>
@@ -498,6 +490,7 @@ export function DraftBoard({
                 onClick={() => setIsPlayerPoolExpanded(false)}
                 className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
                 title="Collapse player list"
+                aria-label="Collapse player list"
               >
                 <Minimize2 className="h-4 w-4" />
               </button>

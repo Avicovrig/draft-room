@@ -259,6 +259,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
                       size="icon"
                       onClick={() => setEditingPlayer(player)}
                       title="Edit profile"
+                      aria-label="Edit profile"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -267,6 +268,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
                       size="icon"
                       onClick={() => handleCopyPlayerUrl(player)}
                       title="Copy profile link"
+                      aria-label="Copy profile link"
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
@@ -275,6 +277,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
                       size="icon"
                       onClick={() => handleOpenPlayerUrl(player)}
                       title="Open profile link in new tab"
+                      aria-label="Open profile link in new tab"
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Button>
@@ -285,6 +288,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
                         onClick={() => handleDeletePlayer(player.id)}
                         disabled={deletePlayer.isPending}
                         title="Delete player"
+                        aria-label="Delete player"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -338,6 +342,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
                         size="icon"
                         onClick={() => setEditingPlayer(player)}
                         title="Edit profile"
+                        aria-label="Edit profile"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -346,6 +351,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
                         size="icon"
                         onClick={() => handleCopyPlayerUrl(player)}
                         title="Copy profile link"
+                        aria-label="Copy profile link"
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
@@ -354,6 +360,7 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
                         size="icon"
                         onClick={() => handleOpenPlayerUrl(player)}
                         title="Open profile link in new tab"
+                        aria-label="Open profile link in new tab"
                       >
                         <ExternalLink className="h-4 w-4" />
                       </Button>

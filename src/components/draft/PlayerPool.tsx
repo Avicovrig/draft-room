@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { Search, User, Plus, ArrowUpDown, StickyNote, Filter, X } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -64,7 +64,7 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
   const sortBy = controlledSortBy ?? localSortBy
   const setSortBy = onSortChange ?? setLocalSortBy
 
-  const filteredPlayers = players
+  const filteredPlayers = useMemo(() => players
     .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
     .filter((p) => {
       if (activeFilterCount === 0) return true
@@ -89,7 +89,7 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
           return a.name.localeCompare(b.name)
         }
       }
-    })
+    }), [players, search, sortBy, filters, activeFilterCount, customFieldsMap])
 
   function handlePick() {
     if (selectedId && canPick) {

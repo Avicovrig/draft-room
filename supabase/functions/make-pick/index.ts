@@ -1,41 +1,23 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+import { corsHeaders, handleCors } from '../_shared/cors.ts'
+import { createAdminClient } from '../_shared/supabase.ts'
+import { UUID_RE, errorResponse } from '../_shared/validation.ts'
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  const corsResponse = handleCors(req)
+  if (corsResponse) return corsResponse
 
   try {
     const { leagueId, captainId, playerId, captainToken } = await req.json()
 
     if (!leagueId || !captainId || !playerId) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Missing required fields', 400)
     }
 
     if (!UUID_RE.test(leagueId) || !UUID_RE.test(captainId) || !UUID_RE.test(playerId)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid field format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Invalid field format', 400)
     }
 
-    // Create admin client to bypass RLS
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
-    )
+    const supabaseAdmin = createAdminClient()
 
     // Get the league and verify status
     const { data: league, error: leagueError } = await supabaseAdmin
@@ -45,17 +27,11 @@ Deno.serve(async (req) => {
       .single()
 
     if (leagueError || !league) {
-      return new Response(
-        JSON.stringify({ error: 'League not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('League not found', 404)
     }
 
     if (league.status !== 'in_progress') {
-      return new Response(
-        JSON.stringify({ error: 'Draft is not in progress' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Draft is not in progress', 400)
     }
 
     // Validate captain token if provided (for non-manager picks)
@@ -64,10 +40,7 @@ Deno.serve(async (req) => {
         c.id === captainId && c.access_token === captainToken
       )
       if (!captain) {
-        return new Response(
-          JSON.stringify({ error: 'Invalid captain token' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return errorResponse('Invalid captain token', 403)
       }
     }
 
@@ -89,10 +62,7 @@ Deno.serve(async (req) => {
 
     const expectedCaptain = sortedCaptains[expectedCaptainIndex]
     if (expectedCaptain.id !== captainId) {
-      return new Response(
-        JSON.stringify({ error: 'Not your turn to pick' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Not your turn to pick', 400)
     }
 
     // Verify player is available (not drafted and not linked to a captain)
@@ -105,10 +75,7 @@ Deno.serve(async (req) => {
       .single()
 
     if (playerError || !player) {
-      return new Response(
-        JSON.stringify({ error: 'Player not available' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Player not available', 400)
     }
 
     // Reject captain-linked players (they are on teams already as captains)
@@ -117,10 +84,7 @@ Deno.serve(async (req) => {
       (c: { player_id: string | null }) => c.player_id === playerId
     )
     if (isCaptainPlayer) {
-      return new Response(
-        JSON.stringify({ error: 'Cannot draft a captain' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Cannot draft a captain', 400)
     }
 
     const pickNumber = league.current_pick_index + 1
@@ -146,10 +110,7 @@ Deno.serve(async (req) => {
         )
       }
       console.error('Failed to insert pick:', pickError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to record pick' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Failed to record pick', 500)
     }
 
     // Update player
@@ -165,10 +126,7 @@ Deno.serve(async (req) => {
       // Roll back the pick insert to avoid inconsistent state
       console.error('Failed to update player, rolling back pick:', updatePlayerError)
       await supabaseAdmin.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
-      return new Response(
-        JSON.stringify({ error: 'Failed to update player' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Failed to update player', 500)
     }
 
     // Clean up: Remove picked player from ALL captain queues
@@ -216,10 +174,7 @@ Deno.serve(async (req) => {
       console.error('Failed to update league, rolling back:', updateLeagueError)
       await supabaseAdmin.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
       await supabaseAdmin.from('players').update({ drafted_by_captain_id: null, draft_pick_number: null }).eq('id', playerId)
-      return new Response(
-        JSON.stringify({ error: 'Failed to update league' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Failed to update league', 500)
     }
 
     return new Response(
@@ -236,9 +191,6 @@ Deno.serve(async (req) => {
     )
   } catch (error) {
     console.error('Make pick error:', error)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return errorResponse('Internal server error', 500)
   }
 })

@@ -3,14 +3,9 @@
 // - Called when timer expires for captains without auto_pick_enabled
 // Deploy with: supabase functions deploy auto-pick
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+import { corsHeaders, handleCors } from '../_shared/cors.ts'
+import { createAdminClient } from '../_shared/supabase.ts'
+import { UUID_RE, errorResponse } from '../_shared/validation.ts'
 
 interface RequestBody {
   leagueId: string
@@ -18,31 +13,20 @@ interface RequestBody {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  const corsResponse = handleCors(req)
+  if (corsResponse) return corsResponse
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabase = createAdminClient()
 
     const { leagueId, expectedPickIndex }: RequestBody = await req.json()
 
     if (!leagueId) {
-      return new Response(
-        JSON.stringify({ error: 'leagueId is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('leagueId is required', 400)
     }
 
     if (!UUID_RE.test(leagueId)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid field format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Invalid field format', 400)
     }
 
     console.log(`[auto-pick] Request for league ${leagueId}, expectedPickIndex: ${expectedPickIndex}`)
@@ -55,23 +39,20 @@ Deno.serve(async (req) => {
       .single()
 
     if (leagueError || !league) {
-      return new Response(
-        JSON.stringify({ error: 'League not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('League not found', 404)
     }
 
     // Check if draft is in progress
     if (league.status !== 'in_progress') {
       console.log(`[auto-pick] Draft not in progress, status: ${league.status}`)
-      return new Response(
-        JSON.stringify({ error: 'Draft is not in progress', status: league.status }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Draft is not in progress', 400)
     }
 
-    // Idempotency check: verify we're picking for the expected turn
-    // Return 200 with error field for expected race conditions (not HTTP error)
+    // Idempotency check: verify we're picking for the expected turn.
+    // Design note: Returns HTTP 200 with an error field (not 4xx) for expected race
+    // conditions. When multiple clients call simultaneously, the first succeeds and
+    // others get 200 + {error: "Pick already made"}. The frontend handles this by
+    // checking response.data.error for expected messages (see DraftBoard.tsx).
     if (expectedPickIndex !== undefined && expectedPickIndex !== league.current_pick_index) {
       console.log(`[auto-pick] Pick index mismatch: expected ${expectedPickIndex}, actual ${league.current_pick_index}`)
       return new Response(
@@ -111,7 +92,7 @@ Deno.serve(async (req) => {
 
         if (elapsed < effectiveTimeLimit) {
           console.log(`[auto-pick] Timer not expired: ${elapsed}s elapsed, need ${effectiveTimeLimit}s`)
-          // Return 200 with error field for expected race conditions (not HTTP error)
+          // Returns 200 with error field for expected race condition (see design note above)
           return new Response(
             JSON.stringify({
               error: 'Timer has not expired yet',
@@ -139,10 +120,7 @@ Deno.serve(async (req) => {
     )
 
     if (availablePlayers.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'No available players' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('No available players', 400)
     }
 
     // Determine which player to pick
@@ -190,6 +168,7 @@ Deno.serve(async (req) => {
     if (pickError) {
       // Check for unique constraint violation (another client already made this pick)
       if (pickError.code === '23505') {
+        // Returns 200 with error field for expected race condition (see design note above)
         console.log(`[auto-pick] Duplicate pick detected for pick_number ${pickNumber}`)
         return new Response(
           JSON.stringify({
@@ -264,9 +243,6 @@ Deno.serve(async (req) => {
     )
   } catch (error) {
     console.error('Auto-pick error:', error)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return errorResponse('Internal server error', 500)
   }
 })

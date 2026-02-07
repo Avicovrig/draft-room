@@ -215,6 +215,7 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
                     onClick={() => handleMoveUp(index)}
                     disabled={index === 0}
                     title="Move up"
+                    aria-label="Move up"
                   >
                     <ChevronUp className="h-4 w-4" />
                   </Button>
@@ -225,6 +226,7 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
                     onClick={() => handleMoveDown(index)}
                     disabled={index === availableQueue.length - 1}
                     title="Move down"
+                    aria-label="Move down"
                   >
                     <ChevronDown className="h-4 w-4" />
                   </Button>
@@ -235,6 +237,7 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
                     onClick={() => handleRemove(item.id)}
                     disabled={removeFromQueue.isPending}
                     title="Remove from queue"
+                    aria-label="Remove from queue"
                   >
                     <X className="h-4 w-4" />
                   </Button>

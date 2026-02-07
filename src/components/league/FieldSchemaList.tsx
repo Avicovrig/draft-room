@@ -301,6 +301,7 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                           variant="ghost"
                           size="icon"
                           onClick={() => setDeleteConfirmId(schema.id)}
+                          aria-label="Delete field"
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>

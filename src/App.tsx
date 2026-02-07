@@ -1,25 +1,28 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Loader2 } from 'lucide-react'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { AuthProvider } from '@/context/AuthContext'
 import { ToastProvider } from '@/components/ui/Toast'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
-import { Landing } from '@/pages/Landing'
-import { Login } from '@/pages/auth/Login'
-import { Signup } from '@/pages/auth/Signup'
-import { AuthCallback } from '@/pages/auth/Callback'
-import { Dashboard } from '@/pages/Dashboard'
-import { NewLeague } from '@/pages/league/NewLeague'
-import { ManageLeague } from '@/pages/league/ManageLeague'
-import { DraftView } from '@/pages/league/DraftView'
-import { CaptainView } from '@/pages/league/CaptainView'
-import { SpectatorView } from '@/pages/league/SpectatorView'
-import { Summary } from '@/pages/league/Summary'
-import { EditProfile } from '@/pages/player/EditProfile'
-import { NotFound } from '@/pages/NotFound'
 import { PageTransition } from '@/components/layout/PageTransition'
 import { Analytics } from '@vercel/analytics/react'
+
+const Landing = lazy(() => import('@/pages/Landing').then(m => ({ default: m.Landing })))
+const Login = lazy(() => import('@/pages/auth/Login').then(m => ({ default: m.Login })))
+const Signup = lazy(() => import('@/pages/auth/Signup').then(m => ({ default: m.Signup })))
+const AuthCallback = lazy(() => import('@/pages/auth/Callback').then(m => ({ default: m.AuthCallback })))
+const Dashboard = lazy(() => import('@/pages/Dashboard').then(m => ({ default: m.Dashboard })))
+const NewLeague = lazy(() => import('@/pages/league/NewLeague').then(m => ({ default: m.NewLeague })))
+const ManageLeague = lazy(() => import('@/pages/league/ManageLeague').then(m => ({ default: m.ManageLeague })))
+const DraftView = lazy(() => import('@/pages/league/DraftView').then(m => ({ default: m.DraftView })))
+const CaptainView = lazy(() => import('@/pages/league/CaptainView').then(m => ({ default: m.CaptainView })))
+const SpectatorView = lazy(() => import('@/pages/league/SpectatorView').then(m => ({ default: m.SpectatorView })))
+const Summary = lazy(() => import('@/pages/league/Summary').then(m => ({ default: m.Summary })))
+const EditProfile = lazy(() => import('@/pages/player/EditProfile').then(m => ({ default: m.EditProfile })))
+const NotFound = lazy(() => import('@/pages/NotFound').then(m => ({ default: m.NotFound })))
 
 const queryClient = new QueryClient()
 
@@ -31,6 +34,11 @@ function App() {
           <AuthProvider>
             <ErrorBoundary>
               <BrowserRouter>
+                <Suspense fallback={
+                  <div className="flex h-screen items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                }>
                 <Routes>
               <Route path="/" element={<PageTransition><Landing /></PageTransition>} />
               <Route path="/auth/login" element={<PageTransition><Login /></PageTransition>} />
@@ -75,6 +83,7 @@ function App() {
               <Route path="/player/:playerId/edit" element={<PageTransition><EditProfile /></PageTransition>} />
               <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
                 </Routes>
+                </Suspense>
               </BrowserRouter>
               <Analytics />
             </ErrorBoundary>

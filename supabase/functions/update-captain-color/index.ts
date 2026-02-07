@@ -1,49 +1,29 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders, handleCors } from '../_shared/cors.ts'
+import { createAdminClient } from '../_shared/supabase.ts'
+import { UUID_RE, errorResponse } from '../_shared/validation.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  const corsResponse = handleCors(req)
+  if (corsResponse) return corsResponse
 
   try {
     const { captainId, captainToken, leagueId, color } = await req.json()
 
     if (!captainId || !leagueId || !color) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Missing required fields', 400)
     }
 
     if (!UUID_RE.test(captainId) || !UUID_RE.test(leagueId)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid field format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Invalid field format', 400)
     }
 
     if (!HEX_COLOR_RE.test(color)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid color format. Must be a hex color like #FF0000' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Invalid color format. Must be a hex color like #FF0000', 400)
     }
 
-    // Create admin client to bypass RLS
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
-    )
+    const supabaseAdmin = createAdminClient()
 
     // Get the captain and verify it belongs to the specified league
     const { data: captain, error: captainError } = await supabaseAdmin
@@ -54,18 +34,12 @@ Deno.serve(async (req) => {
       .single()
 
     if (captainError || !captain) {
-      return new Response(
-        JSON.stringify({ error: 'Captain not found in this league' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Captain not found in this league', 404)
     }
 
     // Validate captain token if provided
     if (captainToken && captain.access_token !== captainToken) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid captain token' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Invalid captain token', 403)
     }
 
     // Update the captain's team color
@@ -76,10 +50,7 @@ Deno.serve(async (req) => {
 
     if (updateError) {
       console.error('Failed to update team_color:', updateError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to update team color' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return errorResponse('Failed to update team color', 500)
     }
 
     return new Response(
@@ -92,9 +63,6 @@ Deno.serve(async (req) => {
     )
   } catch (error) {
     console.error('Update captain color error:', error)
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return errorResponse('Internal server error', 500)
   }
 })
