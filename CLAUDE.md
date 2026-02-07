@@ -13,6 +13,8 @@ Draft Room is a custom league draft application. League managers can create leag
 - `npm run dev` - Start development server (http://localhost:5173)
 - `npm run build` - Type-check with TypeScript then build for production
 - `npm run lint` - Run ESLint
+- `npm run dev:qa` - Start dev server against QA Supabase (uses `.env.qa`)
+- `npm run build:qa` - Build for QA environment
 - `supabase functions deploy <function-name>` - Deploy a single edge function
 - No test framework is configured
 
@@ -34,6 +36,7 @@ All draft-critical mutations go through Deno edge functions in `supabase/functio
 - **`auto-pick`** - Called on timer expiry or when captain has `auto_pick_enabled`. Picks from captain's draft queue first, falls back to random. Has 2-second grace period on timer validation. Uses `expectedPickIndex` for idempotency. Rolls back on partial failure.
 - **`toggle-auto-pick`** - Toggles a captain's auto-pick setting. Validates captain belongs to the specified league.
 - **`update-player-profile`** - Player self-service profile updates via edit token
+- **`update-captain-color`** - Updates a captain's team color
 
 All edge functions validate UUID format on ID parameters before hitting the database.
 
@@ -58,11 +61,11 @@ Server-authoritative: `leagues.current_pick_started_at` is the source of truth. 
 
 ### Database Schema
 
-Six tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_picks`, `captain_draft_queues`. Full schema in `docs/architecture.md`. Types in `src/lib/types.ts` mirror the DB schema with `Database` interface and convenience aliases (`League`, `Captain`, `Player`, etc.).
+Seven tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_picks`, `captain_draft_queues`, `league_field_schemas`. Full schema in `docs/architecture.md`. Types in `src/lib/types.ts` mirror the DB schema with `Database` interface and convenience aliases (`League`, `Captain`, `Player`, etc.).
 
 **Important**: `useLeague` selects explicit columns (not `*`) from related tables to minimize payload. When adding new columns to the schema, they must also be added to the select in `src/hooks/useLeagues.ts`.
 
-Migrations are in `supabase/migrations/` (001-007), applied sequentially.
+Migrations are in `supabase/migrations/` (001-010), applied sequentially.
 
 ### Draft State Machine
 
