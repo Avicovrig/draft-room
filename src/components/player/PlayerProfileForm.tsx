@@ -292,7 +292,7 @@ export function PlayerProfileForm({
                       className="h-4 w-4 rounded border-border"
                     />
                     <span className="text-sm font-medium">
-                      {(schema.field_options?.label as string) || schema.field_name}
+                      {schema.field_name}
                       {schema.is_required && (
                         <span className="ml-1 text-destructive">*</span>
                       )}

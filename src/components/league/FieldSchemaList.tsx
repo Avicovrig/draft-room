@@ -52,8 +52,6 @@ interface FieldOptionsEditorProps {
   onIncludeTimeChange: (v: boolean) => void
   dropdownOptions: string[]
   onDropdownOptionsChange: (v: string[]) => void
-  checkboxLabel: string
-  onCheckboxLabelChange: (v: string) => void
 }
 
 function FieldOptionsEditor({
@@ -64,8 +62,6 @@ function FieldOptionsEditor({
   onIncludeTimeChange,
   dropdownOptions,
   onDropdownOptionsChange,
-  checkboxLabel,
-  onCheckboxLabelChange,
 }: FieldOptionsEditorProps) {
   if (type === 'text') return null
 
@@ -139,18 +135,9 @@ function FieldOptionsEditor({
       )}
 
       {type === 'checkbox' && (
-        <div className="flex items-center gap-2">
-          <Label htmlFor="field-checkbox-label" className="shrink-0 text-sm">
-            Label (optional)
-          </Label>
-          <Input
-            id="field-checkbox-label"
-            placeholder="e.g. Has prior experience"
-            value={checkboxLabel}
-            onChange={(e) => onCheckboxLabelChange(e.target.value)}
-            className="h-8 max-w-64"
-          />
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Players will see a checkbox labeled with the field name.
+        </p>
       )}
     </div>
   )
@@ -160,8 +147,7 @@ function buildFieldOptions(
   type: FieldType,
   unit: string,
   includeTime: boolean,
-  dropdownOptions: string[],
-  checkboxLabel: string
+  dropdownOptions: string[]
 ): Record<string, unknown> | null {
   switch (type) {
     case 'number':
@@ -170,8 +156,6 @@ function buildFieldOptions(
       return includeTime ? { includeTime: true } : null
     case 'dropdown':
       return { options: dropdownOptions.map((o) => o.trim()).filter(Boolean) }
-    case 'checkbox':
-      return checkboxLabel.trim() ? { label: checkboxLabel.trim() } : null
     default:
       return null
   }
@@ -183,7 +167,6 @@ function initOptionsFromSchema(schema: LeagueFieldSchema) {
     unit: (opts?.unit as string) || '',
     includeTime: (opts?.includeTime as boolean) || false,
     dropdownOptions: (opts?.options as string[] | undefined)?.length ? (opts!.options as string[]) : [''],
-    checkboxLabel: (opts?.label as string) || '',
   }
 }
 
@@ -199,7 +182,6 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
   const [newUnit, setNewUnit] = useState('')
   const [newIncludeTime, setNewIncludeTime] = useState(false)
   const [newDropdownOptions, setNewDropdownOptions] = useState<string[]>([''])
-  const [newCheckboxLabel, setNewCheckboxLabel] = useState('')
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -209,7 +191,6 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
   const [editUnit, setEditUnit] = useState('')
   const [editIncludeTime, setEditIncludeTime] = useState(false)
   const [editDropdownOptions, setEditDropdownOptions] = useState<string[]>([''])
-  const [editCheckboxLabel, setEditCheckboxLabel] = useState('')
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
@@ -229,7 +210,6 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
     setNewUnit('')
     setNewIncludeTime(false)
     setNewDropdownOptions([''])
-    setNewCheckboxLabel('')
   }
 
   async function handleAdd(e: React.FormEvent) {
@@ -249,14 +229,13 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
         league_id: league.id,
         field_name: newFieldName.trim(),
         field_type: newFieldType,
-        is_required: newFieldRequired,
+        is_required: newFieldType === 'checkbox' ? false : newFieldRequired,
         field_order: schemas.length,
         field_options: buildFieldOptions(
           newFieldType,
           newUnit,
           newIncludeTime,
-          newDropdownOptions,
-          newCheckboxLabel
+          newDropdownOptions
         ),
       })
       resetAddForm()
@@ -288,7 +267,6 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
     setEditUnit(opts.unit)
     setEditIncludeTime(opts.includeTime)
     setEditDropdownOptions(opts.dropdownOptions)
-    setEditCheckboxLabel(opts.checkboxLabel)
   }
 
   async function handleSaveEdit(id: string) {
@@ -308,13 +286,12 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
         leagueId: league.id,
         field_name: editName.trim(),
         field_type: editType,
-        is_required: editRequired,
+        is_required: editType === 'checkbox' ? false : editRequired,
         field_options: buildFieldOptions(
           editType,
           editUnit,
           editIncludeTime,
-          editDropdownOptions,
-          editCheckboxLabel
+          editDropdownOptions
         ),
       })
       setEditingId(null)
@@ -393,15 +370,17 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                     ))}
                   </Select>
                 </div>
-                <label className="flex shrink-0 items-center gap-1.5 pb-1 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={newFieldRequired}
-                    onChange={(e) => setNewFieldRequired(e.target.checked)}
-                    className="h-4 w-4 rounded border-border"
-                  />
-                  Required
-                </label>
+                {newFieldType !== 'checkbox' && (
+                  <label className="flex shrink-0 items-center gap-1.5 pb-1 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={newFieldRequired}
+                      onChange={(e) => setNewFieldRequired(e.target.checked)}
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    Required
+                  </label>
+                )}
                 <Button
                   type="submit"
                   disabled={createSchema.isPending || !newFieldName.trim()}
@@ -420,8 +399,6 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                 onIncludeTimeChange={setNewIncludeTime}
                 dropdownOptions={newDropdownOptions}
                 onDropdownOptionsChange={setNewDropdownOptions}
-                checkboxLabel={newCheckboxLabel}
-                onCheckboxLabelChange={setNewCheckboxLabel}
               />
             </form>
           </CardContent>
@@ -484,15 +461,17 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                             ))}
                           </Select>
                         </div>
-                        <label className="flex shrink-0 items-center gap-1.5 pb-1 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={editRequired}
-                            onChange={(e) => setEditRequired(e.target.checked)}
-                            className="h-4 w-4 rounded border-border"
-                          />
-                          Required
-                        </label>
+                        {editType !== 'checkbox' && (
+                          <label className="flex shrink-0 items-center gap-1.5 pb-1 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={editRequired}
+                              onChange={(e) => setEditRequired(e.target.checked)}
+                              className="h-4 w-4 rounded border-border"
+                            />
+                            Required
+                          </label>
+                        )}
                       </div>
 
                       <FieldOptionsEditor
@@ -503,8 +482,6 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                         onIncludeTimeChange={setEditIncludeTime}
                         dropdownOptions={editDropdownOptions}
                         onDropdownOptionsChange={setEditDropdownOptions}
-                        checkboxLabel={editCheckboxLabel}
-                        onCheckboxLabelChange={setEditCheckboxLabel}
                       />
 
                       <div className="flex gap-2">

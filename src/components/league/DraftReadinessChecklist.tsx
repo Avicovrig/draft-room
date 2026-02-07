@@ -57,7 +57,7 @@ export function DraftReadinessChecklist({ league, fieldSchemas, customFieldsMap 
     })
 
     // 3. Player profiles complete (warning, only if required schemas exist)
-    const requiredSchemas = fieldSchemas.filter(s => s.is_required)
+    const requiredSchemas = fieldSchemas.filter(s => s.is_required && s.field_type !== 'checkbox')
     if (requiredSchemas.length > 0 && customFieldsMap !== undefined) {
       let incompleteCount = 0
       for (const player of league.players) {
