@@ -19,6 +19,7 @@ import { Summary } from '@/pages/league/Summary'
 import { EditProfile } from '@/pages/player/EditProfile'
 import { NotFound } from '@/pages/NotFound'
 import { PageTransition } from '@/components/layout/PageTransition'
+import { Analytics } from '@vercel/analytics/react'
 
 const queryClient = new QueryClient()
 
@@ -75,6 +76,7 @@ function App() {
               <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
                 </Routes>
               </BrowserRouter>
+              <Analytics />
             </ErrorBoundary>
           </AuthProvider>
         </ToastProvider>
