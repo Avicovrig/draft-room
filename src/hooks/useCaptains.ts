@@ -125,10 +125,14 @@ export function useUpdateCaptainColor() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ captainId, color, leagueId }: { captainId: string; color: string; leagueId: string }) => {
+    mutationFn: async ({ captainId, color, teamName, leagueId }: { captainId: string; color?: string; teamName?: string | null; leagueId: string }) => {
+      const updateFields: Record<string, unknown> = {}
+      if (color !== undefined) updateFields.team_color = color
+      if (teamName !== undefined) updateFields.team_name = teamName
+
       const { error } = await supabase
         .from('captains')
-        .update({ team_color: color })
+        .update(updateFields)
         .eq('id', captainId)
 
       if (error) throw error
@@ -147,20 +151,27 @@ export function useUpdateCaptainColorAsCaptain() {
     mutationFn: async ({
       captainId,
       color,
+      teamName,
+      teamPhotoUrl,
       captainToken,
       leagueId,
     }: {
       captainId: string
-      color: string
+      color?: string
+      teamName?: string | null
+      teamPhotoUrl?: string | null
       captainToken: string
       leagueId: string
     }) => {
-      const response = await supabase.functions.invoke('update-captain-color', {
-        body: { captainId, color, captainToken, leagueId },
-      })
+      const body: Record<string, unknown> = { captainId, captainToken, leagueId }
+      if (color !== undefined) body.color = color
+      if (teamName !== undefined) body.teamName = teamName
+      if (teamPhotoUrl !== undefined) body.teamPhotoUrl = teamPhotoUrl
+
+      const response = await supabase.functions.invoke('update-captain-color', { body })
 
       if (response.error) {
-        throw new Error(response.error.message || 'Failed to update team color')
+        throw new Error(response.error.message || 'Failed to update captain')
       }
 
       if (response.data?.error) {
@@ -171,6 +182,83 @@ export function useUpdateCaptainColorAsCaptain() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['league', variables.leagueId] })
+    },
+  })
+}
+
+export function useUploadTeamPhoto() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ captainId, leagueId, blob }: { captainId: string; leagueId: string; blob: Blob }) => {
+      const filePath = `${leagueId}/team-${captainId}.jpg`
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-pictures')
+        .upload(filePath, blob, { upsert: true, contentType: 'image/jpeg' })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from('profile-pictures')
+        .getPublicUrl(filePath)
+
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
+
+      const { error: updateError } = await supabase
+        .from('captains')
+        .update({ team_photo_url: publicUrl })
+        .eq('id', captainId)
+
+      if (updateError) throw updateError
+      return { leagueId }
+    },
+    onSuccess: ({ leagueId }) => {
+      queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
+    },
+  })
+}
+
+export function useUploadTeamPhotoAsCaptain() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      captainId,
+      leagueId,
+      blob,
+      captainToken,
+    }: {
+      captainId: string
+      leagueId: string
+      blob: Blob
+      captainToken: string
+    }) => {
+      const filePath = `${leagueId}/team-${captainId}.jpg`
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-pictures')
+        .upload(filePath, blob, { upsert: true, contentType: 'image/jpeg' })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from('profile-pictures')
+        .getPublicUrl(filePath)
+
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
+
+      const response = await supabase.functions.invoke('update-captain-color', {
+        body: { captainId, captainToken, leagueId, teamPhotoUrl: publicUrl },
+      })
+
+      if (response.error) throw new Error(response.error.message || 'Failed to update team photo')
+      if (response.data?.error) throw new Error(response.data.error)
+
+      return { leagueId }
+    },
+    onSuccess: ({ leagueId }) => {
+      queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
     },
   })
 }

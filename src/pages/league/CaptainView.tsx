@@ -1,14 +1,16 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { Pencil } from 'lucide-react'
+import { Pencil, Camera } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { DraftBoard } from '@/components/draft/DraftBoard'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { ImageCropper } from '@/components/ui/ImageCropper'
 import { useToast } from '@/components/ui/Toast'
 import { useDraft, useCaptainByToken } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
-import { useUpdateCaptainColorAsCaptain } from '@/hooks/useCaptains'
+import { useUpdateCaptainColorAsCaptain, useUploadTeamPhotoAsCaptain } from '@/hooks/useCaptains'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export function CaptainView() {
@@ -36,8 +38,16 @@ export function CaptainView() {
   const captain = useCaptainByToken(id, token)
   const { data: customFieldsMap } = useLeagueCustomFields(id)
   const { data: fieldSchemas = [] } = useLeagueFieldSchemas(id)
-  const updateColor = useUpdateCaptainColorAsCaptain()
+  const updateCaptain = useUpdateCaptainColorAsCaptain()
+  const uploadTeamPhoto = useUploadTeamPhotoAsCaptain()
   const { addToast } = useToast()
+  const [teamName, setTeamName] = useState('')
+  const [showTeamPhotoCropper, setShowTeamPhotoCropper] = useState(false)
+
+  // Sync team name from server when captain data loads
+  useEffect(() => {
+    if (captain) setTeamName(captain.team_name || '')
+  }, [captain?.team_name]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-redirect to summary page when draft completes
   useEffect(() => {
@@ -105,59 +115,139 @@ export function CaptainView() {
           <h1 className="text-3xl font-bold">{league.name}</h1>
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Drafting as</span>
-            {captain.team_color && (
+            {captain.team_photo_url ? (
+              <img src={captain.team_photo_url} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0" />
+            ) : captain.team_color ? (
               <span
                 className="h-4 w-4 rounded-full flex-shrink-0"
                 style={{ backgroundColor: captain.team_color }}
               />
-            )}
-            <span className="font-semibold text-primary">{captain.name}</span>
+            ) : null}
+            <span className="font-semibold text-primary">{captain.team_name || captain.name}</span>
           </div>
 
-          {isPreDraft && (
-            <div className="mt-3 flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-muted-foreground" htmlFor="captain-color">
-                  Team color
-                </label>
-                <input
-                  id="captain-color"
-                  type="color"
-                  value={captain.team_color || '#3B82F6'}
-                  onChange={(e) =>
-                    updateColor.mutate(
-                      {
-                        captainId: captain.id,
-                        color: e.target.value,
-                        leagueId: league.id,
-                        captainToken: token!,
-                      },
-                      {
-                        onError: (err) => {
-                          addToast(
-                            err instanceof Error ? err.message : 'Failed to update color',
-                            'error'
-                          )
+          {isPreDraft && !showTeamPhotoCropper && (
+            <div className="mt-3 space-y-3">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-muted-foreground" htmlFor="captain-color">
+                    Team color
+                  </label>
+                  <input
+                    id="captain-color"
+                    type="color"
+                    value={captain.team_color || '#3B82F6'}
+                    onChange={(e) =>
+                      updateCaptain.mutate(
+                        {
+                          captainId: captain.id,
+                          color: e.target.value,
+                          leagueId: league.id,
+                          captainToken: token!,
                         },
-                      }
-                    )
-                  }
-                  className="h-8 w-8 cursor-pointer rounded border-0 p-0"
-                />
-              </div>
+                        {
+                          onError: (err) => {
+                            addToast(
+                              err instanceof Error ? err.message : 'Failed to update color',
+                              'error'
+                            )
+                          },
+                        }
+                      )
+                    }
+                    className="h-8 w-8 cursor-pointer rounded border-0 p-0"
+                  />
+                </div>
 
-              {captainPlayer && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    navigate(`/player/${captainPlayer.id}/edit?token=${captainPlayer.edit_token}`)
-                  }
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit My Profile
-                </Button>
-              )}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-muted-foreground" htmlFor="team-name">
+                    Team name
+                  </label>
+                  <Input
+                    id="team-name"
+                    placeholder="e.g., The Thunderbolts"
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    onBlur={() => {
+                      const trimmed = teamName.trim() || null
+                      if (trimmed !== (captain.team_name || null)) {
+                        updateCaptain.mutate(
+                          {
+                            captainId: captain.id,
+                            teamName: trimmed,
+                            leagueId: league.id,
+                            captainToken: token!,
+                          },
+                          {
+                            onError: (err) => {
+                              addToast(
+                                err instanceof Error ? err.message : 'Failed to update team name',
+                                'error'
+                              )
+                            },
+                          }
+                        )
+                      }
+                    }}
+                    maxLength={50}
+                    className="w-48"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Team photo</span>
+                  {captain.team_photo_url && (
+                    <img src={captain.team_photo_url} alt="Team" className="h-8 w-8 rounded object-cover" />
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTeamPhotoCropper(true)}
+                    className="whitespace-nowrap"
+                  >
+                    <Camera className="mr-1 h-4 w-4" />
+                    {captain.team_photo_url ? 'Change' : 'Upload'}
+                  </Button>
+                </div>
+
+                {captainPlayer && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      navigate(`/player/${captainPlayer.id}/edit?token=${captainPlayer.edit_token}`)
+                    }
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit My Profile
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {showTeamPhotoCropper && (
+            <div className="mt-3 max-w-md">
+              <ImageCropper
+                onCropComplete={(blob) => {
+                  uploadTeamPhoto.mutate(
+                    {
+                      captainId: captain.id,
+                      leagueId: league.id,
+                      blob,
+                      captainToken: token!,
+                    },
+                    {
+                      onSuccess: () => addToast('Team photo updated', 'success'),
+                      onError: (err) => addToast(err instanceof Error ? err.message : 'Failed to upload photo', 'error'),
+                    }
+                  )
+                  setShowTeamPhotoCropper(false)
+                }}
+                onCancel={() => setShowTeamPhotoCropper(false)}
+                circularCrop={false}
+                onFileTooLarge={() => addToast('Image must be under 10MB', 'error')}
+              />
             </div>
           )}
         </div>

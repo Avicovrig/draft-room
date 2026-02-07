@@ -98,15 +98,28 @@ export function TeamRoster({
             }}
           >
             <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Crown
-                  className={cn(
-                    'h-4 w-4',
-                    isCurrentTurn ? 'text-primary' : 'text-muted-foreground'
+              <div className="flex items-center gap-2 min-w-0">
+                {captain.team_photo_url ? (
+                  <img
+                    src={captain.team_photo_url}
+                    alt={captain.team_name || captain.name}
+                    className="h-7 w-7 rounded object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <Crown
+                    className={cn(
+                      'h-4 w-4 flex-shrink-0',
+                      isCurrentTurn ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                    style={{ color: captain.team_color || undefined }}
+                  />
+                )}
+                <div className="min-w-0">
+                  <h3 className="font-semibold truncate">{captain.team_name || captain.name}</h3>
+                  {captain.team_name && (
+                    <span className="text-xs text-muted-foreground truncate block">{captain.name}</span>
                   )}
-                  style={{ color: captain.team_color || undefined }}
-                />
-                <h3 className="font-semibold">{captain.name}</h3>
+                </div>
               </div>
               <AnimatedCount count={teamPlayers.length} label="players" />
             </div>

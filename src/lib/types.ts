@@ -62,6 +62,8 @@ export interface Database {
           player_id: string | null
           auto_pick_enabled: boolean
           team_color: string | null
+          team_name: string | null
+          team_photo_url: string | null
           created_at: string
         }
         Insert: {
@@ -74,6 +76,8 @@ export interface Database {
           player_id?: string | null
           auto_pick_enabled?: boolean
           team_color?: string | null
+          team_name?: string | null
+          team_photo_url?: string | null
           created_at?: string
         }
         Update: {
@@ -86,6 +90,8 @@ export interface Database {
           player_id?: string | null
           auto_pick_enabled?: boolean
           team_color?: string | null
+          team_name?: string | null
+          team_photo_url?: string | null
           created_at?: string
         }
       }

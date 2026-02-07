@@ -288,7 +288,7 @@ export function Summary() {
                     <div>
                       <div className="text-lg font-semibold">{formatPickTime(fastestPick.seconds)}</div>
                       <div className="text-sm text-muted-foreground">
-                        Fastest (Pick #{fastestPick.pickNumber} — {league.captains.find((c) => c.id === fastestPick.captainId)?.name})
+                        Fastest (Pick #{fastestPick.pickNumber} — {(() => { const c = league.captains.find((c) => c.id === fastestPick.captainId); return c?.team_name || c?.name; })()})
                       </div>
                     </div>
                   </div>
@@ -302,7 +302,7 @@ export function Summary() {
                     <div>
                       <div className="text-lg font-semibold">{formatPickTime(slowestPick.seconds)}</div>
                       <div className="text-sm text-muted-foreground">
-                        Slowest (Pick #{slowestPick.pickNumber} — {league.captains.find((c) => c.id === slowestPick.captainId)?.name})
+                        Slowest (Pick #{slowestPick.pickNumber} — {(() => { const c = league.captains.find((c) => c.id === slowestPick.captainId); return c?.team_name || c?.name; })()})
                       </div>
                     </div>
                   </div>
@@ -343,13 +343,26 @@ export function Summary() {
                 >
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
-                        style={captain.team_color ? { backgroundColor: captain.team_color } : undefined}
-                      >
-                        {captain.draft_position}
+                      {captain.team_photo_url ? (
+                        <img
+                          src={captain.team_photo_url}
+                          alt={captain.team_name || captain.name}
+                          className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground flex-shrink-0"
+                          style={captain.team_color ? { backgroundColor: captain.team_color } : undefined}
+                        >
+                          {captain.draft_position}
+                        </div>
+                      )}
+                      <div>
+                        <span>{captain.team_name || captain.name}</span>
+                        {captain.team_name && (
+                          <span className="block text-sm font-normal text-muted-foreground">{captain.name}</span>
+                        )}
                       </div>
-                      <span>{captain.name}</span>
                     </div>
                     <span className="text-sm font-normal text-muted-foreground">
                       {stats.totalPlayers} players
@@ -455,7 +468,7 @@ export function Summary() {
                                         style={{ backgroundColor: captain.team_color }}
                                       />
                                     )}
-                                    {captain?.name ?? 'Unknown'}
+                                    {captain?.team_name || captain?.name || 'Unknown'}
                                   </div>
                                 </td>
                                 <td className="py-2 pr-4">

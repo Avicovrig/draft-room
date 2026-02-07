@@ -315,7 +315,7 @@ export function DraftBoard({
                 <span className="font-medium text-primary">Your turn to pick!</span>
               ) : (
                 <>
-                  <span className="font-medium">{currentCaptain.name}</span> is picking...
+                  <span className="font-medium">{currentCaptain.team_name || currentCaptain.name}</span> is picking...
                   {picksUntilMyTurn !== null && (
                     <span className="ml-2 text-sm">
                       ({picksUntilMyTurn === 1 ? 'You pick next' : `${picksUntilMyTurn} picks until your turn`})
@@ -327,7 +327,7 @@ export function DraftBoard({
           )}
           {isActive && onDeckCaptain && (
             <p className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-sm text-muted-foreground">
-              On deck: <span className="font-medium">{onDeckCaptain.name}</span>
+              On deck: <span className="font-medium">{onDeckCaptain.team_name || onDeckCaptain.name}</span>
               {viewingAsCaptain?.id === onDeckCaptain.id && (
                 <span className="font-medium text-primary">(you)</span>
               )}

@@ -9,6 +9,7 @@ interface ImageCropperProps {
   onCropComplete: (croppedBlob: Blob) => void
   onCancel: () => void
   aspectRatio?: number
+  circularCrop?: boolean
   onFileTooLarge?: () => void
 }
 
@@ -36,6 +37,7 @@ export function ImageCropper({
   onCropComplete,
   onCancel,
   aspectRatio = 1,
+  circularCrop: circularCropProp = true,
   onFileTooLarge,
 }: ImageCropperProps) {
   const [imgSrc, setImgSrc] = useState('')
@@ -149,7 +151,7 @@ export function ImageCropper({
               onChange={(_, percentCrop) => setCrop(percentCrop)}
               onComplete={(c) => setCompletedCrop(c)}
               aspect={aspectRatio}
-              circularCrop
+              circularCrop={circularCropProp}
               className="max-h-[400px]"
             >
               <img

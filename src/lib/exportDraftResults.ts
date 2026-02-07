@@ -23,7 +23,7 @@ export function exportDraftResults(league: LeagueFull): void {
     const captain = sortedCaptains[i]
     if (i > 0) rosterRows.push([]) // blank row between teams
 
-    rosterRows.push([`Team: ${captain.name}`, '', ''])
+    rosterRows.push([`Team: ${captain.team_name || captain.name}`, '', ''])
 
     if (captain.is_participant) {
       rosterRows.push([captain.name, '', 'Captain'])
@@ -62,7 +62,7 @@ export function exportDraftResults(league: LeagueFull): void {
     historyRows.push([
       pick.pick_number,
       round,
-      captain?.name ?? 'Unknown',
+      captain?.team_name || captain?.name || 'Unknown',
       player?.name ?? 'Unknown',
       pick.is_auto_pick ? 'Auto' : 'Manual',
       time,

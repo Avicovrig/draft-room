@@ -1,16 +1,19 @@
 import { useState } from 'react'
-import { Plus, Trash2, Shuffle, ChevronUp, ChevronDown, Crown } from 'lucide-react'
+import { Plus, Trash2, Shuffle, ChevronUp, ChevronDown, Crown, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
+import { ImageCropper } from '@/components/ui/ImageCropper'
+import { useToast } from '@/components/ui/Toast'
 import {
   useCreateCaptain,
   useDeleteCaptain,
   useAssignRandomCaptains,
   useReorderCaptains,
   useUpdateCaptainColor,
+  useUploadTeamPhoto,
 } from '@/hooks/useCaptains'
 import type { LeagueFull } from '@/lib/types'
 
@@ -27,11 +30,15 @@ export function CaptainList({ league }: CaptainListProps) {
   const [randomCount, setRandomCount] = useState('2')
   const [showRandomAssign, setShowRandomAssign] = useState(false)
 
+  const [editingTeamPhotoId, setEditingTeamPhotoId] = useState<string | null>(null)
+
   const createCaptain = useCreateCaptain()
   const deleteCaptain = useDeleteCaptain()
   const assignRandom = useAssignRandomCaptains()
   const reorderCaptains = useReorderCaptains()
   const updateColor = useUpdateCaptainColor()
+  const uploadTeamPhoto = useUploadTeamPhoto()
+  const { addToast } = useToast()
 
   const defaultColors = ['#3B82F6', '#EF4444', '#22C55E', '#A855F7']
 
@@ -383,21 +390,57 @@ export function CaptainList({ league }: CaptainListProps) {
                         style={{ backgroundColor: captain.team_color }}
                       />
                     )}
-                    <div>
-                      <span className="font-medium">{captain.name}</span>
-                      {captain.player_id ? (
-                        <span className="ml-2 text-xs text-green-600 dark:text-green-400">
-                          (Player)
-                        </span>
-                      ) : captain.is_participant ? (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          (Playing)
-                        </span>
-                      ) : (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          (Non-player)
-                        </span>
-                      )}
+                    {captain.team_photo_url ? (
+                      <img src={captain.team_photo_url} alt="" className="h-8 w-8 rounded object-cover flex-shrink-0" />
+                    ) : null}
+                    {isEditable && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingTeamPhotoId(captain.id)}
+                        className="flex-shrink-0 p-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
+                        title={captain.team_photo_url ? 'Change team photo' : 'Upload team photo'}
+                      >
+                        <Camera className="h-4 w-4" />
+                      </button>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{captain.name}</span>
+                        {captain.player_id ? (
+                          <span className="text-xs text-green-600 dark:text-green-400 whitespace-nowrap">
+                            (Player)
+                          </span>
+                        ) : captain.is_participant ? (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            (Playing)
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            (Non-player)
+                          </span>
+                        )}
+                      </div>
+                      {isEditable ? (
+                        <input
+                          type="text"
+                          placeholder="Team name (optional)"
+                          defaultValue={captain.team_name || ''}
+                          onBlur={(e) => {
+                            const newName = e.target.value.trim() || null
+                            if (newName !== (captain.team_name || null)) {
+                              updateColor.mutate({
+                                captainId: captain.id,
+                                teamName: newName,
+                                leagueId: league.id,
+                              })
+                            }
+                          }}
+                          maxLength={50}
+                          className="mt-0.5 w-full bg-transparent text-sm text-muted-foreground border-b border-transparent hover:border-border focus:border-primary outline-none"
+                        />
+                      ) : captain.team_name ? (
+                        <span className="text-sm text-muted-foreground">{captain.team_name}</span>
+                      ) : null}
                     </div>
                   </div>
                   {isEditable && (
@@ -423,6 +466,32 @@ export function CaptainList({ league }: CaptainListProps) {
           )}
         </CardContent>
       </Card>
+
+      {editingTeamPhotoId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-md rounded-lg bg-background p-4">
+            <ImageCropper
+              onCropComplete={(blob) => {
+                uploadTeamPhoto.mutate(
+                  {
+                    captainId: editingTeamPhotoId,
+                    leagueId: league.id,
+                    blob,
+                  },
+                  {
+                    onSuccess: () => addToast('Team photo updated', 'success'),
+                    onError: (err) => addToast(err instanceof Error ? err.message : 'Failed to upload photo', 'error'),
+                  }
+                )
+                setEditingTeamPhotoId(null)
+              }}
+              onCancel={() => setEditingTeamPhotoId(null)}
+              circularCrop={false}
+              onFileTooLarge={() => addToast('Image must be under 10MB', 'error')}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
