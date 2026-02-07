@@ -6,12 +6,47 @@ import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { cn } from '@/lib/utils'
 import type { Player, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
-export type SortOption = 'default' | 'name-asc' | 'name-desc'
+export type SortOption = 'default' | 'name-asc' | 'name-desc' | `field:${string}`
 
-const sortLabels: Record<SortOption, string> = {
-  'default': 'Default',
-  'name-asc': 'Name A-Z',
-  'name-desc': 'Name Z-A',
+const BASE_SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'default', label: 'Default' },
+  { value: 'name-asc', label: 'Name A-Z' },
+  { value: 'name-desc', label: 'Name Z-A' },
+]
+
+function compareFieldValues(aVal: string | undefined, bVal: string | undefined, fieldType: string): number {
+  const aEmpty = !aVal || !aVal.trim()
+  const bEmpty = !bVal || !bVal.trim()
+  if (aEmpty && bEmpty) return 0
+  if (aEmpty) return 1
+  if (bEmpty) return -1
+
+  if (fieldType === 'number') {
+    const aNum = parseFloat(aVal)
+    const bNum = parseFloat(bVal)
+    if (isNaN(aNum) && isNaN(bNum)) return 0
+    if (isNaN(aNum)) return 1
+    if (isNaN(bNum)) return -1
+    return aNum - bNum
+  }
+
+  if (fieldType === 'date') {
+    const aTime = new Date(aVal).getTime()
+    const bTime = new Date(bVal).getTime()
+    if (isNaN(aTime) && isNaN(bTime)) return 0
+    if (isNaN(aTime)) return 1
+    if (isNaN(bTime)) return -1
+    return aTime - bTime
+  }
+
+  if (fieldType === 'checkbox') {
+    // checked ("true") sorts before unchecked ("false")
+    if (aVal === bVal) return 0
+    return aVal === 'true' ? -1 : 1
+  }
+
+  // text, dropdown: locale compare
+  return aVal.localeCompare(bVal)
 }
 
 interface PlayerPoolProps {
@@ -64,6 +99,14 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
   const sortBy = controlledSortBy ?? localSortBy
   const setSortBy = onSortChange ?? setLocalSortBy
 
+  const sortOptions = useMemo(() => {
+    if (fieldSchemas.length === 0) return BASE_SORT_OPTIONS
+    const fieldOptions = [...fieldSchemas]
+      .sort((a, b) => a.field_order - b.field_order)
+      .map((s) => ({ value: `field:${s.id}` as SortOption, label: s.field_name }))
+    return { base: BASE_SORT_OPTIONS, fields: fieldOptions }
+  }, [fieldSchemas])
+
   const filteredPlayers = useMemo(() => players
     .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
     .filter((p) => {
@@ -81,15 +124,26 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
           return a.name.localeCompare(b.name)
         case 'name-desc':
           return b.name.localeCompare(a.name)
-        default: {
+        case 'default': {
           // Default: profile picture first, then name
           const aHasPic = a.profile_picture_url ? 1 : 0
           const bHasPic = b.profile_picture_url ? 1 : 0
           if (bHasPic !== aHasPic) return bHasPic - aHasPic
           return a.name.localeCompare(b.name)
         }
+        default: {
+          // field:${schemaId} pattern
+          const schemaId = sortBy.slice(6)
+          const schema = fieldSchemas.find(s => s.id === schemaId)
+          const aFields = customFieldsMap[a.id] || []
+          const bFields = customFieldsMap[b.id] || []
+          const aVal = aFields.find(f => f.schema_id === schemaId)?.field_value ?? undefined
+          const bVal = bFields.find(f => f.schema_id === schemaId)?.field_value ?? undefined
+          const cmp = compareFieldValues(aVal, bVal, schema?.field_type || 'text')
+          return cmp !== 0 ? cmp : a.name.localeCompare(b.name)
+        }
       }
-    }), [players, search, sortBy, filters, activeFilterCount, customFieldsMap])
+    }), [players, search, sortBy, filters, activeFilterCount, customFieldsMap, fieldSchemas])
 
   function handlePick() {
     if (selectedId && canPick) {
@@ -164,9 +218,21 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
             className="h-10 appearance-none rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             title="Sort players"
           >
-            {Object.entries(sortLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
+            {Array.isArray(sortOptions)
+              ? sortOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))
+              : <>
+                  {sortOptions.base.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                  <optgroup label="Sort by field">
+                    {sortOptions.fields.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </optgroup>
+                </>
+            }
           </select>
           <ArrowUpDown className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         </div>
@@ -213,24 +279,47 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                   <label className="w-24 shrink-0 truncate text-xs text-muted-foreground" title={schema.field_name}>
                     {schema.field_name}
                   </label>
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      placeholder={`Filter...`}
+                  {schema.field_type === 'dropdown' ? (
+                    <select
                       value={filters[schema.id] || ''}
                       onChange={(e) => onFilterChange(schema.id, e.target.value)}
-                      className="h-7 w-full rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
-                    {filters[schema.id] && (
-                      <button
-                        type="button"
-                        onClick={() => onFilterChange(schema.id, '')}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
+                      className="h-7 flex-1 rounded border border-input bg-background px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    >
+                      <option value="">All</option>
+                      {((schema.field_options?.options as string[]) || []).map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : schema.field_type === 'checkbox' ? (
+                    <select
+                      value={filters[schema.id] || ''}
+                      onChange={(e) => onFilterChange(schema.id, e.target.value)}
+                      className="h-7 flex-1 rounded border border-input bg-background px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    >
+                      <option value="">All</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  ) : (
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        placeholder="Filter..."
+                        value={filters[schema.id] || ''}
+                        onChange={(e) => onFilterChange(schema.id, e.target.value)}
+                        className="h-7 w-full rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                      {filters[schema.id] && (
+                        <button
+                          type="button"
+                          onClick={() => onFilterChange(schema.id, '')}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
           </div>
