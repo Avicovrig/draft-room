@@ -5,6 +5,7 @@ import type { League } from '@/lib/types'
 
 interface LeagueCardProps {
   league: League
+  index?: number
 }
 
 const statusColors = {
@@ -21,13 +22,16 @@ const statusLabels = {
   completed: 'Completed',
 }
 
-export function LeagueCard({ league }: LeagueCardProps) {
+export function LeagueCard({ league, index = 0 }: LeagueCardProps) {
   const statusColor = statusColors[league.status]
   const statusLabel = statusLabels[league.status]
 
   return (
     <Link to={`/league/${league.id}/manage`}>
-      <Card className="transition-all duration-200 hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5">
+      <Card
+        className="animate-slide-up transition-all duration-200 [animation-fill-mode:backwards] hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5"
+        style={{ animationDelay: `${index * 0.05}s` }}
+      >
         <CardHeader>
           <div className="flex items-start justify-between">
             <div>

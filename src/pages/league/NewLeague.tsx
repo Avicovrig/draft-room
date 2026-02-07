@@ -113,6 +113,7 @@ export function NewLeague() {
                 </Select>
                 <p className="text-sm text-muted-foreground">
                   If a captain doesn't pick in time, a random player will be selected.
+                  For example, 4 captains drafting 20 players at 2 min/pick ≈ 40 minutes.
                 </p>
               </div>
 

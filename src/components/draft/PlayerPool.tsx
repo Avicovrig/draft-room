@@ -247,8 +247,13 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
         className="flex-1 overflow-y-auto rounded-lg border border-border focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {filteredPlayers.length === 0 ? (
-          <div className="flex h-full items-center justify-center p-8 text-muted-foreground">
-            {search ? 'No players match your search' : 'No players available'}
+          <div className="flex h-full flex-col items-center justify-center gap-1 p-8 text-sm text-muted-foreground">
+            <p>{activeFilterCount > 0 ? 'No players match your filters' : search ? 'No players match your search' : 'No players available'}</p>
+            {activeFilterCount > 0 && onClearFilters && (
+              <button type="button" onClick={onClearFilters} className="text-primary hover:underline">
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
           <ul className="divide-y divide-border">
@@ -265,7 +270,7 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                 >
                   <div
                     className={cn(
-                      'flex items-center gap-3 px-4 py-3 transition-colors min-h-[52px]',
+                      'flex items-center gap-3 px-4 py-3 transition-[colors,box-shadow] duration-150 min-h-[52px]',
                       canPick && !isPicking && 'cursor-pointer hover:bg-accent',
                       !canPick && 'cursor-default',
                       isPicking && 'opacity-50',
@@ -288,10 +293,10 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                           src={player.profile_picture_url}
                           alt={player.name}
                           loading="lazy"
-                          className="h-10 w-10 rounded-full object-cover"
+                          className="h-11 w-11 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
                           {getInitials(player.name)}
                         </div>
                       )}

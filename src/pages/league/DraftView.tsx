@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
-import { useParams, Navigate, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { useParams, Navigate, useNavigate } from 'react-router-dom'
 import { Header } from '@/components/layout/Header'
 import { DraftBoard } from '@/components/draft/DraftBoard'
 import { useDraft } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { useAuth } from '@/context/AuthContext'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export function DraftView() {
   const { id } = useParams<{ id: string }>()
@@ -74,15 +74,11 @@ export function DraftView() {
       <Header />
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          {league.status === 'not_started' && (
-            <Link
-              to={`/league/${id}/manage`}
-              className="mb-2 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              Back to League Settings
-            </Link>
-          )}
+          <Breadcrumb items={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: league.name, href: `/league/${id}/manage` },
+            { label: 'Draft' },
+          ]} />
           <h1 className="text-3xl font-bold">{league.name}</h1>
           <p className="text-muted-foreground">Draft Control Panel</p>
         </div>

@@ -78,6 +78,7 @@ export function DraftBoard({
   const handleClearFilters = useCallback(() => setPoolFilters({}), [])
   const [showAutoPickFlash, setShowAutoPickFlash] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showRefreshHint, setShowRefreshHint] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const isAutoPickingRef = useRef(false)
   const queryClient = useQueryClient()
@@ -112,6 +113,16 @@ export function DraftBoard({
       }
     )
   }
+
+  // Show refresh hint after 15 seconds of disconnection
+  useEffect(() => {
+    if (!isSubscribed && league.status === 'in_progress') {
+      const timer = setTimeout(() => setShowRefreshHint(true), 15000)
+      return () => clearTimeout(timer)
+    } else {
+      setShowRefreshHint(false)
+    }
+  }, [isSubscribed, league.status])
 
   const isActive = league.status === 'in_progress'
   const currentRound = getCurrentRound(league.current_pick_index, league.captains.length)
@@ -315,10 +326,10 @@ export function DraftBoard({
             </p>
           )}
           {isActive && onDeckCaptain && (
-            <p className="text-sm text-muted-foreground">
+            <p className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-sm text-muted-foreground">
               On deck: <span className="font-medium">{onDeckCaptain.name}</span>
               {viewingAsCaptain?.id === onDeckCaptain.id && (
-                <span className="ml-1 font-medium text-primary">(you)</span>
+                <span className="font-medium text-primary">(you)</span>
               )}
             </p>
           )}
@@ -344,6 +355,21 @@ export function DraftBoard({
         </div>
       </div>
 
+      {/* Connection lost banner */}
+      {showRefreshHint && !isSubscribed && isActive && (
+        <div className="flex items-center gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-600 dark:text-yellow-400">
+          <WifiOff className="h-4 w-4 flex-shrink-0" />
+          <span>Connection lost. Try refreshing the page.</span>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="ml-auto font-medium underline"
+          >
+            Refresh
+          </button>
+        </div>
+      )}
+
       {/* Draft Progress Bar */}
       {league.status !== 'not_started' && (
         <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -356,7 +382,7 @@ export function DraftBoard({
 
       {/* Timer, Player Pool, and Queue */}
       <div className={`grid gap-6 ${viewingAsCaptain ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
-        <Card className="relative lg:col-span-1">
+        <Card className="relative lg:col-span-1 sticky top-[57px] z-10 lg:static lg:z-auto">
           <CardHeader>
             <CardTitle>Timer</CardTitle>
           </CardHeader>

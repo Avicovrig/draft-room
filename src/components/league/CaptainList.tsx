@@ -373,7 +373,7 @@ export function CaptainList({ league }: CaptainListProps) {
                             leagueId: league.id,
                           })
                         }
-                        className="h-6 w-6 cursor-pointer rounded border-0 p-0"
+                        className="h-8 w-8 cursor-pointer rounded border-0 p-0"
                         title="Team color"
                       />
                     )}

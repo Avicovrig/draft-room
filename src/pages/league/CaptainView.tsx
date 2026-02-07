@@ -9,6 +9,7 @@ import { useDraft, useCaptainByToken } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { useUpdateCaptainColorAsCaptain } from '@/hooks/useCaptains'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export function CaptainView() {
   const { id } = useParams<{ id: string }>()
@@ -97,6 +98,10 @@ export function CaptainView() {
       <Header />
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
+          <Breadcrumb items={[
+            { label: league.name },
+            { label: `Captain: ${captain.name}` },
+          ]} />
           <h1 className="text-3xl font-bold">{league.name}</h1>
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Drafting as</span>

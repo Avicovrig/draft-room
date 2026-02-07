@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Trophy } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
@@ -6,10 +7,25 @@ import { LeagueCardSkeleton } from '@/components/ui/Skeleton'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { useAuth } from '@/context/AuthContext'
 import { useLeagues } from '@/hooks/useLeagues'
+import { cn } from '@/lib/utils'
+
+const statusLabels: Record<string, string> = {
+  not_started: 'Not Started',
+  in_progress: 'In Progress',
+  paused: 'Paused',
+  completed: 'Completed',
+}
 
 export function Dashboard() {
   const { user } = useAuth()
   const { data: leagues, isLoading, error, refetch } = useLeagues()
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  const filteredLeagues = leagues
+    ? statusFilter === 'all'
+      ? leagues
+      : leagues.filter(l => l.status === statusFilter)
+    : []
 
   return (
     <div className="min-h-screen">
@@ -31,7 +47,27 @@ export function Dashboard() {
           </Link>
         </div>
 
-        <div className="mt-8">
+        {leagues && leagues.length > 0 && (
+          <div className="mt-6 flex gap-2 overflow-x-auto">
+            {['all', 'not_started', 'in_progress', 'paused', 'completed'].map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setStatusFilter(status)}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
+                  statusFilter === status
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {status === 'all' ? 'All' : statusLabels[status]}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-6">
           {isLoading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3].map((i) => (
@@ -41,11 +77,17 @@ export function Dashboard() {
           ) : error ? (
             <ErrorAlert message="Failed to load leagues. Please try again." onRetry={() => refetch()} />
           ) : leagues && leagues.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {leagues.map((league) => (
-                <LeagueCard key={league.id} league={league} />
-              ))}
-            </div>
+            filteredLeagues.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredLeagues.map((league, i) => (
+                  <LeagueCard key={league.id} league={league} index={i} />
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center text-muted-foreground">
+                No {statusLabels[statusFilter]?.toLowerCase()} leagues
+              </div>
+            )
           ) : (
             <div className="rounded-lg border border-dashed border-border p-12 text-center">
               <Trophy className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />

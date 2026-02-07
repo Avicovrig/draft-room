@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Settings, Users, Crown, Share2, Play, Trash2, ListChecks } from 'lucide-react'
+import { Settings, Users, Crown, Share2, Play, Trash2, ListChecks } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -15,6 +15,7 @@ import { CaptainList } from '@/components/league/CaptainList'
 import { ShareLinks } from '@/components/league/ShareLinks'
 import { FieldSchemaList } from '@/components/league/FieldSchemaList'
 import { DraftReadinessChecklist } from '@/components/league/DraftReadinessChecklist'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 type Tab = 'settings' | 'players' | 'captains' | 'fields' | 'share'
 
@@ -79,13 +80,10 @@ export function ManageLeague() {
       <main className="container mx-auto px-4 py-6 sm:p-8">
         {/* Header */}
         <div className="mb-8">
-          <Link
-            to="/dashboard"
-            className="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Back to Dashboard
-          </Link>
+          <Breadcrumb items={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: league.name },
+          ]} />
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-3xl font-bold">{league.name}</h1>

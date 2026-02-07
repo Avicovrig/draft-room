@@ -54,7 +54,7 @@ export function ShareLinks({ league }: ShareLinksProps) {
           <div className="space-y-2">
             <Label>Spectator URL</Label>
             <div className="flex gap-2">
-              <Input value={spectatorUrl} readOnly className="font-mono text-sm" />
+              <Input value={spectatorUrl} readOnly className="font-mono text-xs sm:text-sm" />
               <Button
                 variant="outline"
                 size="icon"
@@ -111,7 +111,7 @@ export function ShareLinks({ league }: ShareLinksProps) {
                       <Input
                         value={captainUrl}
                         readOnly
-                        className="font-mono text-sm"
+                        className="font-mono text-xs sm:text-sm"
                       />
                       <Button
                         variant="outline"

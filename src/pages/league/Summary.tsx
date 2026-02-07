@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Trophy, Users, Zap, Clock, Share2, Check, BarChart3, Timer, Download } from 'lucide-react'
+import { Trophy, Users, Zap, Clock, Share2, Check, BarChart3, Timer, Download } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -11,6 +11,7 @@ import { useAnimatedNumber } from '@/hooks/useAnimatedNumber'
 import { useAuth } from '@/context/AuthContext'
 import { playSound, resumeAudioContext } from '@/lib/sounds'
 import { exportDraftResults } from '@/lib/exportDraftResults'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import type { Captain, Player } from '@/lib/types'
 
 function formatPickTime(seconds: number): string {
@@ -136,14 +137,11 @@ export function Summary() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          {isManager && (
-            <Link to="/dashboard">
-              <Button variant="ghost" size="sm" className="mb-4">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Dashboard
-              </Button>
-            </Link>
-          )}
+          <Breadcrumb items={
+            isManager
+              ? [{ label: 'Dashboard', href: '/dashboard' }, { label: league.name }, { label: 'Summary' }]
+              : [{ label: league.name }, { label: 'Summary' }]
+          } />
 
           {/* Hero Header for Completed Draft */}
           {league.status === 'completed' ? (
@@ -417,8 +415,8 @@ export function Summary() {
                           <th className="pb-2 pr-4">#</th>
                           <th className="pb-2 pr-4">Captain</th>
                           <th className="pb-2 pr-4">Player</th>
-                          <th className="pb-2 pr-4">Time</th>
-                          <th className="pb-2">Type</th>
+                          <th className="hidden pb-2 pr-4 sm:table-cell">Time</th>
+                          <th className="hidden pb-2 sm:table-cell">Type</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -460,11 +458,18 @@ export function Summary() {
                                     {captain?.name ?? 'Unknown'}
                                   </div>
                                 </td>
-                                <td className="py-2 pr-4">{player?.name ?? 'Unknown'}</td>
-                                <td className="py-2 pr-4 text-sm text-muted-foreground">
+                                <td className="py-2 pr-4">
+                                  {player?.name ?? 'Unknown'}
+                                  {pick.is_auto_pick && (
+                                    <span className="ml-1.5 rounded bg-yellow-500/20 px-1.5 py-0.5 text-xs text-yellow-600 sm:hidden dark:text-yellow-400">
+                                      Auto
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="hidden py-2 pr-4 text-sm text-muted-foreground sm:table-cell">
                                   {i === 0 ? '—' : timeDelta || '—'}
                                 </td>
-                                <td className="py-2">
+                                <td className="hidden py-2 sm:table-cell">
                                   {pick.is_auto_pick ? (
                                     <span className="rounded bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-600 dark:text-yellow-400">
                                       Auto

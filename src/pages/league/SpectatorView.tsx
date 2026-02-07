@@ -5,6 +5,7 @@ import { DraftBoard } from '@/components/draft/DraftBoard'
 import { useDraft, useSpectatorAccess } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export function SpectatorView() {
   const { id } = useParams<{ id: string }>()
@@ -84,6 +85,10 @@ export function SpectatorView() {
       <Header />
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
+          <Breadcrumb items={[
+            { label: league.name },
+            { label: 'Spectator' },
+          ]} />
           <h1 className="text-3xl font-bold">{league.name}</h1>
           <p className="text-muted-foreground">Spectator View</p>
         </div>
