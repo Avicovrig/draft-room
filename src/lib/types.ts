@@ -213,6 +213,7 @@ export interface Database {
           field_type: string
           is_required: boolean
           field_order: number
+          field_options: Record<string, unknown> | null
           created_at: string
         }
         Insert: {
@@ -222,6 +223,7 @@ export interface Database {
           field_type?: string
           is_required?: boolean
           field_order?: number
+          field_options?: Record<string, unknown> | null
           created_at?: string
         }
         Update: {
@@ -231,6 +233,7 @@ export interface Database {
           field_type?: string
           is_required?: boolean
           field_order?: number
+          field_options?: Record<string, unknown> | null
           created_at?: string
         }
       }

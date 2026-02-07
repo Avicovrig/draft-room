@@ -446,6 +446,7 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
         <PlayerProfileModal
           player={viewingPlayer}
           customFields={customFieldsMap[viewingPlayer.id] || []}
+          fieldSchemas={fieldSchemas}
           note={notes[viewingPlayer.id]}
           onClose={() => setViewingPlayer(null)}
         />

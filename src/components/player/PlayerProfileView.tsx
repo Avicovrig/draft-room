@@ -1,8 +1,10 @@
-import type { Player, PlayerCustomField } from '@/lib/types'
+import { Check, X as XIcon } from 'lucide-react'
+import type { Player, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 interface PlayerProfileViewProps {
   player: Player
   customFields?: PlayerCustomField[]
+  fieldSchemas?: LeagueFieldSchema[]
 }
 
 function getInitials(name: string): string {
@@ -14,8 +16,42 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function PlayerProfileView({ player, customFields = [] }: PlayerProfileViewProps) {
+function formatFieldValue(field: PlayerCustomField, schema?: LeagueFieldSchema): React.ReactNode {
+  const value = field.field_value
+  if (!value) return '-'
+  if (!schema) return value
+
+  switch (schema.field_type) {
+    case 'checkbox':
+      return value === 'true' ? (
+        <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+          <Check className="h-4 w-4" /> Yes
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1 text-muted-foreground">
+          <XIcon className="h-4 w-4" /> No
+        </span>
+      )
+    case 'number':
+      if (schema.field_options?.unit) {
+        return `${value} ${schema.field_options.unit}`
+      }
+      return value
+    case 'date': {
+      const date = new Date(value)
+      if (isNaN(date.getTime())) return value
+      return schema.field_options?.includeTime
+        ? date.toLocaleString()
+        : date.toLocaleDateString()
+    }
+    default:
+      return value
+  }
+}
+
+export function PlayerProfileView({ player, customFields = [], fieldSchemas = [] }: PlayerProfileViewProps) {
   const sortedCustomFields = [...customFields].sort((a, b) => a.field_order - b.field_order)
+  const schemaMap = new Map(fieldSchemas.map((s) => [s.id, s]))
 
   return (
     <div className="space-y-6">
@@ -50,12 +86,15 @@ export function PlayerProfileView({ player, customFields = [] }: PlayerProfileVi
         <div>
           <h4 className="mb-2 font-semibold">Details</h4>
           <dl className="space-y-2">
-            {sortedCustomFields.map((field) => (
-              <div key={field.id} className="flex justify-between rounded-lg border border-border bg-muted/50 px-3 py-2">
-                <dt className="text-muted-foreground">{field.field_name}</dt>
-                <dd className="font-medium">{field.field_value || '-'}</dd>
-              </div>
-            ))}
+            {sortedCustomFields.map((field) => {
+              const schema = field.schema_id ? schemaMap.get(field.schema_id) : undefined
+              return (
+                <div key={field.id} className="flex justify-between rounded-lg border border-border bg-muted/50 px-3 py-2">
+                  <dt className="text-muted-foreground">{field.field_name}</dt>
+                  <dd className="font-medium">{formatFieldValue(field, schema)}</dd>
+                </div>
+              )
+            })}
           </dl>
         </div>
       )}

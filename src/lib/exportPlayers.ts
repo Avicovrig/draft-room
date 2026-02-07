@@ -1,5 +1,24 @@
 import type { Player, Captain, PlayerCustomField, LeagueFieldSchema } from './types'
 
+function formatExportValue(value: string, schema: LeagueFieldSchema): string {
+  switch (schema.field_type) {
+    case 'checkbox':
+      return value === 'true' ? 'Yes' : 'No'
+    case 'number':
+      if (schema.field_options?.unit) return `${value} ${schema.field_options.unit}`
+      return value
+    case 'date': {
+      const date = new Date(value)
+      if (isNaN(date.getTime())) return value
+      return schema.field_options?.includeTime
+        ? date.toLocaleString()
+        : date.toLocaleDateString()
+    }
+    default:
+      return value
+  }
+}
+
 export async function exportPlayersToSpreadsheet(
   leagueName: string,
   players: Player[],
@@ -49,10 +68,12 @@ export async function exportPlayersToSpreadsheet(
 
     const playerFields = customFieldsMap[player.id] || []
 
-    // Schema field values (by schema_id)
+    // Schema field values (by schema_id), formatted by type
     const schemaValues = sortedSchemas.map((schema) => {
       const field = playerFields.find((f) => f.schema_id === schema.id)
-      return field?.field_value || ''
+      const value = field?.field_value || ''
+      if (!value) return ''
+      return formatExportValue(value, schema)
     })
 
     // Freeform field values (non-schema)

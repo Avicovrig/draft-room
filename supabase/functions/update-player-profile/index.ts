@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
     if (customFields && customFields.length > 0) {
       const { data: requiredSchemas } = await supabaseAdmin
         .from('league_field_schemas')
-        .select('id, field_name')
+        .select('id, field_name, field_type')
         .eq('league_id', player.league_id)
         .eq('is_required', true)
 

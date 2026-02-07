@@ -1,16 +1,17 @@
 import { X, StickyNote } from 'lucide-react'
 import { PlayerProfileView } from './PlayerProfileView'
 import { useModalFocus } from '@/hooks/useModalFocus'
-import type { Player, PlayerCustomField } from '@/lib/types'
+import type { Player, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 interface PlayerProfileModalProps {
   player: Player
   customFields?: PlayerCustomField[]
+  fieldSchemas?: LeagueFieldSchema[]
   note?: string
   onClose: () => void
 }
 
-export function PlayerProfileModal({ player, customFields = [], note, onClose }: PlayerProfileModalProps) {
+export function PlayerProfileModal({ player, customFields = [], fieldSchemas, note, onClose }: PlayerProfileModalProps) {
   const { overlayProps } = useModalFocus({ onClose })
 
   return (
@@ -39,7 +40,7 @@ export function PlayerProfileModal({ player, customFields = [], note, onClose }:
               </div>
             </div>
           )}
-          <PlayerProfileView player={player} customFields={customFields} />
+          <PlayerProfileView player={player} customFields={customFields} fieldSchemas={fieldSchemas} />
         </div>
       </div>
     </div>

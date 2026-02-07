@@ -24,8 +24,10 @@ export function useLeagueFieldSchemas(leagueId: string | undefined) {
 interface CreateFieldSchemaInput {
   league_id: string
   field_name: string
+  field_type?: string
   is_required?: boolean
   field_order: number
+  field_options?: Record<string, unknown> | null
 }
 
 export function useCreateFieldSchema() {
@@ -38,8 +40,10 @@ export function useCreateFieldSchema() {
         .insert({
           league_id: data.league_id,
           field_name: data.field_name,
+          field_type: data.field_type ?? 'text',
           is_required: data.is_required ?? false,
           field_order: data.field_order,
+          field_options: data.field_options ?? null,
         })
         .select()
         .single()
@@ -57,8 +61,10 @@ interface UpdateFieldSchemaInput {
   id: string
   leagueId: string
   field_name?: string
+  field_type?: string
   is_required?: boolean
   field_order?: number
+  field_options?: Record<string, unknown> | null
 }
 
 export function useUpdateFieldSchema() {

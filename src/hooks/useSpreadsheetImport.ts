@@ -112,13 +112,44 @@ export function suggestMappings(headers: string[], fieldSchemas: LeagueFieldSche
   return mappings
 }
 
+function normalizeImportValue(value: string, schema: LeagueFieldSchema): string {
+  switch (schema.field_type) {
+    case 'checkbox': {
+      const lower = value.toLowerCase().trim()
+      if (['yes', 'true', '1'].includes(lower)) return 'true'
+      if (['no', 'false', '0'].includes(lower)) return 'false'
+      return value
+    }
+    case 'number': {
+      // Strip unit suffix if present
+      const unit = schema.field_options?.unit as string | undefined
+      if (unit) {
+        const stripped = value.replace(new RegExp(`\\s*${unit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'), '')
+        if (stripped !== value && !isNaN(Number(stripped))) return stripped
+      }
+      return value
+    }
+    case 'date': {
+      const date = new Date(value)
+      if (isNaN(date.getTime())) return value
+      return schema.field_options?.includeTime
+        ? date.toISOString().slice(0, 16)
+        : date.toISOString().slice(0, 10)
+    }
+    default:
+      return value
+  }
+}
+
 export function transformData(
   data: SpreadsheetData,
   mappings: Record<string, PlayerFieldMapping>,
-  skipFirstRow: boolean
+  skipFirstRow: boolean,
+  fieldSchemas: LeagueFieldSchema[] = []
 ): ParsedPlayer[] {
   const rows = skipFirstRow ? data.rows : [data.headers, ...data.rows]
   const headers = data.headers
+  const schemaMap = new Map(fieldSchemas.map((s) => [s.id, s]))
 
   return rows.map((row, index) => {
     const player: ParsedPlayer = {
@@ -149,9 +180,11 @@ export function transformData(
             break
         }
       } else if (mapping.type === 'schema' && value) {
+        const schema = schemaMap.get(mapping.schemaId)
+        const normalizedValue = schema ? normalizeImportValue(value, schema) : value
         player.customFields.push({
           field_name: mapping.fieldName,
-          field_value: value,
+          field_value: normalizedValue,
           schema_id: mapping.schemaId,
         })
       } else if (mapping.type === 'custom' && value) {

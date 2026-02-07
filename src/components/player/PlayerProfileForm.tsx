@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Textarea } from '@/components/ui/Textarea'
 import { ImageCropper } from '@/components/ui/ImageCropper'
+import { Select } from '@/components/ui/Select'
 import { X, Plus, Camera } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import type { Player, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
@@ -54,9 +55,10 @@ export function PlayerProfileForm({
     const map: Record<string, { id?: string; value: string }> = {}
     for (const schema of fieldSchemas) {
       const existing = customFields.find((f) => f.schema_id === schema.id)
+      const defaultValue = schema.field_type === 'checkbox' ? 'false' : ''
       map[schema.id] = {
         id: existing?.id,
-        value: existing?.field_value || '',
+        value: existing?.field_value || defaultValue,
       }
     }
     return map
@@ -216,27 +218,96 @@ export function PlayerProfileForm({
       {fieldSchemas.length > 0 && (
         <div className="space-y-3">
           <Label>League Fields</Label>
-          {fieldSchemas.map((schema) => (
-            <div key={schema.id} className="space-y-1">
-              <label className="text-sm font-medium">
-                {schema.field_name}
-                {schema.is_required && (
-                  <span className="ml-1 text-destructive">*</span>
+          {fieldSchemas.map((schema) => {
+            const value = schemaFieldValues[schema.id]?.value || ''
+            const errorClass = schemaErrors[schema.id] ? 'border-destructive' : ''
+            return (
+              <div key={schema.id} className="space-y-1">
+                {schema.field_type !== 'checkbox' && (
+                  <label className="text-sm font-medium">
+                    {schema.field_name}
+                    {schema.is_required && (
+                      <span className="ml-1 text-destructive">*</span>
+                    )}
+                  </label>
                 )}
-              </label>
-              <Input
-                placeholder={`Enter ${schema.field_name.toLowerCase()}`}
-                value={schemaFieldValues[schema.id]?.value || ''}
-                onChange={(e) => updateSchemaField(schema.id, e.target.value)}
-                className={schemaErrors[schema.id] ? 'border-destructive' : ''}
-              />
-              {schemaErrors[schema.id] && (
-                <p className="text-xs text-destructive">
-                  {schema.field_name} is required
-                </p>
-              )}
-            </div>
-          ))}
+
+                {(!schema.field_type || schema.field_type === 'text') && (
+                  <Input
+                    placeholder={`Enter ${schema.field_name.toLowerCase()}`}
+                    value={value}
+                    onChange={(e) => updateSchemaField(schema.id, e.target.value)}
+                    className={errorClass}
+                  />
+                )}
+
+                {schema.field_type === 'number' && (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      step="any"
+                      placeholder={`Enter ${schema.field_name.toLowerCase()}`}
+                      value={value}
+                      onChange={(e) => updateSchemaField(schema.id, e.target.value)}
+                      className={`flex-1 ${errorClass}`}
+                    />
+                    {!!schema.field_options?.unit && (
+                      <span className="text-sm text-muted-foreground">
+                        {String(schema.field_options.unit)}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {schema.field_type === 'date' && (
+                  <Input
+                    type={schema.field_options?.includeTime ? 'datetime-local' : 'date'}
+                    value={value}
+                    onChange={(e) => updateSchemaField(schema.id, e.target.value)}
+                    className={errorClass}
+                  />
+                )}
+
+                {schema.field_type === 'dropdown' && (
+                  <Select
+                    value={value}
+                    onChange={(e) => updateSchemaField(schema.id, e.target.value)}
+                    className={errorClass}
+                  >
+                    <option value="">Select {schema.field_name.toLowerCase()}</option>
+                    {((schema.field_options?.options as string[]) || []).map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+
+                {schema.field_type === 'checkbox' && (
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={value === 'true'}
+                      onChange={(e) => updateSchemaField(schema.id, e.target.checked ? 'true' : 'false')}
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    <span className="text-sm font-medium">
+                      {(schema.field_options?.label as string) || schema.field_name}
+                      {schema.is_required && (
+                        <span className="ml-1 text-destructive">*</span>
+                      )}
+                    </span>
+                  </label>
+                )}
+
+                {schemaErrors[schema.id] && (
+                  <p className="text-xs text-destructive">
+                    {schema.field_name} is required
+                  </p>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 
