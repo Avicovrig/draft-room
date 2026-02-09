@@ -16,7 +16,9 @@ Draft Room is a custom league draft application. League managers can create leag
 - `npm run dev:qa` - Start dev server against QA Supabase (uses `.env.qa`)
 - `npm run build:qa` - Build for QA environment
 - `supabase functions deploy <function-name>` - Deploy a single edge function
-- No test framework is configured
+- `npm test` - Run unit tests (Vitest)
+- `npm run test:watch` - Run tests in watch mode during development
+- `npm run test:coverage` - Run tests with coverage report
 
 ## Architecture
 
@@ -93,6 +95,17 @@ IN_PROGRESS → COMPLETED (all players drafted)
 - Wrap route content with ErrorBoundary for graceful error handling
 - Hooks follow the pattern: `use<Entity>` for queries, `useCreate<Entity>`/`useUpdate<Entity>`/`useDelete<Entity>` for mutations
 - Tables with unique constraints on position columns (`captains.draft_position`, `captain_draft_queues.position`) use two-phase updates: set positions to negative temps first, then final values
+
+## Testing
+
+- **Framework**: Vitest (config in `vitest.config.ts`)
+- **Test location**: `__tests__/` directories adjacent to source files (e.g., `src/lib/__tests__/draft.test.ts`)
+- **All new pure functions MUST have corresponding unit tests.** When adding a function to `src/lib/` or `supabase/functions/_shared/`, write tests for it.
+- **Edge function shared utilities** (`supabase/functions/_shared/`) use Deno-style `.ts` imports that Vitest can't resolve directly. Tests for these re-implement the logic under test. When modifying these files, update both the source and the corresponding test.
+- **Draft logic is duplicated** in `src/lib/draft.ts` and edge functions (`make-pick`, `auto-pick`). Tests cover the frontend version. When modifying draft logic, update both locations and verify tests still pass.
+- **Pre-commit hook**: Husky runs `lint-staged` (ESLint) on staged `.ts`/`.tsx` files before every commit.
+- **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) runs lint, type check, tests, and build on every push to `main` and on PRs.
+- **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability.
 
 ## Environment Variables
 
