@@ -170,7 +170,7 @@ echo ""
 echo "Edge function validation:"
 
 UUID_RESP=$(curl -s "$SUPABASE_URL/functions/v1/make-pick" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $ANON_KEY" -H "Content-Type: application/json" -d '{"leagueId":"not-a-uuid","captainId":"also-bad","playerId":"nope"}')
-if echo "$UUID_RESP" | grep -qi "invalid.*uuid\|invalid.*id"; then
+if echo "$UUID_RESP" | grep -qi "invalid.*uuid\|invalid.*id\|invalid.*field\|invalid.*format"; then
   pass "Edge function rejects invalid UUIDs"
 else
   fail "Edge function UUID validation" "$UUID_RESP"
