@@ -102,7 +102,7 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
   // Calculate derived values with memoization
   const availablePlayers = useMemo(
     () => (league ? getAvailablePlayers(league.players, league.captains) : []),
-    [league?.players, league?.captains]
+    [league]
   )
 
   const totalPicks = useMemo(
@@ -268,6 +268,7 @@ export function useCaptainByToken(leagueId: string | undefined, token: string | 
       return (data as ValidatedCaptain) ?? null
     },
     enabled: !!leagueId && !!token,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -289,5 +290,6 @@ export function useSpectatorAccess(leagueId: string | undefined, token: string |
       return data as boolean
     },
     enabled: !!leagueId && !!token,
+    staleTime: 5 * 60 * 1000,
   })
 }

@@ -32,6 +32,7 @@ export function usePlayerProfile(playerId: string | undefined) {
       } as PlayerPublicWithCustomFields
     },
     enabled: !!playerId,
+    staleTime: 30 * 1000,
   })
 }
 
@@ -54,6 +55,7 @@ export function usePlayerByEditToken(playerId: string | undefined, editToken: st
       return (data as ValidatedPlayerProfile) ?? null
     },
     enabled: !!playerId && !!editToken,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

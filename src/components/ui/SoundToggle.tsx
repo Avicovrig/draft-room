@@ -1,14 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Volume2, VolumeX } from 'lucide-react'
 import { Button } from './Button'
 import { isSoundEnabled, setSoundEnabled } from '@/lib/sounds'
 
 export function SoundToggle() {
-  const [enabled, setEnabled] = useState(true)
-
-  useEffect(() => {
-    setEnabled(isSoundEnabled())
-  }, [])
+  const [enabled, setEnabled] = useState(() => isSoundEnabled())
 
   function toggle() {
     const newValue = !enabled

@@ -40,15 +40,15 @@ function App() {
                   </div>
                 }>
                 <Routes>
-              <Route path="/" element={<PageTransition><Landing /></PageTransition>} />
-              <Route path="/auth/login" element={<PageTransition><Login /></PageTransition>} />
-              <Route path="/auth/signup" element={<PageTransition><Signup /></PageTransition>} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/" element={<ErrorBoundary><PageTransition><Landing /></PageTransition></ErrorBoundary>} />
+              <Route path="/auth/login" element={<ErrorBoundary><PageTransition><Login /></PageTransition></ErrorBoundary>} />
+              <Route path="/auth/signup" element={<ErrorBoundary><PageTransition><Signup /></PageTransition></ErrorBoundary>} />
+              <Route path="/auth/callback" element={<ErrorBoundary><AuthCallback /></ErrorBoundary>} />
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <PageTransition><Dashboard /></PageTransition>
+                    <ErrorBoundary><PageTransition><Dashboard /></PageTransition></ErrorBoundary>
                   </ProtectedRoute>
                 }
               />
@@ -56,7 +56,7 @@ function App() {
                 path="/league/new"
                 element={
                   <ProtectedRoute>
-                    <PageTransition><NewLeague /></PageTransition>
+                    <ErrorBoundary><PageTransition><NewLeague /></PageTransition></ErrorBoundary>
                   </ProtectedRoute>
                 }
               />
@@ -64,7 +64,7 @@ function App() {
                 path="/league/:id/manage"
                 element={
                   <ProtectedRoute>
-                    <PageTransition><ManageLeague /></PageTransition>
+                    <ErrorBoundary><PageTransition><ManageLeague /></PageTransition></ErrorBoundary>
                   </ProtectedRoute>
                 }
               />
@@ -72,16 +72,16 @@ function App() {
                 path="/league/:id/draft"
                 element={
                   <ProtectedRoute>
-                    <PageTransition><DraftView /></PageTransition>
+                    <ErrorBoundary><PageTransition><DraftView /></PageTransition></ErrorBoundary>
                   </ProtectedRoute>
                 }
               />
               {/* Token-based routes (no auth required) */}
-              <Route path="/league/:id/captain" element={<PageTransition><CaptainView /></PageTransition>} />
-              <Route path="/league/:id/spectate" element={<PageTransition><SpectatorView /></PageTransition>} />
-              <Route path="/league/:id/summary" element={<PageTransition><Summary /></PageTransition>} />
-              <Route path="/player/:playerId/edit" element={<PageTransition><EditProfile /></PageTransition>} />
-              <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+              <Route path="/league/:id/captain" element={<ErrorBoundary><PageTransition><CaptainView /></PageTransition></ErrorBoundary>} />
+              <Route path="/league/:id/spectate" element={<ErrorBoundary><PageTransition><SpectatorView /></PageTransition></ErrorBoundary>} />
+              <Route path="/league/:id/summary" element={<ErrorBoundary><PageTransition><Summary /></PageTransition></ErrorBoundary>} />
+              <Route path="/player/:playerId/edit" element={<ErrorBoundary><PageTransition><EditProfile /></PageTransition></ErrorBoundary>} />
+              <Route path="*" element={<ErrorBoundary><PageTransition><NotFound /></PageTransition></ErrorBoundary>} />
                 </Routes>
                 </Suspense>
               </BrowserRouter>

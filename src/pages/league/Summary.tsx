@@ -36,15 +36,15 @@ function AnimatedStat({ value, delay = 0 }: { value: number; delay?: number }) {
 export function Summary() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
-  const [showConfetti, setShowConfetti] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const { league, isLoading, error } = useDraft(id)
 
-  // Play celebration when draft is complete (only once per session)
+  const showConfetti = league?.status === 'completed'
+
+  // Play celebration sound when draft is complete (only once per session)
   useEffect(() => {
     if (league?.status === 'completed') {
-      setShowConfetti(true)
       const celebrationKey = `celebrated-${id}`
       if (!sessionStorage.getItem(celebrationKey)) {
         sessionStorage.setItem(celebrationKey, '1')

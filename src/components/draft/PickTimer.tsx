@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTimer } from '@/hooks/useTimer'
 import { formatTime } from '@/lib/draft'
 import { cn } from '@/lib/utils'
@@ -26,17 +26,17 @@ export function PickTimer({
   const lastPlayedSecondRef = useRef<number | null>(null)
   const pickStartRef = useRef(currentPickStartedAt)
 
-  const [shakeKey, setShakeKey] = useState(0)
-
   const percentage = (remainingTime / timeLimitSeconds) * 100
   const isLow = remainingTime <= 10
   const isCritical = remainingTime <= 5
+  // Derive shake key from remaining seconds — changes each second to re-trigger CSS animation
+  const shakeKey = Math.ceil(remainingTime)
 
   // Reset when pick changes
-  if (currentPickStartedAt !== pickStartRef.current) {
+  useEffect(() => {
     pickStartRef.current = currentPickStartedAt
     lastPlayedSecondRef.current = null
-  }
+  }, [currentPickStartedAt])
 
   // Play tick sound once per second for last 10 seconds
   useEffect(() => {
@@ -52,13 +52,20 @@ export function PickTimer({
       lastPlayedSecondRef.current = wholeSecond
       resumeAudioContext()
       playSound('timerWarning')
-      // Re-trigger shake animation each second
-      setShakeKey((k) => k + 1)
     }
   }, [remainingTime, isActive])
 
   return (
-    <div className="text-center">
+    <div
+      className="text-center"
+      role="status"
+      aria-live="polite"
+      aria-label={
+        isExpired ? 'Time expired, auto-picking' :
+        isActive ? `${formatTime(remainingTime)} remaining` :
+        'Waiting to start'
+      }
+    >
       <div
         key={isLow && !isCritical ? shakeKey : undefined}
         className={cn(

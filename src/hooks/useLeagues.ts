@@ -26,6 +26,7 @@ export function useLeagues() {
       return data as LeaguePublic[]
     },
     enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -74,6 +75,7 @@ export function useLeagueTokens(leagueId: string | undefined) {
       return data as LeagueTokens
     },
     enabled: !!leagueId && !!user,
+    staleTime: 60 * 60 * 1000,
   })
 }
 

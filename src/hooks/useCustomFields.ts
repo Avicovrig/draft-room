@@ -40,6 +40,7 @@ export function useLeagueCustomFields(leagueId: string | undefined) {
       return map
     },
     enabled: !!leagueId,
+    staleTime: 30 * 1000,
   })
 }
 
