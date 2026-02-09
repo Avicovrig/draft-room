@@ -10,25 +10,27 @@ Draft Room is a custom league draft application. League managers can create leag
 
 ## Commands
 
-- `npm run dev` - Start development server (http://localhost:5173)
+- `npm run dev` - Start dev server against QA Supabase (http://localhost:5173, mode=qa)
+- `npm run dev:prod` - Start dev server against production Supabase
 - `npm run build` - Type-check with TypeScript then build for production
-- `npm run lint` - Run ESLint
-- `npm run dev:qa` - Start dev server against QA Supabase (uses `.env.qa`)
 - `npm run build:qa` - Build for QA environment
-- `supabase functions deploy <function-name>` - Deploy a single edge function
+- `npm run lint` - Run ESLint
 - `npm test` - Run unit tests (Vitest)
 - `npm run test:watch` - Run tests in watch mode during development
 - `npm run test:coverage` - Run tests with coverage report
+- `supabase functions deploy <function-name>` - Deploy a single edge function
+- `./scripts/smoke-test.sh [qa|prod]` - Post-deployment verification
 
 ## Architecture
 
 ### Frontend
 
-- **Routing**: React Router v7, configured in `App.tsx`. Protected routes use `<ProtectedRoute>` wrapper (requires Supabase auth). Token-based routes (captain, spectator) have no auth.
+- **Routing**: React Router v7, configured in `App.tsx`. Protected routes use `<ProtectedRoute>` wrapper (requires Supabase auth). Token-based routes (captain, spectator, player edit) have no auth.
 - **State**: TanStack Query for all server state. Hooks in `src/hooks/` wrap Supabase queries as TanStack Query hooks (`useQuery`/`useMutation`). React Context only for auth (`AuthContext`) and theme (`ThemeContext`).
 - **Styling**: Tailwind v4 with CSS variables defined in `index.css`. Components follow shadcn/ui patterns using `class-variance-authority` for variants. Use `cn()` from `@/lib/utils` for conditional classNames.
 - **Path aliases**: `@/*` maps to `src/*` (configured in `tsconfig.app.json` and `vite.config.ts`)
 - **Forms**: React Hook Form + Zod validation
+- **TypeScript**: Strict mode with `noUnusedLocals`/`noUnusedParameters` enforced — removing code that references variables/imports will cause build failures if you don't clean up unused references.
 
 ### Backend (Supabase Edge Functions)
 
@@ -37,10 +39,24 @@ All draft-critical mutations go through Deno edge functions in `supabase/functio
 - **`make-pick`** - Captain or manager makes a pick. Validates turn order, player availability, captain token. Handles race conditions via unique constraint on `pick_number`. Rolls back pick/player writes if later steps fail.
 - **`auto-pick`** - Called on timer expiry or when captain has `auto_pick_enabled`. Picks from captain's draft queue first, falls back to random. Has 2-second grace period on timer validation. Uses `expectedPickIndex` for idempotency. Rolls back on partial failure.
 - **`toggle-auto-pick`** - Toggles a captain's auto-pick setting. Validates captain belongs to the specified league.
-- **`update-player-profile`** - Player self-service profile updates via edit token
-- **`update-captain-color`** - Updates a captain's team color
+- **`update-player-profile`** - Player self-service profile updates via edit token. Validates required schema fields, rejects HTML in field names/values.
+- **`update-captain-color`** - Updates a captain's team color, team name, and team photo.
+- **`restart-draft`** - Manager-only. Deletes all picks, resets players, sets league back to `not_started`. Requires JWT auth.
+- **`undo-pick`** - Manager-only. Removes last pick, resets that player, decrements pick index. Requires JWT auth.
 
-All edge functions validate UUID format on ID parameters before hitting the database.
+All edge functions share utilities in `supabase/functions/_shared/`: CORS origin checking (`cors.ts`), rate limiting (`rateLimit.ts`), UUID/URL validation (`validation.ts`), manager JWT auth (`auth.ts`), and audit logging (`audit.ts`). All validate UUID format on ID parameters before hitting the database.
+
+### Token Security
+
+Token columns (`captains.access_token`, `players.edit_token`, `leagues.spectator_token`) are hidden from the `anon` and `authenticated` Postgres roles via column-level SELECT grants (migrations 013-014). Client-facing queries cannot read tokens.
+
+Access is mediated through `SECURITY DEFINER` RPCs that run as the database owner:
+- **`validate_captain_token(league_id, token)`** → captain row + `linked_player_edit_token`
+- **`validate_spectator_token(league_id, token)`** → boolean
+- **`validate_player_edit_token(player_id, token)`** → player row + custom fields + navigation tokens
+- **`get_league_tokens(league_id)`** → all tokens for a league (manager-only, checks `auth.uid()`)
+
+Frontend uses `useSecureToken` hook (`src/hooks/useSecureToken.ts`) which reads `?token=` from the URL on mount, stores it in `sessionStorage`, and strips it from the URL via `history.replaceState`.
 
 ### Real-time Data Flow
 
@@ -63,11 +79,11 @@ Server-authoritative: `leagues.current_pick_started_at` is the source of truth. 
 
 ### Database Schema
 
-Seven tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_picks`, `captain_draft_queues`, `league_field_schemas`. Full schema in `docs/architecture.md`. Types in `src/lib/types.ts` mirror the DB schema with `Database` interface and convenience aliases (`League`, `Captain`, `Player`, etc.).
+Eight tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_picks`, `captain_draft_queues`, `league_field_schemas`, `audit_logs`. Full schema in `docs/architecture.md`. Types in `src/lib/types.ts` mirror the DB schema with `Database` interface and convenience aliases (`League`, `Captain`, `Player`, etc.). Public variants (`CaptainPublic`, `PlayerPublic`, `LeaguePublic`, `LeagueFullPublic`) omit token columns and are used throughout the frontend.
 
-**Important**: `useLeague` selects explicit columns (not `*`) from related tables to minimize payload. When adding new columns to the schema, they must also be added to the select in `src/hooks/useLeagues.ts`.
+**Important**: `useLeague` selects explicit columns (not `*`) from related tables to minimize payload and because token columns are not accessible. When adding new columns to the schema, they must also be added to the select in `src/hooks/useLeagues.ts`.
 
-Migrations are in `supabase/migrations/` (001-010), applied sequentially.
+Migrations are in `supabase/migrations/` (001-014), applied sequentially.
 
 ### Draft State Machine
 
@@ -86,6 +102,8 @@ IN_PROGRESS → COMPLETED (all players drafted)
 - **Spectator**: Token-based URL (`/league/:id/spectate?token=<spectator_token>`). Read-only view.
 - **Player**: Token-based URL (`/player/:playerId/edit?token=<edit_token>`). Can edit own profile.
 
+Token is stripped from the URL on page load and stored in `sessionStorage` via `useSecureToken`. Token-based pages validate access through RPCs, not direct column queries.
+
 ## Code Conventions
 
 - Use `@/` path alias for imports from src
@@ -95,21 +113,25 @@ IN_PROGRESS → COMPLETED (all players drafted)
 - Wrap route content with ErrorBoundary for graceful error handling
 - Hooks follow the pattern: `use<Entity>` for queries, `useCreate<Entity>`/`useUpdate<Entity>`/`useDelete<Entity>` for mutations
 - Tables with unique constraints on position columns (`captains.draft_position`, `captain_draft_queues.position`) use two-phase updates: set positions to negative temps first, then final values
+- All modals use `useModalFocus` hook (`src/hooks/useModalFocus.ts`) for ESC key, click-outside, body scroll lock, focus trap, and ARIA attributes
+- `DraftBoard` receives props from 3 callers (`DraftView`, `CaptainView`, `SpectatorView`). Adding new props requires updating all 3.
+- `Button` component accepts `loading` boolean — shows spinner and auto-disables. Use this for all async actions.
 
 ## Testing
 
-- **Framework**: Vitest (config in `vitest.config.ts`)
+- **Framework**: Vitest (config in `vitest.config.ts`), globals enabled (`describe`/`it`/`expect` available without imports)
 - **Test location**: `__tests__/` directories adjacent to source files (e.g., `src/lib/__tests__/draft.test.ts`)
 - **All new pure functions MUST have corresponding unit tests.** When adding a function to `src/lib/` or `supabase/functions/_shared/`, write tests for it.
 - **Edge function shared utilities** (`supabase/functions/_shared/`) use Deno-style `.ts` imports that Vitest can't resolve directly. Tests for these re-implement the logic under test. When modifying these files, update both the source and the corresponding test.
 - **Draft logic is duplicated** in `src/lib/draft.ts` and edge functions (`make-pick`, `auto-pick`). Tests cover the frontend version. When modifying draft logic, update both locations and verify tests still pass.
 - **Pre-commit hook**: Husky runs `lint-staged` (ESLint) on staged `.ts`/`.tsx` files before every commit.
 - **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) runs lint, type check, tests, and build on every push to `main` and on PRs.
-- **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability.
+- **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability. For QA, pass `QA_FRONTEND_URL` env var since Vercel preview URLs change each deploy.
 
 ## Environment Variables
 
-Copy `.env.example` to `.env.local` and set:
+Vite loads `.env.[mode]` automatically. Local dev defaults to QA mode.
+
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
 
@@ -117,6 +139,6 @@ Edge functions use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (set automatic
 
 ## Supabase Setup
 
-1. Run migrations from `supabase/migrations/` in order
-2. Deploy edge functions: `supabase functions deploy auto-pick`, etc.
+1. Run migrations from `supabase/migrations/` in order (001-014)
+2. Deploy all 7 edge functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`
 3. Enable realtime on tables: `leagues`, `players`, `draft_picks`, `captains`
