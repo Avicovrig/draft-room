@@ -298,3 +298,34 @@ export interface PlayerWithCustomFields extends Player {
   custom_fields: PlayerCustomField[]
 }
 
+// Public types without sensitive token columns (used by frontend queries)
+export type CaptainPublic = Omit<Captain, 'access_token'>
+export type PlayerPublic = Omit<Player, 'edit_token'>
+export type LeaguePublic = Omit<League, 'spectator_token'>
+
+export interface LeagueFullPublic extends LeaguePublic {
+  captains: CaptainPublic[]
+  players: PlayerPublic[]
+  draft_picks: DraftPick[]
+}
+
+export interface PlayerPublicWithCustomFields extends PlayerPublic {
+  custom_fields: PlayerCustomField[]
+}
+
+// RPC response types
+export interface LeagueTokens {
+  spectator_token: string
+  captains: { id: string; name: string; access_token: string }[]
+  players: { id: string; name: string; edit_token: string }[]
+}
+
+export interface ValidatedCaptain extends CaptainPublic {
+  linked_player_edit_token: string | null
+}
+
+export interface ValidatedPlayerProfile extends PlayerPublicWithCustomFields {
+  linked_captain_access_token: string | null
+  league_spectator_token: string | null
+}
+

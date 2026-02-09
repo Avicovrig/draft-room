@@ -18,18 +18,18 @@ import { playSound, resumeAudioContext } from '@/lib/sounds'
 import { useDraftQueue, useAddToQueue } from '@/hooks/useDraftQueue'
 import { useDraftNotes } from '@/hooks/useDraftNotes'
 import { useAuth } from '@/context/AuthContext'
-import type { LeagueFull, Captain, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
+import type { LeagueFullPublic, CaptainPublic, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 interface DraftBoardProps {
-  league: LeagueFull
-  currentCaptain: Captain | undefined
-  availablePlayers: LeagueFull['players']
+  league: LeagueFullPublic
+  currentCaptain: CaptainPublic | undefined
+  availablePlayers: LeagueFullPublic['players']
   pickOrder: string[]
   isSubscribed: boolean
   customFieldsMap?: Record<string, PlayerCustomField[]>
   canPick: boolean
   isManager: boolean
-  viewingAsCaptain?: Captain
+  viewingAsCaptain?: CaptainPublic
   captainToken?: string
   onStartDraft: () => Promise<void>
   onPauseDraft: () => Promise<void>

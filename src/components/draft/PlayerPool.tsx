@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { cn } from '@/lib/utils'
-import type { Player, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
+import type { PlayerPublic, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 export type SortOption = 'default' | 'name-asc' | 'name-desc' | `field:${string}`
 
@@ -50,7 +50,7 @@ function compareFieldValues(aVal: string | undefined, bVal: string | undefined, 
 }
 
 interface PlayerPoolProps {
-  players: Player[]
+  players: PlayerPublic[]
   customFieldsMap?: Record<string, PlayerCustomField[]>
   canPick: boolean
   onPick: (playerId: string) => void
@@ -84,7 +84,7 @@ function getInitials(name: string): string {
 export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isPicking, showExpandedDetails = false, onAddToQueue, queuedPlayerIds = new Set(), isAddingToQueue = false, search: controlledSearch, onSearchChange, sortBy: controlledSortBy, onSortChange, searchInputRef: externalSearchRef, notes = {}, onNoteChange, fieldSchemas = [], filters = {}, onFilterChange, onClearFilters }: PlayerPoolProps) {
   const [localSearch, setLocalSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null)
+  const [viewingPlayer, setViewingPlayer] = useState<PlayerPublic | null>(null)
   const [localSortBy, setLocalSortBy] = useState<SortOption>('default')
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)

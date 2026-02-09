@@ -7,10 +7,10 @@ import { ImageCropper } from '@/components/ui/ImageCropper'
 import { Select } from '@/components/ui/Select'
 import { X, Plus, Camera } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
-import type { Player, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
+import type { PlayerPublic, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 interface PlayerProfileFormProps {
-  player: Player
+  player: PlayerPublic
   customFields?: PlayerCustomField[]
   fieldSchemas?: LeagueFieldSchema[]
   allowFreeformFields?: boolean

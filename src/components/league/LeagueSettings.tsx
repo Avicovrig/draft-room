@@ -10,7 +10,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useToast } from '@/components/ui/Toast'
 import { useUpdateLeague } from '@/hooks/useLeagues'
 import { toDatetimeLocal, fromDatetimeLocal } from '@/lib/draft'
-import type { LeagueFull } from '@/lib/types'
+import type { LeagueFullPublic } from '@/lib/types'
 
 const settingsSchema = z.object({
   name: z.string().trim().min(1, 'League name is required').max(100),
@@ -22,7 +22,7 @@ const settingsSchema = z.object({
 
 
 interface LeagueSettingsProps {
-  league: LeagueFull
+  league: LeagueFullPublic
 }
 
 export function LeagueSettings({ league }: LeagueSettingsProps) {

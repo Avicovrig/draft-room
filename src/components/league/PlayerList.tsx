@@ -13,11 +13,12 @@ import { useToast } from '@/components/ui/Toast'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { getAvailablePlayers } from '@/lib/draft'
 import { exportPlayersToSpreadsheet } from '@/lib/exportPlayers'
-import type { LeagueFull, Player, PlayerCustomField } from '@/lib/types'
+import type { LeagueFullPublic, PlayerPublic, PlayerCustomField, LeagueTokens } from '@/lib/types'
 
 interface PlayerListProps {
-  league: LeagueFull
+  league: LeagueFullPublic
   customFieldsMap?: Record<string, PlayerCustomField[]>
+  tokens?: LeagueTokens | null
 }
 
 function getInitials(name: string): string {
@@ -42,10 +43,10 @@ function EditProfileModal({ children, onClose }: { children: React.ReactNode; on
   )
 }
 
-export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
+export function PlayerList({ league, customFieldsMap = {}, tokens }: PlayerListProps) {
   const [newPlayerName, setNewPlayerName] = useState('')
   const [showImportModal, setShowImportModal] = useState(false)
-  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
+  const [editingPlayer, setEditingPlayer] = useState<PlayerPublic | null>(null)
 
   const { addToast } = useToast()
   const { data: fieldSchemas } = useLeagueFieldSchemas(league.id)
@@ -118,12 +119,18 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
     }
   }
 
-  function getPlayerEditUrl(player: Player): string {
-    return `${window.location.origin}/player/${player.id}/edit?token=${player.edit_token}`
+  function getPlayerEditUrl(player: PlayerPublic): string | null {
+    const tokenEntry = tokens?.players.find((p) => p.id === player.id)
+    if (!tokenEntry) return null
+    return `${window.location.origin}/player/${player.id}/edit?token=${tokenEntry.edit_token}`
   }
 
-  async function handleCopyPlayerUrl(player: Player) {
+  async function handleCopyPlayerUrl(player: PlayerPublic) {
     const url = getPlayerEditUrl(player)
+    if (!url) {
+      addToast('Token not available yet', 'error')
+      return
+    }
     try {
       await navigator.clipboard.writeText(url)
       addToast(`Copied ${player.name}'s profile link`, 'success')
@@ -132,8 +139,9 @@ export function PlayerList({ league, customFieldsMap = {} }: PlayerListProps) {
     }
   }
 
-  function handleOpenPlayerUrl(player: Player) {
+  function handleOpenPlayerUrl(player: PlayerPublic) {
     const url = getPlayerEditUrl(player)
+    if (!url) return
     window.open(url, '_blank')
   }
 

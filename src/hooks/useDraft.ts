@@ -1,17 +1,17 @@
 import { useEffect, useCallback, useMemo, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useLeague, useUpdateLeague } from './useLeagues'
 import { getPickOrder, getCaptainAtPick, getAvailablePlayers } from '@/lib/draft'
-import type { LeagueFull, Player, Captain } from '@/lib/types'
+import type { LeagueFullPublic, PlayerPublic, CaptainPublic, ValidatedCaptain } from '@/lib/types'
 
 interface UseDraftReturn {
-  league: LeagueFull | null | undefined
+  league: LeagueFullPublic | null | undefined
   isLoading: boolean
   error: Error | null
   isSubscribed: boolean
-  currentCaptain: Captain | undefined
-  availablePlayers: Player[]
+  currentCaptain: CaptainPublic | undefined
+  availablePlayers: PlayerPublic[]
   pickOrder: string[]
   totalPicks: number
   startDraft: () => Promise<void>
@@ -157,56 +157,37 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
   const restartDraft = useCallback(async () => {
     if (!league || league.status !== 'paused') return
 
-    // Delete all draft picks
-    await supabase
-      .from('draft_picks')
-      .delete()
-      .eq('league_id', league.id)
-
-    // Reset all players' draft status
-    await supabase
-      .from('players')
-      .update({ drafted_by_captain_id: null, draft_pick_number: null })
-      .eq('league_id', league.id)
-
-    // Reset league status
-    await updateLeague.mutateAsync({
-      id: league.id,
-      status: 'not_started',
-      current_pick_index: 0,
-      current_pick_started_at: null,
+    const response = await supabase.functions.invoke('restart-draft', {
+      body: { leagueId: league.id },
     })
-  }, [league, updateLeague])
+
+    if (response.error) {
+      throw new Error(response.error.message || 'Failed to restart draft')
+    }
+    if (response.data?.error) {
+      throw new Error(response.data.error)
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['league', league.id] })
+  }, [league, queryClient])
 
   const undoLastPick = useCallback(async () => {
     if (!league || league.draft_picks.length === 0) return
     if (league.status !== 'in_progress' && league.status !== 'paused') return
 
-    // Find the last pick
-    const sortedPicks = [...league.draft_picks].sort((a, b) => b.pick_number - a.pick_number)
-    const lastPick = sortedPicks[0]
-
-    // Delete the draft pick
-    await supabase
-      .from('draft_picks')
-      .delete()
-      .eq('id', lastPick.id)
-
-    // Reset the player's draft status
-    await supabase
-      .from('players')
-      .update({ drafted_by_captain_id: null, draft_pick_number: null })
-      .eq('id', lastPick.player_id)
-
-    // Decrement pick index and reset timer
-    await updateLeague.mutateAsync({
-      id: league.id,
-      current_pick_index: league.current_pick_index - 1,
-      current_pick_started_at: league.status === 'in_progress' ? new Date().toISOString() : null,
+    const response = await supabase.functions.invoke('undo-pick', {
+      body: { leagueId: league.id },
     })
 
+    if (response.error) {
+      throw new Error(response.error.message || 'Failed to undo pick')
+    }
+    if (response.data?.error) {
+      throw new Error(response.data.error)
+    }
+
     queryClient.invalidateQueries({ queryKey: ['league', league.id] })
-  }, [league, updateLeague, queryClient])
+  }, [league, queryClient])
 
   const makePick = useCallback(
     async (playerId: string, captainId: string, captainToken?: string) => {
@@ -270,23 +251,43 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
 }
 
 /**
- * Hook to validate captain access token
+ * Hook to validate captain access token via server-side RPC.
  */
 export function useCaptainByToken(leagueId: string | undefined, token: string | null) {
-  const { data: league } = useLeague(leagueId)
+  return useQuery({
+    queryKey: ['captain-by-token', leagueId, token],
+    queryFn: async () => {
+      if (!leagueId || !token) return null
 
-  if (!league || !token) return null
+      const { data, error } = await supabase.rpc('validate_captain_token', {
+        p_league_id: leagueId,
+        p_token: token,
+      })
 
-  return league.captains.find((c) => c.access_token === token) ?? null
+      if (error) throw error
+      return (data as ValidatedCaptain) ?? null
+    },
+    enabled: !!leagueId && !!token,
+  })
 }
 
 /**
- * Hook to validate spectator token
+ * Hook to validate spectator token via server-side RPC.
  */
 export function useSpectatorAccess(leagueId: string | undefined, token: string | null) {
-  const { data: league } = useLeague(leagueId)
+  return useQuery({
+    queryKey: ['spectator-access', leagueId, token],
+    queryFn: async () => {
+      if (!leagueId || !token) return false
 
-  if (!league || !token) return false
+      const { data, error } = await supabase.rpc('validate_spectator_token', {
+        p_league_id: leagueId,
+        p_token: token,
+      })
 
-  return league.spectator_token === token
+      if (error) return false
+      return data as boolean
+    },
+    enabled: !!leagueId && !!token,
+  })
 }

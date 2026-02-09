@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -8,13 +8,13 @@ import { PlayerProfileForm, type ProfileFormData } from '@/components/player/Pla
 import { usePlayerByEditToken } from '@/hooks/usePlayerProfile'
 import { useLeague } from '@/hooks/useLeagues'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
+import { useSecureToken } from '@/hooks/useSecureToken'
 import { useToast } from '@/components/ui/Toast'
 import { supabase } from '@/lib/supabase'
 
 export function EditProfile() {
   const { playerId } = useParams<{ playerId: string }>()
-  const [searchParams] = useSearchParams()
-  const token = searchParams.get('token')
+  const token = useSecureToken('player-edit', playerId)
   const navigate = useNavigate()
   const { addToast } = useToast()
   const [saved, setSaved] = useState(false)
@@ -22,7 +22,6 @@ export function EditProfile() {
   const { data: player, isLoading, error, refetch } = usePlayerByEditToken(playerId, token)
   const { data: league } = useLeague(player?.league_id)
   const { data: fieldSchemas } = useLeagueFieldSchemas(player?.league_id)
-  const linkedCaptain = league?.captains.find((c) => c.player_id === player?.id)
 
   if (isLoading) {
     return (
@@ -110,12 +109,12 @@ export function EditProfile() {
   }
 
   function handleGoToDraft() {
-    if (!player || !league) return
+    if (!player) return
 
-    if (linkedCaptain) {
-      navigate(`/league/${player.league_id}/captain?token=${linkedCaptain.access_token}`)
-    } else {
-      window.open(`/league/${player.league_id}/spectate?token=${league.spectator_token}`, '_blank')
+    if (player.linked_captain_access_token) {
+      navigate(`/league/${player.league_id}/captain?token=${player.linked_captain_access_token}`)
+    } else if (player.league_spectator_token) {
+      window.open(`/league/${player.league_id}/spectate?token=${player.league_spectator_token}`, '_blank')
     }
   }
 
@@ -138,16 +137,16 @@ export function EditProfile() {
                     <Button onClick={() => setSaved(false)}>
                       Edit Again
                     </Button>
-                    {linkedCaptain ? (
+                    {player.linked_captain_access_token ? (
                       <Button variant="outline" onClick={handleGoToDraft}>
                         Go to Draft Room
                       </Button>
-                    ) : (
+                    ) : player.league_spectator_token ? (
                       <Button variant="outline" onClick={handleGoToDraft}>
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Watch Draft
                       </Button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               ) : (

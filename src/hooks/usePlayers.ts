@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { Player } from '@/lib/types'
+import type { PlayerPublic } from '@/lib/types'
+
+const PLAYER_COLUMNS = 'id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at'
 
 interface CreatePlayerInput {
   league_id: string
@@ -18,11 +20,11 @@ export function useCreatePlayer() {
           league_id: data.league_id,
           name: data.name,
         })
-        .select()
+        .select(PLAYER_COLUMNS)
         .single()
 
       if (error) throw error
-      return player as Player
+      return player as PlayerPublic
     },
     onSuccess: (player) => {
       queryClient.invalidateQueries({ queryKey: ['league', player.league_id] })
@@ -40,10 +42,10 @@ export function useCreatePlayers() {
       const { data: players, error } = await supabase
         .from('players')
         .insert(data.map(p => ({ league_id: p.league_id, name: p.name })))
-        .select()
+        .select(PLAYER_COLUMNS)
 
       if (error) throw error
-      return players as Player[]
+      return players as PlayerPublic[]
     },
     onSuccess: (players) => {
       if (players.length > 0) {
@@ -69,11 +71,11 @@ export function useUpdatePlayer() {
         .from('players')
         .update(data)
         .eq('id', id)
-        .select()
+        .select(PLAYER_COLUMNS)
         .single()
 
       if (error) throw error
-      return player as Player
+      return player as PlayerPublic
     },
     onSuccess: (player) => {
       queryClient.invalidateQueries({ queryKey: ['league', player.league_id] })

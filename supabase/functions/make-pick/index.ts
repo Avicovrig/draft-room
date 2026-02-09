@@ -1,20 +1,25 @@
-import { corsHeaders, handleCors } from '../_shared/cors.ts'
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
 import { UUID_RE, errorResponse } from '../_shared/validation.ts'
+import { rateLimit } from '../_shared/rateLimit.ts'
+import { logAudit, getClientIp } from '../_shared/audit.ts'
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
   if (corsResponse) return corsResponse
 
+  const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 30 })
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const { leagueId, captainId, playerId, captainToken } = await req.json()
 
     if (!leagueId || !captainId || !playerId) {
-      return errorResponse('Missing required fields', 400)
+      return errorResponse('Missing required fields', 400, req)
     }
 
     if (!UUID_RE.test(leagueId) || !UUID_RE.test(captainId) || !UUID_RE.test(playerId)) {
-      return errorResponse('Invalid field format', 400)
+      return errorResponse('Invalid field format', 400, req)
     }
 
     const supabaseAdmin = createAdminClient()
@@ -27,11 +32,11 @@ Deno.serve(async (req) => {
       .single()
 
     if (leagueError || !league) {
-      return errorResponse('League not found', 404)
+      return errorResponse('League not found', 404, req)
     }
 
     if (league.status !== 'in_progress') {
-      return errorResponse('Draft is not in progress', 400)
+      return errorResponse('Draft is not in progress', 400, req)
     }
 
     // Validate captain token if provided (for non-manager picks)
@@ -40,7 +45,7 @@ Deno.serve(async (req) => {
         c.id === captainId && c.access_token === captainToken
       )
       if (!captain) {
-        return errorResponse('Invalid captain token', 403)
+        return errorResponse('Invalid captain token', 403, req)
       }
     }
 
@@ -62,7 +67,7 @@ Deno.serve(async (req) => {
 
     const expectedCaptain = sortedCaptains[expectedCaptainIndex]
     if (expectedCaptain.id !== captainId) {
-      return errorResponse('Not your turn to pick', 400)
+      return errorResponse('Not your turn to pick', 400, req)
     }
 
     // Verify player is available (not drafted and not linked to a captain)
@@ -75,7 +80,7 @@ Deno.serve(async (req) => {
       .single()
 
     if (playerError || !player) {
-      return errorResponse('Player not available', 400)
+      return errorResponse('Player not available', 400, req)
     }
 
     // Reject captain-linked players (they are on teams already as captains)
@@ -84,7 +89,7 @@ Deno.serve(async (req) => {
       (c: { player_id: string | null }) => c.player_id === playerId
     )
     if (isCaptainPlayer) {
-      return errorResponse('Cannot draft a captain', 400)
+      return errorResponse('Cannot draft a captain', 400, req)
     }
 
     const pickNumber = league.current_pick_index + 1
@@ -106,11 +111,11 @@ Deno.serve(async (req) => {
         console.log(`[make-pick] Duplicate pick detected for pick_number ${pickNumber}`)
         return new Response(
           JSON.stringify({ error: 'Pick already made by another player' }),
-          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 409, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
       console.error('Failed to insert pick:', pickError)
-      return errorResponse('Failed to record pick', 500)
+      return errorResponse('Failed to record pick', 500, req)
     }
 
     // Update player
@@ -126,7 +131,7 @@ Deno.serve(async (req) => {
       // Roll back the pick insert to avoid inconsistent state
       console.error('Failed to update player, rolling back pick:', updatePlayerError)
       await supabaseAdmin.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
-      return errorResponse('Failed to update player', 500)
+      return errorResponse('Failed to update player', 500, req)
     }
 
     // Clean up: Remove picked player from ALL captain queues
@@ -143,7 +148,7 @@ Deno.serve(async (req) => {
     // Count remaining available players (exclude drafted and captain-linked players)
     // NOTE: Keep in sync with getAvailablePlayers() in src/lib/draft.ts
     const captainPlayerIds = league.captains
-      .filter((c: { player_id: string | null }) => c.player_id)
+      .filter((c: { player_id: string | null }) => c.player_id && UUID_RE.test(c.player_id))
       .map((c: { player_id: string }) => c.player_id)
 
     let query = supabaseAdmin
@@ -174,8 +179,24 @@ Deno.serve(async (req) => {
       console.error('Failed to update league, rolling back:', updateLeagueError)
       await supabaseAdmin.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
       await supabaseAdmin.from('players').update({ drafted_by_captain_id: null, draft_pick_number: null }).eq('id', playerId)
-      return errorResponse('Failed to update league', 500)
+      return errorResponse('Failed to update league', 500, req)
     }
+
+    logAudit(supabaseAdmin, {
+      action: 'pick_made',
+      leagueId,
+      actorType: captainToken ? 'captain' : 'manager',
+      actorId: captainToken ? captainId : undefined,
+      metadata: {
+        pickNumber,
+        playerId,
+        playerName: player.name,
+        captainId,
+        captainName: expectedCaptain.name,
+        isComplete,
+      },
+      ipAddress: getClientIp(req),
+    })
 
     return new Response(
       JSON.stringify({
@@ -187,10 +208,10 @@ Deno.serve(async (req) => {
         },
         isComplete,
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('Make pick error:', error)
-    return errorResponse('Internal server error', 500)
+    return errorResponse('Internal server error', 500, req)
   }
 })

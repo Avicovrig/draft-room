@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Pencil, Camera } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { DraftBoard } from '@/components/draft/DraftBoard'
@@ -11,12 +11,12 @@ import { useDraft, useCaptainByToken } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { useUpdateCaptainColorAsCaptain, useUploadTeamPhotoAsCaptain } from '@/hooks/useCaptains'
+import { useSecureToken } from '@/hooks/useSecureToken'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export function CaptainView() {
   const { id } = useParams<{ id: string }>()
-  const [searchParams] = useSearchParams()
-  const token = searchParams.get('token')
+  const token = useSecureToken('captain', id)
   const navigate = useNavigate()
 
   const {
@@ -35,7 +35,7 @@ export function CaptainView() {
     makePick,
   } = useDraft(id)
 
-  const captain = useCaptainByToken(id, token)
+  const { data: captain, isLoading: captainLoading } = useCaptainByToken(id, token)
   const { data: customFieldsMap } = useLeagueCustomFields(id)
   const { data: fieldSchemas = [] } = useLeagueFieldSchemas(id)
   const updateCaptain = useUpdateCaptainColorAsCaptain()
@@ -52,11 +52,11 @@ export function CaptainView() {
   // Auto-redirect to summary page when draft completes
   useEffect(() => {
     if (league?.status === 'completed') {
-      navigate(`/league/${id}/summary${token ? `?token=${token}` : ''}`, { replace: true })
+      navigate(`/league/${id}/summary`, { replace: true })
     }
-  }, [league?.status, id, token, navigate])
+  }, [league?.status, id, navigate])
 
-  if (isLoading) {
+  if (isLoading || captainLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -99,9 +99,6 @@ export function CaptainView() {
   const isMyTurn = currentCaptain?.id === captain.id
   const canPick = isMyTurn && league.status === 'in_progress'
   const isPreDraft = league.status === 'not_started'
-  const captainPlayer = captain.player_id
-    ? league.players.find((p) => p.id === captain.player_id)
-    : undefined
 
   return (
     <div className="min-h-screen bg-background">
@@ -210,12 +207,12 @@ export function CaptainView() {
                   </Button>
                 </div>
 
-                {captainPlayer && (
+                {captain.player_id && captain.linked_player_edit_token && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      navigate(`/player/${captainPlayer.id}/edit?token=${captainPlayer.edit_token}`)
+                      navigate(`/player/${captain.player_id}/edit?token=${captain.linked_player_edit_token}`)
                     }
                   >
                     <Pencil className="mr-2 h-4 w-4" />

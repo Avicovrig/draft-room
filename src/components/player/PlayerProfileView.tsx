@@ -1,8 +1,8 @@
 import { Check, X as XIcon } from 'lucide-react'
-import type { Player, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
+import type { PlayerPublic, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 interface PlayerProfileViewProps {
-  player: Player
+  player: PlayerPublic
   customFields?: PlayerCustomField[]
   fieldSchemas?: LeagueFieldSchema[]
 }

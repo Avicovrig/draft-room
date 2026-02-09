@@ -1,16 +1,16 @@
 import { useEffect } from 'react'
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Header } from '@/components/layout/Header'
 import { DraftBoard } from '@/components/draft/DraftBoard'
 import { useDraft, useSpectatorAccess } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
+import { useSecureToken } from '@/hooks/useSecureToken'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 export function SpectatorView() {
   const { id } = useParams<{ id: string }>()
-  const [searchParams] = useSearchParams()
-  const token = searchParams.get('token')
+  const token = useSecureToken('spectator', id)
   const navigate = useNavigate()
 
   const {
@@ -29,18 +29,18 @@ export function SpectatorView() {
     makePick,
   } = useDraft(id)
 
-  const hasAccess = useSpectatorAccess(id, token)
+  const { data: hasAccess, isLoading: accessLoading } = useSpectatorAccess(id, token)
   const { data: customFieldsMap } = useLeagueCustomFields(id)
   const { data: fieldSchemas = [] } = useLeagueFieldSchemas(id)
 
   // Auto-redirect to summary page when draft completes
   useEffect(() => {
     if (league?.status === 'completed') {
-      navigate(`/league/${id}/summary${token ? `?token=${token}` : ''}`, { replace: true })
+      navigate(`/league/${id}/summary`, { replace: true })
     }
-  }, [league?.status, id, token, navigate])
+  }, [league?.status, id, navigate])
 
-  if (isLoading) {
+  if (isLoading || accessLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />

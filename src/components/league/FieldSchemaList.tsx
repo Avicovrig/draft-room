@@ -13,7 +13,7 @@ import {
   useReorderFieldSchemas,
 } from '@/hooks/useFieldSchemas'
 import { useToast } from '@/components/ui/Toast'
-import type { LeagueFull, LeagueFieldSchema } from '@/lib/types'
+import type { LeagueFullPublic, LeagueFieldSchema } from '@/lib/types'
 
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
@@ -171,7 +171,7 @@ function initOptionsFromSchema(schema: LeagueFieldSchema) {
 }
 
 interface FieldSchemaListProps {
-  league: LeagueFull
+  league: LeagueFullPublic
 }
 
 export function FieldSchemaList({ league }: FieldSchemaListProps) {

@@ -3,9 +3,11 @@
 // - Called when timer expires for captains without auto_pick_enabled
 // Deploy with: supabase functions deploy auto-pick
 
-import { corsHeaders, handleCors } from '../_shared/cors.ts'
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
 import { UUID_RE, errorResponse } from '../_shared/validation.ts'
+import { rateLimit } from '../_shared/rateLimit.ts'
+import { logAudit, getClientIp } from '../_shared/audit.ts'
 
 interface RequestBody {
   leagueId: string
@@ -16,17 +18,20 @@ Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
   if (corsResponse) return corsResponse
 
+  const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 30 })
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const supabase = createAdminClient()
 
     const { leagueId, expectedPickIndex }: RequestBody = await req.json()
 
     if (!leagueId) {
-      return errorResponse('leagueId is required', 400)
+      return errorResponse('leagueId is required', 400, req)
     }
 
     if (!UUID_RE.test(leagueId)) {
-      return errorResponse('Invalid field format', 400)
+      return errorResponse('Invalid field format', 400, req)
     }
 
     console.log(`[auto-pick] Request for league ${leagueId}, expectedPickIndex: ${expectedPickIndex}`)
@@ -39,13 +44,13 @@ Deno.serve(async (req) => {
       .single()
 
     if (leagueError || !league) {
-      return errorResponse('League not found', 404)
+      return errorResponse('League not found', 404, req)
     }
 
     // Check if draft is in progress
     if (league.status !== 'in_progress') {
       console.log(`[auto-pick] Draft not in progress, status: ${league.status}`)
-      return errorResponse('Draft is not in progress', 400)
+      return errorResponse('Draft is not in progress', 400, req)
     }
 
     // Idempotency check: verify we're picking for the expected turn.
@@ -61,7 +66,7 @@ Deno.serve(async (req) => {
           expectedPickIndex,
           actualPickIndex: league.current_pick_index
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -99,7 +104,7 @@ Deno.serve(async (req) => {
               elapsed: Math.round(elapsed),
               required: effectiveTimeLimit
             }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
           )
         }
       }
@@ -120,7 +125,7 @@ Deno.serve(async (req) => {
     )
 
     if (availablePlayers.length === 0) {
-      return errorResponse('No available players', 400)
+      return errorResponse('No available players', 400, req)
     }
 
     // Determine which player to pick
@@ -175,7 +180,7 @@ Deno.serve(async (req) => {
             error: 'Pick already made',
             pickNumber,
           }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
       throw pickError
@@ -229,6 +234,22 @@ Deno.serve(async (req) => {
       throw updateError
     }
 
+    logAudit(supabase, {
+      action: 'auto_pick_made',
+      leagueId,
+      actorType: 'system',
+      metadata: {
+        pickNumber,
+        playerId: selectedPlayer.id,
+        playerName: selectedPlayer.name,
+        captainId: currentCaptainId,
+        captainName: currentCaptain?.name,
+        isComplete,
+        fromQueue: !!selectedPlayer,
+      },
+      ipAddress: getClientIp(req),
+    })
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -239,10 +260,10 @@ Deno.serve(async (req) => {
           isComplete,
         },
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('Auto-pick error:', error)
-    return errorResponse('Internal server error', 500)
+    return errorResponse('Internal server error', 500, req)
   }
 })

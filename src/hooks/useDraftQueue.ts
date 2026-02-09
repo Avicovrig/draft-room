@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { CaptainDraftQueue, Player } from '@/lib/types'
+import type { CaptainDraftQueue, PlayerPublic } from '@/lib/types'
 
 export interface QueuedPlayer extends CaptainDraftQueue {
-  player: Player
+  player: PlayerPublic
 }
 
 export function useDraftQueue(captainId: string | undefined) {
@@ -16,7 +16,7 @@ export function useDraftQueue(captainId: string | undefined) {
         .from('captain_draft_queues')
         .select(`
           *,
-          player:players(*)
+          player:players(id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at)
         `)
         .eq('captain_id', captainId)
         .order('position', { ascending: true })

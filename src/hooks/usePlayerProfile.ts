@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { Player, PlayerWithCustomFields } from '@/lib/types'
+import type { PlayerPublic, PlayerPublicWithCustomFields, ValidatedPlayerProfile } from '@/lib/types'
+
+const PLAYER_COLUMNS = 'id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at'
 
 export function usePlayerProfile(playerId: string | undefined) {
   return useQuery({
@@ -10,7 +12,7 @@ export function usePlayerProfile(playerId: string | undefined) {
 
       const { data: player, error: playerError } = await supabase
         .from('players')
-        .select('*')
+        .select(PLAYER_COLUMNS)
         .eq('id', playerId)
         .single()
 
@@ -27,7 +29,7 @@ export function usePlayerProfile(playerId: string | undefined) {
       return {
         ...player,
         custom_fields: customFields,
-      } as PlayerWithCustomFields
+      } as PlayerPublicWithCustomFields
     },
     enabled: !!playerId,
   })
@@ -39,32 +41,17 @@ export function usePlayerByEditToken(playerId: string | undefined, editToken: st
     queryFn: async () => {
       if (!playerId || !editToken) return null
 
-      const { data: player, error: playerError } = await supabase
-        .from('players')
-        .select('*')
-        .eq('id', playerId)
-        .eq('edit_token', editToken)
-        .single()
+      const { data, error } = await supabase.rpc('validate_player_edit_token', {
+        p_player_id: playerId,
+        p_token: editToken,
+      })
 
-      if (playerError) {
-        if (playerError.code === 'PGRST116') {
-          return null // Not found or token mismatch
-        }
-        throw playerError
+      if (error) {
+        console.error('Token validation error:', error)
+        return null
       }
 
-      const { data: customFields, error: fieldsError } = await supabase
-        .from('player_custom_fields')
-        .select('*')
-        .eq('player_id', playerId)
-        .order('field_order', { ascending: true })
-
-      if (fieldsError) throw fieldsError
-
-      return {
-        ...player,
-        custom_fields: customFields,
-      } as PlayerWithCustomFields
+      return (data as ValidatedPlayerProfile) ?? null
     },
     enabled: !!playerId && !!editToken,
   })
@@ -85,11 +72,11 @@ export function useUpdatePlayerProfile() {
         .from('players')
         .update(data)
         .eq('id', playerId)
-        .select()
+        .select(PLAYER_COLUMNS)
         .single()
 
       if (error) throw error
-      return player as Player
+      return player as PlayerPublic
     },
     onSuccess: (player) => {
       queryClient.invalidateQueries({ queryKey: ['player-profile', player.id] })
@@ -134,11 +121,11 @@ export function useUploadProfilePicture() {
         .from('players')
         .update({ profile_picture_url: publicUrl })
         .eq('id', playerId)
-        .select()
+        .select(PLAYER_COLUMNS)
         .single()
 
       if (updateError) throw updateError
-      return player as Player
+      return player as PlayerPublic
     },
     onSuccess: (player) => {
       queryClient.invalidateQueries({ queryKey: ['player-profile', player.id] })

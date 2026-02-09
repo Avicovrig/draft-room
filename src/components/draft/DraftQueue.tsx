@@ -3,11 +3,11 @@ import { ChevronUp, ChevronDown, X, ListOrdered, GripVertical } from 'lucide-rea
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { useDraftQueue, useRemoveFromQueue, useMoveInQueue, useToggleAutoPick } from '@/hooks/useDraftQueue'
-import type { Captain, Player } from '@/lib/types'
+import type { CaptainPublic, PlayerPublic } from '@/lib/types'
 
 interface DraftQueueProps {
-  captain: Captain
-  availablePlayers: Player[]
+  captain: CaptainPublic
+  availablePlayers: PlayerPublic[]
   leagueId?: string
   captainToken?: string
 }

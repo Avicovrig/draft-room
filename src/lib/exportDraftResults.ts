@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx'
-import type { LeagueFull } from './types'
+import type { LeagueFullPublic } from './types'
 
 function formatPickTime(seconds: number): string {
   if (seconds >= 60) {
@@ -10,7 +10,7 @@ function formatPickTime(seconds: number): string {
   return `${Math.round(seconds)}s`
 }
 
-export function exportDraftResults(league: LeagueFull): void {
+export function exportDraftResults(league: LeagueFullPublic): void {
   const workbook = XLSX.utils.book_new()
   const sortedCaptains = [...league.captains].sort((a, b) => a.draft_position - b.draft_position)
   const captainCount = league.captains.length

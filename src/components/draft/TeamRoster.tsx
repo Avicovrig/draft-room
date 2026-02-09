@@ -3,7 +3,7 @@ import { Crown, User } from 'lucide-react'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber'
 import { cn } from '@/lib/utils'
-import type { Captain, Player, PlayerCustomField } from '@/lib/types'
+import type { CaptainPublic, PlayerPublic, PlayerCustomField } from '@/lib/types'
 
 function AnimatedCount({ count, label }: { count: number; label: string }) {
   const display = useAnimatedNumber(count)
@@ -24,8 +24,8 @@ function getInitials(name: string): string {
 }
 
 interface TeamRosterProps {
-  captains: Captain[]
-  players: Player[]
+  captains: CaptainPublic[]
+  players: PlayerPublic[]
   currentCaptainId?: string
   highlightCaptainId?: string
   customFieldsMap?: Record<string, PlayerCustomField[]>
@@ -38,7 +38,7 @@ export function TeamRoster({
   highlightCaptainId,
   customFieldsMap = {},
 }: TeamRosterProps) {
-  const [viewingPlayer, setViewingPlayer] = useState<Player | null>(null)
+  const [viewingPlayer, setViewingPlayer] = useState<PlayerPublic | null>(null)
   const knownPlayerIdsRef = useRef<Set<string>>(new Set())
   const [newPlayerIds, setNewPlayerIds] = useState<Set<string>>(new Set())
   const sortedCaptains = [...captains].sort((a, b) => a.draft_position - b.draft_position)
@@ -71,7 +71,7 @@ export function TeamRoster({
       .sort((a, b) => (a.draft_pick_number ?? 0) - (b.draft_pick_number ?? 0))
   }
 
-  function getCaptainPlayer(captain: Captain): Player | undefined {
+  function getCaptainPlayer(captain: CaptainPublic): PlayerPublic | undefined {
     if (!captain.player_id) return undefined
     return players.find((p) => p.id === captain.player_id)
   }

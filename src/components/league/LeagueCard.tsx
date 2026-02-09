@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
 import { Settings, Play, Users } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
-import type { League } from '@/lib/types'
+import type { LeaguePublic } from '@/lib/types'
 
 interface LeagueCardProps {
-  league: League
+  league: LeaguePublic
   index?: number
 }
 

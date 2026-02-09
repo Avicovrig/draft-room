@@ -1,4 +1,4 @@
-import type { LeagueStatus, DraftType, Captain, Player } from './types'
+import type { LeagueStatus, DraftType, CaptainPublic, PlayerPublic } from './types'
 
 /**
  * Calculate the pick order for a draft
@@ -8,7 +8,7 @@ import type { LeagueStatus, DraftType, Captain, Player } from './types'
  * @returns Array of captain IDs in pick order
  */
 export function getPickOrder(
-  captains: Captain[],
+  captains: CaptainPublic[],
   totalPicks: number,
   draftType: DraftType
 ): string[] {
@@ -33,10 +33,10 @@ export function getPickOrder(
  * Get the captain who should pick at a given index
  */
 export function getCaptainAtPick(
-  captains: Captain[],
+  captains: CaptainPublic[],
   pickIndex: number,
   draftType: DraftType
-): Captain | undefined {
+): CaptainPublic | undefined {
   const order = getPickOrder(captains, pickIndex + 1, draftType)
   const captainId = order[pickIndex]
   return captains.find((c) => c.id === captainId)
@@ -188,7 +188,7 @@ export function fromDatetimeLocal(value: string): string | null {
  * NOTE: This logic is duplicated in edge functions (make-pick, auto-pick) for
  * server-side validation. Keep them in sync when modifying.
  */
-export function getAvailablePlayers(players: Player[], captains: Captain[]): Player[] {
+export function getAvailablePlayers(players: PlayerPublic[], captains: CaptainPublic[]): PlayerPublic[] {
   const captainPlayerIds = new Set(
     captains.filter((c) => c.player_id).map((c) => c.player_id)
   )

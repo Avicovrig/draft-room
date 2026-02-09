@@ -12,7 +12,7 @@ import { useAuth } from '@/context/AuthContext'
 import { playSound, resumeAudioContext } from '@/lib/sounds'
 import { exportDraftResults } from '@/lib/exportDraftResults'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
-import type { Captain, Player } from '@/lib/types'
+import type { CaptainPublic, PlayerPublic } from '@/lib/types'
 
 function formatPickTime(seconds: number): string {
   if (seconds >= 60) {
@@ -95,13 +95,13 @@ export function Summary() {
     (a, b) => a.draft_position - b.draft_position
   )
 
-  function getPlayersForCaptain(captainId: string): Player[] {
+  function getPlayersForCaptain(captainId: string): PlayerPublic[] {
     return league!.players
       .filter((p) => p.drafted_by_captain_id === captainId)
       .sort((a, b) => (a.draft_pick_number ?? 0) - (b.draft_pick_number ?? 0))
   }
 
-  function getTeamStats(captain: Captain) {
+  function getTeamStats(captain: CaptainPublic) {
     const players = getPlayersForCaptain(captain.id)
     const autoPicks = league!.draft_picks.filter(
       (p) => p.captain_id === captain.id && p.is_auto_pick

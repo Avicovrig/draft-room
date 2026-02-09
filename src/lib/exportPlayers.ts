@@ -1,4 +1,4 @@
-import type { Player, Captain, PlayerCustomField, LeagueFieldSchema } from './types'
+import type { PlayerPublic, CaptainPublic, PlayerCustomField, LeagueFieldSchema } from './types'
 
 function formatExportValue(value: string, schema: LeagueFieldSchema): string {
   switch (schema.field_type) {
@@ -21,15 +21,15 @@ function formatExportValue(value: string, schema: LeagueFieldSchema): string {
 
 export async function exportPlayersToSpreadsheet(
   leagueName: string,
-  players: Player[],
-  captains: Captain[],
+  players: PlayerPublic[],
+  captains: CaptainPublic[],
   customFieldsMap: Record<string, PlayerCustomField[]>,
   fieldSchemas: LeagueFieldSchema[] = []
 ) {
   const XLSX = await import('xlsx')
 
   // Build set of captain-linked player IDs
-  const captainByPlayerId = new Map<string, Captain>()
+  const captainByPlayerId = new Map<string, CaptainPublic>()
   for (const c of captains) {
     if (c.player_id) captainByPlayerId.set(c.player_id, c)
   }

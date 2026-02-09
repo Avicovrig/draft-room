@@ -1,10 +1,10 @@
 import { X, StickyNote } from 'lucide-react'
 import { PlayerProfileView } from './PlayerProfileView'
 import { useModalFocus } from '@/hooks/useModalFocus'
-import type { Player, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
+import type { PlayerPublic, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 interface PlayerProfileModalProps {
-  player: Player
+  player: PlayerPublic
   customFields?: PlayerCustomField[]
   fieldSchemas?: LeagueFieldSchema[]
   note?: string

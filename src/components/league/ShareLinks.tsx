@@ -4,17 +4,20 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
-import type { LeagueFull } from '@/lib/types'
+import type { LeagueFullPublic, LeagueTokens } from '@/lib/types'
 
 interface ShareLinksProps {
-  league: LeagueFull
+  league: LeagueFullPublic
+  tokens: LeagueTokens | null | undefined
 }
 
-export function ShareLinks({ league }: ShareLinksProps) {
+export function ShareLinks({ league, tokens }: ShareLinksProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const baseUrl = window.location.origin
-  const spectatorUrl = `${baseUrl}/league/${league.id}/spectate?token=${league.spectator_token}`
+  const spectatorUrl = tokens
+    ? `${baseUrl}/league/${league.id}/spectate?token=${tokens.spectator_token}`
+    : ''
 
   async function copyToClipboard(text: string, id: string) {
     try {
@@ -39,6 +42,14 @@ export function ShareLinks({ league }: ShareLinksProps) {
   }
 
   const sortedCaptains = [...league.captains].sort((a, b) => a.draft_position - b.draft_position)
+
+  if (!tokens) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-muted-foreground">Loading share links...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -96,7 +107,10 @@ export function ShareLinks({ league }: ShareLinksProps) {
           ) : (
             <div className="space-y-4">
               {sortedCaptains.map((captain) => {
-                const captainUrl = `${baseUrl}/league/${league.id}/captain?token=${captain.access_token}`
+                const tokenEntry = tokens.captains.find((c) => c.id === captain.id)
+                const captainUrl = tokenEntry
+                  ? `${baseUrl}/league/${league.id}/captain?token=${tokenEntry.access_token}`
+                  : ''
                 const captainId = `captain-${captain.id}`
 
                 return (

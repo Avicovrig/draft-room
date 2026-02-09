@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { ManageLeagueSkeleton } from '@/components/ui/Skeleton'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
-import { useLeague, useDeleteLeague } from '@/hooks/useLeagues'
+import { useLeague, useDeleteLeague, useLeagueTokens } from '@/hooks/useLeagues'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { LeagueSettings } from '@/components/league/LeagueSettings'
@@ -25,6 +25,7 @@ export function ManageLeague() {
   const { data: league, isLoading, error } = useLeague(id)
   const { data: customFieldsMap } = useLeagueCustomFields(id)
   const { data: fieldSchemas = [] } = useLeagueFieldSchemas(id)
+  const { data: tokens } = useLeagueTokens(id)
   const deleteLeague = useDeleteLeague()
   const [activeTab, setActiveTab] = useState<Tab>('players')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -144,11 +145,11 @@ export function ManageLeague() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'players' && <PlayerList league={league} customFieldsMap={customFieldsMap} />}
+        {activeTab === 'players' && <PlayerList league={league} customFieldsMap={customFieldsMap} tokens={tokens} />}
         {activeTab === 'captains' && <CaptainList league={league} />}
         {activeTab === 'fields' && <FieldSchemaList league={league} />}
         {activeTab === 'settings' && <LeagueSettings league={league} />}
-        {activeTab === 'share' && <ShareLinks league={league} />}
+        {activeTab === 'share' && <ShareLinks league={league} tokens={tokens} />}
 
         {/* Danger Zone */}
         {league.status === 'not_started' && (

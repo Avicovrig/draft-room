@@ -1,15 +1,21 @@
-import { corsHeaders, handleCors } from '../_shared/cors.ts'
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse } from '../_shared/validation.ts'
+import { UUID_RE, errorResponse, validateUrl } from '../_shared/validation.ts'
+import { rateLimit } from '../_shared/rateLimit.ts'
+import { logAudit, getClientIp } from '../_shared/audit.ts'
 
 const MAX_BIO_LENGTH = 5000
 const MAX_PROFILE_PICTURE_SIZE = 2 * 1024 * 1024 // 2MB
 const MAX_FIELD_NAME_LENGTH = 200
 const MAX_FIELD_VALUE_LENGTH = 1000
+const DANGEROUS_PATTERN = /<[^>]*>|javascript:|data:/i
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
   if (corsResponse) return corsResponse
+
+  const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 10 })
+  if (rateLimitResponse) return rateLimitResponse
 
   try {
     const {
@@ -22,29 +28,40 @@ Deno.serve(async (req) => {
     } = await req.json()
 
     if (!playerId || !editToken) {
-      return errorResponse('Missing required fields', 400)
+      return errorResponse('Missing required fields', 400, req)
     }
 
     if (!UUID_RE.test(playerId) || !UUID_RE.test(editToken)) {
-      return errorResponse('Invalid field format', 400)
+      return errorResponse('Invalid field format', 400, req)
     }
 
     // Validate input sizes
     if (bio && bio.length > MAX_BIO_LENGTH) {
-      return errorResponse(`Bio exceeds maximum length of ${MAX_BIO_LENGTH} characters`, 400)
+      return errorResponse(`Bio exceeds maximum length of ${MAX_BIO_LENGTH} characters`, 400, req)
     }
 
     if (profile_picture_url && profile_picture_url.length > MAX_PROFILE_PICTURE_SIZE) {
-      return errorResponse('Profile picture exceeds maximum size of 2MB', 400)
+      return errorResponse('Profile picture exceeds maximum size of 2MB', 400, req)
+    }
+
+    // Validate profile picture URL protocol
+    if (profile_picture_url && !validateUrl(profile_picture_url)) {
+      return errorResponse('Invalid profile picture URL', 400, req)
     }
 
     if (customFields) {
       for (const field of customFields) {
         if (field.field_name && field.field_name.length > MAX_FIELD_NAME_LENGTH) {
-          return errorResponse(`Field name exceeds maximum length of ${MAX_FIELD_NAME_LENGTH} characters`, 400)
+          return errorResponse(`Field name exceeds maximum length of ${MAX_FIELD_NAME_LENGTH} characters`, 400, req)
         }
         if (field.field_value && field.field_value.length > MAX_FIELD_VALUE_LENGTH) {
-          return errorResponse(`Field value exceeds maximum length of ${MAX_FIELD_VALUE_LENGTH} characters`, 400)
+          return errorResponse(`Field value exceeds maximum length of ${MAX_FIELD_VALUE_LENGTH} characters`, 400, req)
+        }
+        if (field.field_name && DANGEROUS_PATTERN.test(field.field_name)) {
+          return errorResponse('Field name contains invalid characters', 400, req)
+        }
+        if (field.field_value && DANGEROUS_PATTERN.test(field.field_value)) {
+          return errorResponse('Field value contains invalid characters', 400, req)
         }
       }
     }
@@ -60,7 +77,7 @@ Deno.serve(async (req) => {
       .single()
 
     if (playerError || !player) {
-      return errorResponse('Invalid player or token', 403)
+      return errorResponse('Invalid player or token', 403, req)
     }
 
     // Validate required schema fields
@@ -88,7 +105,7 @@ Deno.serve(async (req) => {
         }
 
         if (missingFields.length > 0) {
-          return errorResponse(`Required fields missing: ${missingFields.join(', ')}`, 400)
+          return errorResponse(`Required fields missing: ${missingFields.join(', ')}`, 400, req)
         }
       }
     }
@@ -106,7 +123,7 @@ Deno.serve(async (req) => {
 
       if (updateError) {
         console.error('Failed to update player:', updateError)
-        return errorResponse('Failed to update profile', 500)
+        return errorResponse('Failed to update profile', 500, req)
       }
     }
 
@@ -161,12 +178,20 @@ Deno.serve(async (req) => {
       }
     }
 
+    logAudit(supabaseAdmin, {
+      action: 'player_profile_updated',
+      leagueId: player.league_id,
+      actorType: 'player',
+      actorId: playerId,
+      ipAddress: getClientIp(req),
+    })
+
     return new Response(
       JSON.stringify({ success: true }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('Update player profile error:', error)
-    return errorResponse('Internal server error', 500)
+    return errorResponse('Internal server error', 500, req)
   }
 })

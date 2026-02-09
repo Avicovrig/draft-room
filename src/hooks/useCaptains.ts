@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { Captain, Player } from '@/lib/types'
+import type { CaptainPublic, PlayerPublic } from '@/lib/types'
+
+const CAPTAIN_COLUMNS = 'id, league_id, name, is_participant, draft_position, player_id, auto_pick_enabled, team_color, team_name, team_photo_url, created_at'
 
 interface CreateCaptainInput {
   league_id: string
@@ -24,11 +26,11 @@ export function useCreateCaptain() {
           draft_position: data.draft_position,
           player_id: data.player_id ?? null,
         })
-        .select()
+        .select(CAPTAIN_COLUMNS)
         .single()
 
       if (error) throw error
-      return captain as Captain
+      return captain as CaptainPublic
     },
     onSuccess: (captain) => {
       queryClient.invalidateQueries({ queryKey: ['league', captain.league_id] })
@@ -52,11 +54,11 @@ export function useUpdateCaptain() {
         .from('captains')
         .update(data)
         .eq('id', id)
-        .select()
+        .select(CAPTAIN_COLUMNS)
         .single()
 
       if (error) throw error
-      return captain as Captain
+      return captain as CaptainPublic
     },
     onSuccess: (captain) => {
       queryClient.invalidateQueries({ queryKey: ['league', captain.league_id] })
@@ -293,7 +295,7 @@ export function useAssignRandomCaptains() {
 
       // Create captains from selected players (link to player via player_id)
       const captainsToInsert = selectedIds.map((playerId, index) => {
-        const player = (players as Player[]).find((p) => p.id === playerId)
+        const player = (players as PlayerPublic[]).find((p) => p.id === playerId)
         return {
           league_id: leagueId,
           name: player?.name || `Captain ${index + 1}`,
@@ -306,10 +308,10 @@ export function useAssignRandomCaptains() {
       const { data, error } = await supabase
         .from('captains')
         .insert(captainsToInsert)
-        .select()
+        .select(CAPTAIN_COLUMNS)
 
       if (error) throw error
-      return data as Captain[]
+      return data as CaptainPublic[]
     },
     onSuccess: (captains) => {
       if (captains.length > 0) {

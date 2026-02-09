@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { CheckCircle2, XCircle, AlertCircle, ClipboardCheck } from 'lucide-react'
 import { formatScheduledTime } from '@/lib/draft'
-import type { LeagueFull, LeagueFieldSchema, PlayerCustomField } from '@/lib/types'
+import type { LeagueFullPublic, LeagueFieldSchema, PlayerCustomField } from '@/lib/types'
 
 type Status = 'pass' | 'fail' | 'warn'
 
@@ -13,7 +13,7 @@ interface ChecklistItem {
 }
 
 interface DraftReadinessChecklistProps {
-  league: LeagueFull
+  league: LeagueFullPublic
   fieldSchemas: LeagueFieldSchema[]
   customFieldsMap: Record<string, PlayerCustomField[]> | undefined
 }

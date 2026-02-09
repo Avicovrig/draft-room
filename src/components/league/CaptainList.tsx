@@ -15,10 +15,10 @@ import {
   useUpdateCaptainColor,
   useUploadTeamPhoto,
 } from '@/hooks/useCaptains'
-import type { LeagueFull } from '@/lib/types'
+import type { LeagueFullPublic } from '@/lib/types'
 
 interface CaptainListProps {
-  league: LeagueFull
+  league: LeagueFullPublic
 }
 
 type CaptainMode = 'select' | 'create'
