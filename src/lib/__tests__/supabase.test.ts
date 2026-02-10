@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseEdgeFunctionError } from '../supabase'
+import { parseEdgeFunctionError } from '../edgeFunctionUtils'
 
 describe('parseEdgeFunctionError', () => {
   it('extracts error from JSON response body', async () => {

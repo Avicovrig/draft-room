@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase, parseEdgeFunctionError } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import { parseEdgeFunctionError } from '@/lib/edgeFunctionUtils'
 import { useLeague, useUpdateLeague } from './useLeagues'
 import { getPickOrder, getCaptainAtPick, getAvailablePlayers } from '@/lib/draft'
 import type { LeagueFullPublic, PlayerPublic, CaptainPublic, ValidatedCaptain } from '@/lib/types'
