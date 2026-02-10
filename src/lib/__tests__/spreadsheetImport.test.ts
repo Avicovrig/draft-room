@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { suggestMappings, transformData } from '@/hooks/useSpreadsheetImport'
+import { suggestMappings, transformData } from '../spreadsheetParsing'
 import type { SpreadsheetData } from '../spreadsheetTypes'
 import type { LeagueFieldSchema } from '../types'
 
