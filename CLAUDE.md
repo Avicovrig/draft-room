@@ -30,7 +30,6 @@ Draft Room is a custom league draft application. League managers can create leag
 - **Styling**: Tailwind v4 with CSS variables defined in `index.css`. Components follow shadcn/ui patterns using `class-variance-authority` for variants. Use `cn()` from `@/lib/utils` for conditional classNames.
 - **Path aliases**: `@/*` maps to `src/*` (configured in `tsconfig.app.json` and `vite.config.ts`)
 - **Forms**: React Hook Form + Zod validation
-- **TypeScript**: Strict mode with `noUnusedLocals`/`noUnusedParameters` enforced — removing code that references variables/imports will cause build failures if you don't clean up unused references.
 
 ### Backend (Supabase Edge Functions)
 
@@ -110,22 +109,29 @@ Token is stripped from the URL on page load and stored in `sessionStorage` via `
 - Components use named exports
 - Dark mode: toggle via ThemeContext, uses `.dark` class on `<html>`
 - Toast notifications: use `useToast()` hook from `@/components/ui/Toast`
-- Each route in `App.tsx` is wrapped in its own `<ErrorBoundary>` for route-level error isolation. An outer `ErrorBoundary` wraps the entire app as a final fallback. When adding new routes, always wrap them in `<ErrorBoundary>`.
+- Each route in `App.tsx` is wrapped in its own `<ErrorBoundary>` for route-level error isolation. When adding new routes, always wrap them in `<ErrorBoundary>`.
 - Hooks follow the pattern: `use<Entity>` for queries, `useCreate<Entity>`/`useUpdate<Entity>`/`useDelete<Entity>` for mutations
-- Tables with unique constraints on position columns (`captains.draft_position`, `captain_draft_queues.position`) use two-phase updates with `Promise.all`: set positions to negative temps first, then final values (parallel within each phase)
-- All modals use `useModalFocus` hook (`src/hooks/useModalFocus.ts`) for ESC key, click-outside, body scroll lock, focus trap, and ARIA attributes
-- `DraftBoard` receives props from 3 callers (`DraftView`, `CaptainView`, `SpectatorView`). Adding new props requires updating all 3.
-- **Lazy loading**: `ManageLeague` uses `React.lazy` + `Suspense` for tab components (PlayerList, CaptainList, FieldSchemaList, LeagueSettings, ShareLinks). Each tab loads on demand.
-- **Notification permission**: `DraftBoard` shows a dismissible banner asking captains to enable notifications instead of auto-requesting on mount. The banner only appears when `Notification.permission === 'default'`.
-- **Structured error logging**: `console.error` calls in hooks and components include context objects (leagueId, captainId, playerId, etc.) for easier debugging.
-- `Button` component accepts `loading` boolean — shows spinner and auto-disables. Use this for all async actions.
-- **TanStack Query defaults**: `QueryClient` in `App.tsx` sets global defaults: `staleTime: 5 * 60 * 1000` (5 min) and `retry: 1`. Hooks that need different staleTime override it (e.g., `30 * 1000` for player profiles/custom fields). Don't add `staleTime` to new hooks unless they need a non-default value.
-- **Cache invalidation**: Mutations should invalidate specific query keys (e.g., `['league', leagueId]`), not broad prefixes (e.g., `['league']`). Pass `leagueId` through mutation inputs if needed for targeted invalidation.
-- **React 19 patterns**:
-  - Do NOT mutate refs during render — use `useEffect` instead
-  - Prefer derived values over `useState` + sync `useEffect` when state can be computed from props/other state
-  - Use lazy initializers (`useState(() => fn())`) when reading initial state from external sources (localStorage, modules)
-  - Use `aria-live="polite"` and `role="status"` on dynamic content that screen readers should announce (e.g., timers, countdowns)
+- Tables with unique constraints on position columns use two-phase updates with `Promise.all`: set positions to negative temps first, then final values
+- **TypeScript**: Strict mode with `noUnusedLocals`/`noUnusedParameters` enforced — removing code that references variables/imports will cause build failures if you don't clean up unused references.
+
+For detailed patterns (React 19, TanStack Query, Tailwind, modals, forms, lazy loading, etc.), see the **frontend-dev** skill. For edge function patterns, see the **edge-functions** skill.
+
+## Skills
+
+Detailed development patterns live in `.claude/skills/` and are auto-activated by hooks when your prompt matches relevant keywords:
+
+- **frontend-dev** — React 19, TanStack Query, Tailwind v4, shadcn/ui, modals, forms, lazy loading, component conventions
+- **edge-functions** — Deno runtime, shared utilities, rollback patterns, validation, rate limiting, CORS, audit logging
+- **draft-logic** — GUARDRAIL: Draft order, available players, timer logic. Duplicated between frontend and edge functions — changes must be made in both places.
+
+## Dev Docs
+
+For large features or multi-step tasks, use the dev docs system to prevent context loss:
+
+1. **`/dev-docs [task name]`** — Creates `dev/active/[task-name]/` with plan, context, and tasks files
+2. **`/dev-docs-update`** — Updates existing dev docs before context compaction
+
+Dev docs are gitignored (`dev/active/`) — they're local working files, not committed.
 
 ## Testing
 

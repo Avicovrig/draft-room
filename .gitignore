@@ -9,8 +9,12 @@
 # Supabase temp files
 supabase/.temp/
 
-# Claude Code
-.claude/
+# Claude Code (track skills, hooks, commands, settings.json; ignore local settings)
+.claude/settings.local.json
+.claude/tsc-cache/
+
+# Dev docs (local working files)
+dev/active/
 
 # Logs
 logs

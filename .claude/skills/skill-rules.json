@@ -1,0 +1,148 @@
+{
+  "version": "1.0",
+  "description": "Skill activation triggers for Draft Room. Controls when skills auto-suggest based on user prompts.",
+  "skills": {
+    "frontend-dev": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "React 19 + TanStack Query + Tailwind v4 + shadcn/ui patterns for Draft Room frontend",
+      "promptTriggers": {
+        "keywords": [
+          "component",
+          "hook",
+          "custom hook",
+          "page",
+          "modal",
+          "dialog",
+          "form",
+          "tailwind",
+          "styling",
+          "css",
+          "frontend",
+          "shadcn",
+          "toast",
+          "button",
+          "player pool",
+          "draft board",
+          "captain view",
+          "spectator view",
+          "dark mode",
+          "lazy load",
+          "error boundary",
+          "tanstack query",
+          "useQuery",
+          "useMutation",
+          "skeleton",
+          "loading state",
+          "keyboard nav",
+          "accessibility",
+          "aria"
+        ],
+        "intentPatterns": [
+          "(create|add|make|build|update|modify|edit|fix|refactor).*?(component|UI|page|modal|dialog|form|hook|view)",
+          "(how to|best practice|pattern).*?(component|react|tailwind|shadcn|query|mutation)",
+          "(style|design|layout).*?(component|UI|page|section)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "src/components/**",
+          "src/hooks/**",
+          "src/pages/**",
+          "src/context/**",
+          "src/lib/utils.ts",
+          "src/App.tsx",
+          "src/index.css"
+        ],
+        "pathExclusions": [
+          "src/lib/draft.ts",
+          "src/lib/types.ts",
+          "**/__tests__/**"
+        ]
+      }
+    },
+    "edge-functions": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Supabase Edge Function patterns: Deno runtime, shared utilities, rollback logic, validation, CORS, audit",
+      "promptTriggers": {
+        "keywords": [
+          "edge function",
+          "supabase function",
+          "make-pick",
+          "auto-pick",
+          "toggle-auto-pick",
+          "update-player-profile",
+          "update-captain-color",
+          "restart-draft",
+          "undo-pick",
+          "deno",
+          "service role",
+          "cors",
+          "rate limit",
+          "audit log",
+          "rollback",
+          "rls bypass",
+          "edge deploy"
+        ],
+        "intentPatterns": [
+          "(create|add|implement|modify|fix|debug|deploy).*?(edge function|supabase function|server function)",
+          "(add|implement|update).*?(validation|rate limit|cors|audit|rollback)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "supabase/functions/**/*.ts",
+          "supabase/functions/_shared/**"
+        ]
+      }
+    },
+    "draft-logic": {
+      "type": "guardrail",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "GUARDRAIL: Draft logic is duplicated between frontend (src/lib/draft.ts) and edge functions (make-pick, auto-pick). Changes MUST be made in both places.",
+      "promptTriggers": {
+        "keywords": [
+          "draft order",
+          "snake draft",
+          "round robin",
+          "pick order",
+          "available players",
+          "captain turn",
+          "timer",
+          "auto pick",
+          "draft state",
+          "pick index",
+          "getAvailablePlayers",
+          "getPickOrder",
+          "getCaptainAtPick",
+          "captain-linked",
+          "draft logic",
+          "grace period"
+        ],
+        "intentPatterns": [
+          "(change|modify|fix|update|refactor).*?(draft|pick|order|timer|available)",
+          "(how does|explain).*?(draft|pick order|snake|round robin|timer)",
+          "(add|remove|filter).*?player.*?(filter|available|draft)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "src/lib/draft.ts",
+          "supabase/functions/make-pick/**",
+          "supabase/functions/auto-pick/**"
+        ],
+        "contentPatterns": [
+          "getAvailablePlayers",
+          "getPickOrder",
+          "getCaptainAtPick",
+          "current_pick_index",
+          "GRACE_PERIOD"
+        ]
+      }
+    }
+  }
+}
