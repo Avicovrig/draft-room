@@ -80,6 +80,7 @@ export interface UpdateCaptainColorRequest {
   color?: string | null
   teamName?: string | null
   teamPhotoUrl?: string | null
+  teamPhotoBlob?: string // base64-encoded JPEG for captain-side uploads
 }
 
 export interface UpdatePlayerProfileRequest {

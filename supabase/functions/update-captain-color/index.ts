@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const { captainId, captainToken, leagueId, color, teamName, teamPhotoUrl }: UpdateCaptainColorRequest = await req.json()
+    const { captainId, captainToken, leagueId, color, teamName, teamPhotoUrl, teamPhotoBlob }: UpdateCaptainColorRequest = await req.json()
 
     if (!captainId || !leagueId) {
       return errorResponse('Missing required fields', 400, req)
@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     }
 
     // At least one field to update must be provided
-    if (color === undefined && teamName === undefined && teamPhotoUrl === undefined) {
+    if (color === undefined && teamName === undefined && teamPhotoUrl === undefined && !teamPhotoBlob) {
       return errorResponse('No fields to update', 400, req)
     }
 
@@ -45,6 +45,11 @@ Deno.serve(async (req) => {
     // Validate team photo URL protocol
     if (teamPhotoUrl && !validateUrl(teamPhotoUrl)) {
       return errorResponse('Invalid team photo URL', 400, req)
+    }
+
+    // Validate base64 blob size (max ~2MB decoded ≈ ~2.7MB base64)
+    if (teamPhotoBlob && teamPhotoBlob.length > 2_800_000) {
+      return errorResponse('Team photo exceeds maximum size', 400, req)
     }
 
     const supabaseAdmin = createAdminClient()
@@ -71,11 +76,32 @@ Deno.serve(async (req) => {
       if (authResult instanceof Response) return authResult
     }
 
+    // Handle base64 photo blob upload (used by captains who can't upload to storage directly)
+    let resolvedPhotoUrl = teamPhotoUrl
+    if (teamPhotoBlob) {
+      const binaryData = Uint8Array.from(atob(teamPhotoBlob), c => c.charCodeAt(0))
+      const filePath = `${leagueId}/team-${captainId}.jpg`
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('profile-pictures')
+        .upload(filePath, binaryData, { upsert: true, contentType: 'image/jpeg' })
+
+      if (uploadError) {
+        console.error('Failed to upload team photo:', uploadError)
+        return errorResponse('Failed to upload team photo', 500, req)
+      }
+
+      const { data: urlData } = supabaseAdmin.storage
+        .from('profile-pictures')
+        .getPublicUrl(filePath)
+
+      resolvedPhotoUrl = `${urlData.publicUrl}?t=${Date.now()}`
+    }
+
     // Build update object dynamically
     const updateFields: Record<string, unknown> = {}
     if (color !== undefined) updateFields.team_color = color
     if (teamName !== undefined) updateFields.team_name = teamName ? teamName.trim() : null
-    if (teamPhotoUrl !== undefined) updateFields.team_photo_url = teamPhotoUrl || null
+    if (resolvedPhotoUrl !== undefined) updateFields.team_photo_url = resolvedPhotoUrl || null
 
     const { error: updateError } = await supabaseAdmin
       .from('captains')

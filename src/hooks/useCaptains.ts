@@ -236,22 +236,17 @@ export function useUploadTeamPhotoAsCaptain() {
       blob: Blob
       captainToken: string
     }) => {
-      const filePath = `${leagueId}/team-${captainId}.jpg`
-
-      const { error: uploadError } = await supabase.storage
-        .from('profile-pictures')
-        .upload(filePath, blob, { upsert: true, contentType: 'image/jpeg' })
-
-      if (uploadError) throw uploadError
-
-      const { data: urlData } = supabase.storage
-        .from('profile-pictures')
-        .getPublicUrl(filePath)
-
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
+      // Convert blob to base64 — captains can't upload to storage directly (no auth session)
+      const buffer = await blob.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i])
+      }
+      const base64 = btoa(binary)
 
       const response = await supabase.functions.invoke('update-captain-color', {
-        body: { captainId, captainToken, leagueId, teamPhotoUrl: publicUrl },
+        body: { captainId, captainToken, leagueId, teamPhotoBlob: base64 },
       })
 
       if (response.error) throw new Error(response.error.message || 'Failed to update team photo')
