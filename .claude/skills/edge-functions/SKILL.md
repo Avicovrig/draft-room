@@ -126,12 +126,14 @@ Lower for sensitive operations: `update-player-profile` uses `maxRequests: 10`.
 
 ## Deployment
 
+**CRITICAL: Always use `--no-verify-jwt`** — Supabase Auth issues ES256 user tokens but the edge function gateway validates using HS256 `JWT_SECRET`. All functions validate auth internally, so gateway verification must be disabled.
+
 ```bash
 # Production
-supabase functions deploy <function-name>
+supabase functions deploy <function-name> --no-verify-jwt
 
 # QA
-supabase functions deploy <function-name> --project-ref goyzyylpthhqotjdsmjn
+supabase functions deploy <function-name> --project-ref goyzyylpthhqotjdsmjn --no-verify-jwt
 ```
 
 All 7 functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`

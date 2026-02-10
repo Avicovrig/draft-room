@@ -47,6 +47,8 @@ All draft-critical mutations go through Deno edge functions in `supabase/functio
 
 All edge functions share utilities in `supabase/functions/_shared/`: CORS origin checking (`cors.ts`), rate limiting (`rateLimit.ts`), UUID/URL validation (`validation.ts`), manager JWT auth (`auth.ts`), audit logging (`audit.ts`), and shared type definitions (`types.ts`). All validate UUID format on ID parameters before hitting the database. Request body types and entity interfaces are defined in `_shared/types.ts` — use these instead of inline type annotations.
 
+**IMPORTANT: Gateway JWT verification is disabled** (`verify_jwt = false` in `config.toml`, `--no-verify-jwt` on deploy). Supabase Auth issues ES256 user tokens but the edge function gateway validates using HS256 `JWT_SECRET`. All functions validate auth internally — never rely on gateway verification. Always deploy with `--no-verify-jwt`.
+
 ### Token Security
 
 Token columns (`captains.access_token`, `players.edit_token`, `leagues.spectator_token`) are hidden from the `anon` and `authenticated` Postgres roles via column-level SELECT grants (migrations 013-014). Client-facing queries cannot read tokens.
