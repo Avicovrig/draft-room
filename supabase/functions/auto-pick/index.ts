@@ -136,6 +136,7 @@ Deno.serve(async (req) => {
     // Determine which player to pick
     // Always check the captain's queue first, then fall back to random
     let selectedPlayer
+    let selectedFromQueue = false
     const availablePlayerIds = new Set(availablePlayers.map((p: Player) => p.id))
 
     // Get captain's queue ordered by position
@@ -151,6 +152,7 @@ Deno.serve(async (req) => {
       for (const queueEntry of queue) {
         if (availablePlayerIds.has(queueEntry.player_id)) {
           selectedPlayer = availablePlayers.find((p: Player) => p.id === queueEntry.player_id)
+          selectedFromQueue = true
           console.log(`[auto-pick] Selected from queue: ${selectedPlayer?.name}`)
           break
         }
@@ -250,7 +252,7 @@ Deno.serve(async (req) => {
         captainId: currentCaptainId,
         captainName: currentCaptain?.name,
         isComplete,
-        fromQueue: !!selectedPlayer,
+        fromQueue: selectedFromQueue,
       },
       ipAddress: getClientIp(req),
     })

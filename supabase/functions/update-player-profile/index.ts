@@ -6,7 +6,7 @@ import { logAudit, getClientIp } from '../_shared/audit.ts'
 import type { UpdatePlayerProfileRequest } from '../_shared/types.ts'
 
 const MAX_BIO_LENGTH = 5000
-const MAX_PROFILE_PICTURE_SIZE = 2 * 1024 * 1024 // 2MB
+const MAX_PROFILE_PICTURE_URL_LENGTH = 4096
 const MAX_FIELD_NAME_LENGTH = 200
 const MAX_FIELD_VALUE_LENGTH = 1000
 const DANGEROUS_PATTERN = /<[^>]*>|javascript:|data:/i
@@ -45,8 +45,8 @@ Deno.serve(async (req) => {
       return errorResponse('Bio contains invalid characters', 400, req)
     }
 
-    if (profile_picture_url && profile_picture_url.length > MAX_PROFILE_PICTURE_SIZE) {
-      return errorResponse('Profile picture exceeds maximum size of 2MB', 400, req)
+    if (profile_picture_url && profile_picture_url.length > MAX_PROFILE_PICTURE_URL_LENGTH) {
+      return errorResponse('Profile picture URL exceeds maximum length', 400, req)
     }
 
     // Validate profile picture URL protocol
@@ -134,6 +134,9 @@ Deno.serve(async (req) => {
 
     // Delete removed custom fields
     if (deletedCustomFieldIds && deletedCustomFieldIds.length > 0) {
+      if (deletedCustomFieldIds.some((id: string) => !UUID_RE.test(id))) {
+        return errorResponse('Invalid field ID format', 400, req)
+      }
       const { error: deleteError } = await supabaseAdmin
         .from('player_custom_fields')
         .delete()

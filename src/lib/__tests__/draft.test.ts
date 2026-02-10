@@ -13,6 +13,7 @@ import {
   toDatetimeLocal,
   fromDatetimeLocal,
   getAvailablePlayers,
+  formatScheduledTime,
 } from '../draft'
 
 // --- Helpers ---
@@ -479,5 +480,25 @@ describe('getAvailablePlayers', () => {
       makeCaptain({ id: 'c1', draft_position: 1, player_id: null }),
     ]
     expect(getAvailablePlayers(players, captains)).toHaveLength(1)
+  })
+})
+
+describe('formatScheduledTime', () => {
+  it('returns a formatted string for a valid date', () => {
+    const result = formatScheduledTime('2025-06-15T14:30:00Z')
+    // Should contain day-of-week, month, day, and time components
+    expect(typeof result).toBe('string')
+    expect(result.length).toBeGreaterThan(5)
+  })
+
+  it('includes relevant date parts', () => {
+    const result = formatScheduledTime('2025-12-25T09:00:00Z')
+    // toLocaleString with weekday/month/day/hour/minute should produce non-empty output
+    expect(result).toBeTruthy()
+  })
+
+  it('handles ISO date strings', () => {
+    // Should not throw for valid ISO strings
+    expect(() => formatScheduledTime('2025-01-01T00:00:00.000Z')).not.toThrow()
   })
 })

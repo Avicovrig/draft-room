@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     if (resetPlayerError) {
       // Roll back: re-insert the pick
       console.error('Failed to reset player, rolling back:', resetPlayerError)
-      await supabaseAdmin.from('draft_picks').insert({
+      const { error: rollbackError } = await supabaseAdmin.from('draft_picks').insert({
         id: lastPick.id,
         league_id: lastPick.league_id,
         captain_id: lastPick.captain_id,
@@ -82,6 +82,7 @@ Deno.serve(async (req) => {
         pick_number: lastPick.pick_number,
         is_auto_pick: lastPick.is_auto_pick,
       })
+      if (rollbackError) console.error('Rollback failed (re-insert pick):', rollbackError)
       return errorResponse('Failed to reset player', 500, req)
     }
 
@@ -97,7 +98,7 @@ Deno.serve(async (req) => {
     if (updateLeagueError) {
       // Roll back: re-insert pick and re-update player
       console.error('Failed to update league, rolling back:', updateLeagueError)
-      await supabaseAdmin.from('draft_picks').insert({
+      const { error: rb1 } = await supabaseAdmin.from('draft_picks').insert({
         id: lastPick.id,
         league_id: lastPick.league_id,
         captain_id: lastPick.captain_id,
@@ -105,10 +106,12 @@ Deno.serve(async (req) => {
         pick_number: lastPick.pick_number,
         is_auto_pick: lastPick.is_auto_pick,
       })
-      await supabaseAdmin.from('players').update({
+      if (rb1) console.error('Rollback failed (re-insert pick):', rb1)
+      const { error: rb2 } = await supabaseAdmin.from('players').update({
         drafted_by_captain_id: lastPick.captain_id,
         draft_pick_number: lastPick.pick_number,
       }).eq('id', lastPick.player_id)
+      if (rb2) console.error('Rollback failed (re-update player):', rb2)
       return errorResponse('Failed to update league', 500, req)
     }
 

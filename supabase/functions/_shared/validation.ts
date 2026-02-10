@@ -10,7 +10,7 @@ export function errorResponse(message: string, status: number, req: Request): Re
   )
 }
 
-/** Validate a URL is safe (https only, no javascript/data/blob schemes). */
+/** Validate a URL is safe (http/https only, no javascript/data/blob schemes). */
 export function validateUrl(url: string): boolean {
   try {
     const parsed = new URL(url)

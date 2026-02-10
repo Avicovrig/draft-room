@@ -25,6 +25,7 @@ export function PlayerProfileModal({ player, customFields = [], fieldSchemas, no
           <button
             onClick={onClose}
             className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label="Close profile"
           >
             <X className="h-5 w-5" />
           </button>

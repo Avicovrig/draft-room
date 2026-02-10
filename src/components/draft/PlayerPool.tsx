@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react'
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { Search, User, Plus, ArrowUpDown, StickyNote, Filter, X } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -106,6 +106,13 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
       .map((s) => ({ value: `field:${s.id}` as SortOption, label: s.field_name }))
     return { base: BASE_SORT_OPTIONS, fields: fieldOptions }
   }, [fieldSchemas])
+
+  // Clear selected player if they're no longer in the available list (e.g., drafted by another client)
+  useEffect(() => {
+    if (selectedId && !players.some((p) => p.id === selectedId)) {
+      setSelectedId(null)
+    }
+  }, [selectedId, players])
 
   const filteredPlayers = useMemo(() => players
     .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))

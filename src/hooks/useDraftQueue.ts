@@ -151,8 +151,8 @@ export function useMoveInQueue() {
         if (currentIndex !== -1) {
           const [item] = updated.splice(currentIndex, 1)
           updated.splice(newPosition, 0, item)
-          // Update position values to match new order
-          updated.forEach((q, i) => { q.position = i })
+          // Update position values to match new order (immutable — don't mutate cached objects)
+          for (let i = 0; i < updated.length; i++) { updated[i] = { ...updated[i], position: i } }
           queryClient.setQueryData(['draft-queue', captainId], updated)
         }
       }

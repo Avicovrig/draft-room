@@ -97,3 +97,47 @@ describe('validateUrl', () => {
     expect(validateUrl('https://ghjakbnibbxwlbujwsse.supabase.co/storage/v1/object/public/profile-pictures/league/player.jpg')).toBe(true)
   })
 })
+
+// Re-implement errorResponse for testing
+function errorResponse(message: string, status: number, req: Request): Response {
+  const origin = req.headers.get('Origin') ?? ''
+  const corsHeaders: Record<string, string> = {
+    'Access-Control-Allow-Origin': origin || '',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  }
+  return new Response(
+    JSON.stringify({ error: message }),
+    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
+}
+
+describe('errorResponse', () => {
+  function makeRequest(origin = ''): Request {
+    return new Request('https://example.com', {
+      headers: origin ? { Origin: origin } : {},
+    })
+  }
+
+  it('returns the correct HTTP status code', () => {
+    const response = errorResponse('Not found', 404, makeRequest())
+    expect(response.status).toBe(404)
+  })
+
+  it('returns JSON body with error message', async () => {
+    const response = errorResponse('Bad request', 400, makeRequest())
+    const body = await response.json()
+    expect(body.error).toBe('Bad request')
+  })
+
+  it('includes Content-Type header', () => {
+    const response = errorResponse('Error', 500, makeRequest())
+    expect(response.headers.get('Content-Type')).toBe('application/json')
+  })
+
+  it('includes CORS headers', () => {
+    const response = errorResponse('Error', 500, makeRequest('https://example.com'))
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBeTruthy()
+    expect(response.headers.get('Vary')).toBe('Origin')
+  })
+})

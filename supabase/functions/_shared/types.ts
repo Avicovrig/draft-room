@@ -35,7 +35,7 @@ export interface DraftPick {
   player_id: string
   pick_number: number
   is_auto_pick: boolean
-  created_at: string
+  picked_at: string
 }
 
 export interface League {
