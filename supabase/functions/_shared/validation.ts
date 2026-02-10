@@ -28,6 +28,24 @@ export function requirePost(req: Request): Response | null {
   return null
 }
 
+/** Reject requests without application/json Content-Type. Returns a 415 Response, or null to continue. */
+export function requireJson(req: Request): Response | null {
+  if (!req.headers.get('content-type')?.includes('application/json')) {
+    return errorResponse('Content-Type must be application/json', 415, req)
+  }
+  return null
+}
+
+/** Validate JPEG magic bytes (FF D8 FF). Returns true if data starts with valid JPEG header. */
+export function isValidJpeg(data: Uint8Array): boolean {
+  return data.length >= 3 && data[0] === 0xFF && data[1] === 0xD8 && data[2] === 0xFF
+}
+
+/** Validate a hex color string (#RRGGBB format). */
+export function isValidHexColor(color: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(color)
+}
+
 /**
  * Constant-time string comparison to prevent timing attacks on token validation.
  * Uses crypto.subtle.timingSafeEqual to avoid leaking token characters via response timing.

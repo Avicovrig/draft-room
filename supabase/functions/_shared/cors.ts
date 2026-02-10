@@ -5,8 +5,8 @@ const ALLOWED_ORIGINS = [
 /** Check if the origin is allowed. Supports exact matches and draft-room Vercel previews. */
 function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_ORIGINS.includes(origin)) return true
-  // Allow draft-room Vercel preview deploys only (not arbitrary Vercel apps)
-  if (/^https:\/\/draft-room[\w-]*\.vercel\.app$/.test(origin)) return true
+  // Allow draft-room Vercel preview deploys only (requires hyphen separator to prevent draft-roomevil.vercel.app)
+  if (/^https:\/\/draft-room-[\w-]+\.vercel\.app$/.test(origin)) return true
   // Allow localhost for development
   if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return true
   return false
@@ -18,6 +18,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : '',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   }
 }

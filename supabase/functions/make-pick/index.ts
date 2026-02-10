@@ -1,6 +1,6 @@
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse, requirePost, timingSafeEqual } from '../_shared/validation.ts'
+import { UUID_RE, errorResponse, requirePost, requireJson, timingSafeEqual } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import { authenticateManager } from '../_shared/auth.ts'
@@ -98,6 +98,9 @@ Deno.serve(async (req) => {
   const methodResponse = requirePost(req)
   if (methodResponse) return methodResponse
 
+  const jsonResponse = requireJson(req)
+  if (jsonResponse) return jsonResponse
+
   const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 30 })
   if (rateLimitResponse) return rateLimitResponse
 
@@ -117,7 +120,7 @@ Deno.serve(async (req) => {
     // Get the league and verify status
     const { data: league, error: leagueError } = await supabaseAdmin
       .from('leagues')
-      .select('*, captains(*)')
+      .select('id, status, draft_type, current_pick_index, current_pick_started_at, time_limit_seconds, captains(id, name, draft_position, player_id, access_token, auto_pick_enabled)')
       .eq('id', leagueId)
       .single()
 
@@ -138,7 +141,7 @@ Deno.serve(async (req) => {
         return errorResponse('Invalid captain token', 403, req)
       }
     } else {
-      const authResult = await authenticateManager(req, leagueId)
+      const authResult = await authenticateManager(req, leagueId, supabaseAdmin)
       if (authResult instanceof Response) return authResult
     }
 

@@ -243,6 +243,7 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
               showFilters && 'bg-accent',
             )}
             title="Filter by fields"
+            aria-label={activeFilterCount > 0 ? `Filter by fields (${activeFilterCount} active)` : 'Filter by fields'}
           >
             <Filter className="h-4 w-4" />
             {activeFilterCount > 0 && (

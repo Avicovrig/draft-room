@@ -24,14 +24,15 @@ export function useDraftNotes(leagueId: string | undefined, ownerId: string | un
     (playerId: string, text: string) => {
       if (!key) return
       setNotes((prev) => {
-        const next = { ...prev }
         if (text.trim()) {
-          next[playerId] = text
+          const next = { ...prev, [playerId]: text }
+          localStorage.setItem(key, JSON.stringify(next))
+          return next
         } else {
-          delete next[playerId]
+          const { [playerId]: _, ...rest } = prev
+          localStorage.setItem(key, JSON.stringify(rest))
+          return rest
         }
-        localStorage.setItem(key, JSON.stringify(next))
-        return next
       })
     },
     [key]

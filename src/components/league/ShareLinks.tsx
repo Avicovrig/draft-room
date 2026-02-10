@@ -38,7 +38,7 @@ export function ShareLinks({ league, tokens }: ShareLinksProps) {
   }
 
   function openInNewTab(url: string) {
-    window.open(url, '_blank')
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const sortedCaptains = [...league.captains].sort((a, b) => a.draft_position - b.draft_position)

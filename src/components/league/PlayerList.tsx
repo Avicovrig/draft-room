@@ -134,7 +134,7 @@ export function PlayerList({ league, customFieldsMap = {}, tokens }: PlayerListP
   function handleOpenPlayerUrl(player: PlayerPublic) {
     const url = getPlayerEditUrl(player)
     if (!url) return
-    window.open(url, '_blank')
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const captainPlayerIds = new Set(

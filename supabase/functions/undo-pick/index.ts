@@ -1,6 +1,6 @@
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse, requirePost } from '../_shared/validation.ts'
+import { UUID_RE, errorResponse, requirePost, requireJson } from '../_shared/validation.ts'
 import { authenticateManager } from '../_shared/auth.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
@@ -39,6 +39,9 @@ Deno.serve(async (req) => {
   const methodResponse = requirePost(req)
   if (methodResponse) return methodResponse
 
+  const jsonResponse = requireJson(req)
+  if (jsonResponse) return jsonResponse
+
   const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 10 })
   if (rateLimitResponse) return rateLimitResponse
 
@@ -53,15 +56,15 @@ Deno.serve(async (req) => {
       return errorResponse('Invalid field format', 400, req)
     }
 
-    const authResult = await authenticateManager(req, leagueId)
+    const supabaseAdmin = createAdminClient()
+
+    const authResult = await authenticateManager(req, leagueId, supabaseAdmin)
     if (authResult instanceof Response) return authResult
     const { user, league } = authResult
 
     if (league.status !== 'in_progress' && league.status !== 'paused') {
       return errorResponse('Draft must be in progress or paused to undo', 400, req)
     }
-
-    const supabaseAdmin = createAdminClient()
 
     if (league.current_pick_index <= 0) {
       return errorResponse('No picks to undo', 400, req)

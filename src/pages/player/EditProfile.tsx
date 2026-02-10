@@ -101,7 +101,7 @@ export function EditProfile() {
     if (player.linked_captain_access_token) {
       navigate(`/league/${player.league_id}/captain?token=${player.linked_captain_access_token}`)
     } else if (player.league_spectator_token) {
-      window.open(`/league/${player.league_id}/spectate?token=${player.league_spectator_token}`, '_blank')
+      window.open(`/league/${player.league_id}/spectate?token=${player.league_spectator_token}`, '_blank', 'noopener,noreferrer')
     }
   }
 

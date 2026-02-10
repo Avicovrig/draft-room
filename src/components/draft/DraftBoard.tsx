@@ -66,13 +66,11 @@ export function DraftBoard({
   const [poolFilters, setPoolFilters] = useState<Record<string, string>>({})
   const handleFilterChange = useCallback((schemaId: string, value: string) => {
     setPoolFilters(prev => {
-      const next = { ...prev }
       if (value) {
-        next[schemaId] = value
-      } else {
-        delete next[schemaId]
+        return { ...prev, [schemaId]: value }
       }
-      return next
+      const { [schemaId]: _, ...rest } = prev
+      return rest
     })
   }, [])
   const handleClearFilters = useCallback(() => setPoolFilters({}), [])
@@ -85,10 +83,12 @@ export function DraftBoard({
   )
   const searchInputRef = useRef<HTMLInputElement>(null)
   const isAutoPickingRef = useRef(false)
-  // Keep pick index in a ref so the auto-pick callback always reads the latest
-  // value, even if called from a setTimeout after a stale closure was captured
+  // Keep pick index and available count in refs so the auto-pick callback
+  // always reads the latest values without triggering re-creation
   const pickIndexRef = useRef(league.current_pick_index)
   pickIndexRef.current = league.current_pick_index
+  const availableCountRef = useRef(availablePlayers.length)
+  availableCountRef.current = availablePlayers.length
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const { user } = useAuth()
@@ -230,7 +230,7 @@ export function DraftBoard({
   const handleTimerExpire = useCallback(async () => {
     // Any connected client can trigger auto-pick
     // The edge function uses expectedPickIndex for idempotency to prevent duplicate picks
-    if (!currentCaptain || availablePlayers.length === 0) return
+    if (!currentCaptain || availableCountRef.current === 0) return
 
     // Prevent multiple simultaneous auto-pick calls
     if (isAutoPickingRef.current) return
@@ -275,7 +275,7 @@ export function DraftBoard({
     } finally {
       isAutoPickingRef.current = false
     }
-  }, [currentCaptain, availablePlayers.length, league.id, captainToken, addToast, queryClient])
+  }, [currentCaptain, league.id, captainToken, addToast, queryClient])
 
   // Trigger immediate auto-pick if current captain has auto_pick_enabled
   // This runs when:

@@ -8,22 +8,11 @@ export function useLeagueCustomFields(leagueId: string | undefined) {
     queryFn: async () => {
       if (!leagueId) return {}
 
-      // Get all player IDs for this league
-      const { data: players, error: playersError } = await supabase
-        .from('players')
-        .select('id')
-        .eq('league_id', leagueId)
-
-      if (playersError) throw playersError
-      if (!players || players.length === 0) return {}
-
-      const playerIds = players.map((p) => p.id)
-
-      // Get all custom fields for these players
+      // Single query using join to avoid N+1
       const { data: customFields, error: fieldsError } = await supabase
         .from('player_custom_fields')
-        .select('*')
-        .in('player_id', playerIds)
+        .select('*, players!inner(league_id)')
+        .eq('players.league_id', leagueId)
         .order('field_order', { ascending: true })
 
       if (fieldsError) throw fieldsError
@@ -34,13 +23,15 @@ export function useLeagueCustomFields(leagueId: string | undefined) {
         if (!map[field.player_id]) {
           map[field.player_id] = []
         }
-        map[field.player_id].push(field as PlayerCustomField)
+        // Strip the join data before storing
+        const { players: _, ...fieldData } = field as PlayerCustomField & { players: unknown }
+        map[field.player_id].push(fieldData as PlayerCustomField)
       }
 
       return map
     },
     enabled: !!leagueId,
-    staleTime: 30 * 1000,
+    staleTime: 30_000,
   })
 }
 
@@ -152,11 +143,13 @@ export function useUpsertCustomFields() {
         if (deleteError) throw deleteError
       }
 
-      // Upsert fields
-      for (const field of fields) {
-        if (field.id) {
-          // Update existing
-          const { error } = await supabase
+      // Batch upsert fields — separate updates from inserts
+      const updates = fields.filter(f => f.id)
+      const inserts = fields.filter(f => !f.id)
+
+      if (updates.length > 0) {
+        await Promise.all(updates.map(field => {
+          return supabase
             .from('player_custom_fields')
             .update({
               field_name: field.field_name,
@@ -164,23 +157,22 @@ export function useUpsertCustomFields() {
               field_order: field.field_order,
               schema_id: field.schema_id ?? null,
             })
-            .eq('id', field.id)
+            .eq('id', field.id!)
+            .then(({ error }) => { if (error) throw error })
+        }))
+      }
 
-          if (error) throw error
-        } else {
-          // Insert new
-          const { error } = await supabase
-            .from('player_custom_fields')
-            .insert({
-              player_id: playerId,
-              field_name: field.field_name,
-              field_value: field.field_value || null,
-              field_order: field.field_order,
-              schema_id: field.schema_id ?? null,
-            })
-
-          if (error) throw error
-        }
+      if (inserts.length > 0) {
+        const { error } = await supabase
+          .from('player_custom_fields')
+          .insert(inserts.map(field => ({
+            player_id: playerId,
+            field_name: field.field_name,
+            field_value: field.field_value || null,
+            field_order: field.field_order,
+            schema_id: field.schema_id ?? null,
+          })))
+        if (error) throw error
       }
 
       return { playerId, leagueId }

@@ -1,6 +1,6 @@
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse, validateUrl, requirePost } from '../_shared/validation.ts'
+import { UUID_RE, errorResponse, validateUrl, requirePost, requireJson, isValidJpeg } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import type { UpdatePlayerProfileRequest } from '../_shared/types.ts'
@@ -17,6 +17,9 @@ Deno.serve(async (req) => {
 
   const methodResponse = requirePost(req)
   if (methodResponse) return methodResponse
+
+  const jsonResponse = requireJson(req)
+  if (jsonResponse) return jsonResponse
 
   const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 10 })
   if (rateLimitResponse) return rateLimitResponse
@@ -75,6 +78,12 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (deletedCustomFieldIds && deletedCustomFieldIds.length > 0) {
+      if (deletedCustomFieldIds.some((id: string) => !UUID_RE.test(id))) {
+        return errorResponse('Invalid field ID format', 400, req)
+      }
+    }
+
     const supabaseAdmin = createAdminClient()
 
     // Verify edit token
@@ -95,7 +104,15 @@ Deno.serve(async (req) => {
       if (profilePictureBlob.length > 2_800_000) {
         return errorResponse('Profile picture exceeds maximum size', 400, req)
       }
-      const binaryData = Uint8Array.from(atob(profilePictureBlob), c => c.charCodeAt(0))
+      let binaryData: Uint8Array
+      try {
+        binaryData = Uint8Array.from(atob(profilePictureBlob), c => c.charCodeAt(0))
+      } catch {
+        return errorResponse('Invalid base64 encoding', 400, req)
+      }
+      if (!isValidJpeg(binaryData)) {
+        return errorResponse('Invalid image format — must be JPEG', 400, req)
+      }
       const filePath = `${player.league_id}/${playerId}.jpg`
       const { error: uploadError } = await supabaseAdmin.storage
         .from('profile-pictures')
@@ -162,9 +179,6 @@ Deno.serve(async (req) => {
 
     // Delete removed custom fields
     if (deletedCustomFieldIds && deletedCustomFieldIds.length > 0) {
-      if (deletedCustomFieldIds.some((id: string) => !UUID_RE.test(id))) {
-        return errorResponse('Invalid field ID format', 400, req)
-      }
       const { error: deleteError } = await supabaseAdmin
         .from('player_custom_fields')
         .delete()

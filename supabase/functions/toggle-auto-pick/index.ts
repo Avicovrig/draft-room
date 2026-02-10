@@ -1,6 +1,6 @@
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse, requirePost, timingSafeEqual } from '../_shared/validation.ts'
+import { UUID_RE, errorResponse, requirePost, requireJson, timingSafeEqual } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import { authenticateManager } from '../_shared/auth.ts'
@@ -13,6 +13,9 @@ Deno.serve(async (req) => {
   const methodResponse = requirePost(req)
   if (methodResponse) return methodResponse
 
+  const jsonResponse = requireJson(req)
+  if (jsonResponse) return jsonResponse
+
   const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 20 })
   if (rateLimitResponse) return rateLimitResponse
 
@@ -21,6 +24,10 @@ Deno.serve(async (req) => {
 
     if (!captainId || enabled === undefined || !leagueId) {
       return errorResponse('Missing required fields', 400, req)
+    }
+
+    if (typeof enabled !== 'boolean') {
+      return errorResponse('enabled must be a boolean', 400, req)
     }
 
     if (!UUID_RE.test(captainId) || !UUID_RE.test(leagueId)) {
@@ -47,7 +54,7 @@ Deno.serve(async (req) => {
         return errorResponse('Invalid captain token', 403, req)
       }
     } else {
-      const authResult = await authenticateManager(req, leagueId)
+      const authResult = await authenticateManager(req, leagueId, supabaseAdmin)
       if (authResult instanceof Response) return authResult
     }
 

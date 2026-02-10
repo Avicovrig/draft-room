@@ -5,7 +5,7 @@
 
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse, requirePost, timingSafeEqual } from '../_shared/validation.ts'
+import { UUID_RE, errorResponse, requirePost, requireJson, timingSafeEqual } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import { authenticateManager } from '../_shared/auth.ts'
@@ -29,7 +29,11 @@ async function rollbackPick(
   }
 }
 
-/** Returns a 200 response with an error field for expected race conditions. */
+/**
+ * Returns a 200 response with an error field for expected race conditions.
+ * Returns 200 (not 409) for race conditions: multiple clients calling simultaneously
+ * is expected behavior. The first succeeds, others get 200 + {error: "Pick already made"}.
+ */
 function raceConditionResponse(req: Request, body: Record<string, unknown>): Response {
   return new Response(
     JSON.stringify(body),
@@ -43,7 +47,6 @@ function validateTimer(
   captain: Captain | undefined
 ): { expired: true } | { error: Record<string, unknown> } {
   if (captain?.auto_pick_enabled) {
-    console.log(`[auto-pick] Captain ${captain.name} has auto_pick_enabled, skipping timer validation`)
     return { expired: true }
   }
 
@@ -54,7 +57,6 @@ function validateTimer(
     const effectiveTimeLimit = league.time_limit_seconds - GRACE_PERIOD_SECONDS
 
     if (elapsed < effectiveTimeLimit) {
-      console.log(`[auto-pick] Timer not expired: ${elapsed}s elapsed, need ${effectiveTimeLimit}s`)
       return {
         error: {
           error: 'Timer has not expired yet',
@@ -71,12 +73,10 @@ function validateTimer(
 async function selectPlayer(
   supabase: SupabaseClient,
   captainId: string,
-  captainName: string | undefined,
   availablePlayers: Player[]
 ): Promise<{ player: Player; fromQueue: boolean }> {
   const availableIds = new Set(availablePlayers.map((p) => p.id))
 
-  console.log(`[auto-pick] Checking queue for captain ${captainName}`)
   const { data: queue } = await supabase
     .from('captain_draft_queues')
     .select('player_id')
@@ -87,7 +87,6 @@ async function selectPlayer(
     for (const entry of queue) {
       if (availableIds.has(entry.player_id)) {
         const player = availablePlayers.find((p) => p.id === entry.player_id)!
-        console.log(`[auto-pick] Selected from queue: ${player.name}`)
         return { player, fromQueue: true }
       }
     }
@@ -95,7 +94,6 @@ async function selectPlayer(
 
   const randomIndex = Math.floor(Math.random() * availablePlayers.length)
   const player = availablePlayers[randomIndex]
-  console.log(`[auto-pick] Selected random: ${player.name}`)
   return { player, fromQueue: false }
 }
 
@@ -129,6 +127,9 @@ Deno.serve(async (req) => {
   const methodResponse = requirePost(req)
   if (methodResponse) return methodResponse
 
+  const jsonResponse = requireJson(req)
+  if (jsonResponse) return jsonResponse
+
   const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 30 })
   if (rateLimitResponse) return rateLimitResponse
 
@@ -145,12 +146,10 @@ Deno.serve(async (req) => {
       return errorResponse('Invalid field format', 400, req)
     }
 
-    console.log(`[auto-pick] Request for league ${leagueId}, expectedPickIndex: ${expectedPickIndex}`)
-
     // Get the league
     const { data: league, error: leagueError } = await supabase
       .from('leagues')
-      .select('*, captains(*), players(*)')
+      .select('*, captains(id, name, draft_position, player_id, access_token, auto_pick_enabled), players(id, name, drafted_by_captain_id)')
       .eq('id', leagueId)
       .single()
 
@@ -159,7 +158,6 @@ Deno.serve(async (req) => {
     }
 
     if (league.status !== 'in_progress') {
-      console.log(`[auto-pick] Draft not in progress, status: ${league.status}`)
       return errorResponse('Draft is not in progress', 400, req)
     }
 
@@ -169,7 +167,6 @@ Deno.serve(async (req) => {
     // others get 200 + {error: "Pick already made"}. The frontend handles this by
     // checking response.data.error for expected messages (see DraftBoard.tsx).
     if (expectedPickIndex !== undefined && expectedPickIndex !== league.current_pick_index) {
-      console.log(`[auto-pick] Pick index mismatch: expected ${expectedPickIndex}, actual ${league.current_pick_index}`)
       return raceConditionResponse(req, {
         error: 'Pick already made',
         expectedPickIndex,
@@ -191,7 +188,7 @@ Deno.serve(async (req) => {
         return errorResponse('Invalid captain token', 403, req)
       }
     } else {
-      const authResult = await authenticateManager(req, leagueId)
+      const authResult = await authenticateManager(req, leagueId, supabase)
       if (authResult instanceof Response) return authResult
     }
 
@@ -212,7 +209,6 @@ Deno.serve(async (req) => {
     const { player: selectedPlayer, fromQueue: selectedFromQueue } = await selectPlayer(
       supabase,
       currentCaptainId!,
-      currentCaptain?.name,
       availablePlayers
     )
 
@@ -229,7 +225,6 @@ Deno.serve(async (req) => {
 
     if (pickError) {
       if (pickError.code === '23505') {
-        console.log(`[auto-pick] Duplicate pick detected for pick_number ${pickNumber}`)
         return raceConditionResponse(req, { error: 'Pick already made', pickNumber })
       }
       throw pickError

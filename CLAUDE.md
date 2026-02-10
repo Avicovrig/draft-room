@@ -45,7 +45,7 @@ All draft-critical mutations go through Deno edge functions in `supabase/functio
 - **`restart-draft`** - Manager-only. Deletes all picks, resets players, sets league back to `not_started`. Requires manager JWT.
 - **`undo-pick`** - Manager-only. Removes last pick, resets that player, decrements pick index. Requires manager JWT.
 
-All edge functions share utilities in `supabase/functions/_shared/`: CORS origin checking (`cors.ts`), rate limiting (`rateLimit.ts`), UUID/URL validation + timing-safe comparison + HTTP method enforcement (`validation.ts`), manager JWT auth (`auth.ts`), audit logging (`audit.ts`), draft order logic (`draftOrder.ts`), and shared type definitions (`types.ts`). All validate UUID format on ID parameters before hitting the database. Request body types and entity interfaces are defined in `_shared/types.ts` — use these instead of inline type annotations.
+All edge functions share utilities in `supabase/functions/_shared/`: CORS origin checking (`cors.ts`), rate limiting (`rateLimit.ts`), UUID/URL validation + Content-Type enforcement + JPEG validation + timing-safe comparison + HTTP method enforcement (`validation.ts`), manager JWT auth with optional client reuse (`auth.ts`), audit logging (`audit.ts`), admin client creation with fail-fast env validation (`supabase.ts`), draft order logic (`draftOrder.ts`), and shared type definitions (`types.ts`). All validate UUID format on ID parameters before hitting the database. All enforce `Content-Type: application/json` via `requireJson()`. Request body types and entity interfaces are defined in `_shared/types.ts` — use these instead of inline type annotations.
 
 **IMPORTANT: Gateway JWT verification is disabled** (`verify_jwt = false` in `config.toml`, `--no-verify-jwt` on deploy). Supabase Auth issues ES256 user tokens but the edge function gateway validates using HS256 `JWT_SECRET`. All functions validate auth internally — never rely on gateway verification. Always deploy with `--no-verify-jwt`.
 
@@ -160,6 +160,15 @@ Vite loads `.env.[mode]` automatically. Local dev defaults to QA mode.
 - `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
 
 Edge functions use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (set automatically by Supabase).
+
+## Accepted Design Trade-offs
+
+- **Token chain in player edit page (M-25)**: When a player edits their profile, the response includes `linked_captain_access_token` and `league_spectator_token` for navigation. These tokens are fetched via a `SECURITY DEFINER` RPC, never from direct column access. Acceptable because it enables seamless UX without re-authentication.
+- **Token re-exposure in session (M-44)**: Tokens are stored in `sessionStorage` via `useSecureToken` after being stripped from the URL. They remain accessible to same-tab JS for the session lifetime. Acceptable because session tokens are inherently visible to the current tab's JS context.
+- **Open redirect in Login.tsx (M-23)**: `location.state.from.pathname` is used for post-login redirect. Not exploitable because React Router's `location.state` can only be set programmatically (not via URL manipulation), and `navigate()` only handles in-app routes.
+- **`team_color` CSS injection (M-22)**: Colors are rendered via `style={{ backgroundColor: captain.team_color }}`. Not exploitable via CSS `style` attribute (no script execution). Colors are validated server-side in edge functions (`isValidHexColor`), and client-side input comes from `<input type="color">`.
+- **`console.error` in ErrorBoundary (M-43)**: `componentDidCatch` logs errors via `console.error`. This is appropriate for production error tracking and matches React's own behavior.
+- **ESLint unused `_` variables**: `varsIgnorePattern: '^_'` is configured in ESLint. The `_` prefix convention is used for intentionally unused destructuring targets (e.g., `const { [key]: _, ...rest } = obj`).
 
 ## Supabase Setup
 

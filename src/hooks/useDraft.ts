@@ -102,6 +102,7 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
   }, [leagueId, queryClient])
 
   // Calculate derived values with memoization
+  // Note: deps use `league` (not sub-fields) to satisfy the React Compiler's preserve-manual-memoization rule
   const availablePlayers = useMemo(
     () => (league ? getAvailablePlayers(league.players, league.captains) : []),
     [league]
