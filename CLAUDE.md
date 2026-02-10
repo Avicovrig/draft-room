@@ -110,12 +110,18 @@ Token is stripped from the URL on page load and stored in `sessionStorage` via `
 - Components use named exports
 - Dark mode: toggle via ThemeContext, uses `.dark` class on `<html>`
 - Toast notifications: use `useToast()` hook from `@/components/ui/Toast`
-- Wrap route content with ErrorBoundary for graceful error handling
+- Each route in `App.tsx` is wrapped in its own `<ErrorBoundary>` for route-level error isolation. An outer `ErrorBoundary` wraps the entire app as a final fallback. When adding new routes, always wrap them in `<ErrorBoundary>`.
 - Hooks follow the pattern: `use<Entity>` for queries, `useCreate<Entity>`/`useUpdate<Entity>`/`useDelete<Entity>` for mutations
 - Tables with unique constraints on position columns (`captains.draft_position`, `captain_draft_queues.position`) use two-phase updates: set positions to negative temps first, then final values
 - All modals use `useModalFocus` hook (`src/hooks/useModalFocus.ts`) for ESC key, click-outside, body scroll lock, focus trap, and ARIA attributes
 - `DraftBoard` receives props from 3 callers (`DraftView`, `CaptainView`, `SpectatorView`). Adding new props requires updating all 3.
 - `Button` component accepts `loading` boolean — shows spinner and auto-disables. Use this for all async actions.
+- **TanStack Query staleTime**: All query hooks should have an appropriate `staleTime`. Use `5 * 60 * 1000` (5 min) for static/rarely-changing data (league list, field schemas, token validation), `30 * 1000` (30 sec) for data edited in the current view (player profiles, custom fields), and no staleTime for live draft state (`useLeague` with realtime/polling).
+- **React 19 patterns**:
+  - Do NOT mutate refs during render — use `useEffect` instead
+  - Prefer derived values over `useState` + sync `useEffect` when state can be computed from props/other state
+  - Use lazy initializers (`useState(() => fn())`) when reading initial state from external sources (localStorage, modules)
+  - Use `aria-live="polite"` and `role="status"` on dynamic content that screen readers should announce (e.g., timers, countdowns)
 
 ## Testing
 
@@ -124,9 +130,10 @@ Token is stripped from the URL on page load and stored in `sessionStorage` via `
 - **All new pure functions MUST have corresponding unit tests.** When adding a function to `src/lib/` or `supabase/functions/_shared/`, write tests for it.
 - **Edge function shared utilities** (`supabase/functions/_shared/`) use Deno-style `.ts` imports that Vitest can't resolve directly. Tests for these re-implement the logic under test. When modifying these files, update both the source and the corresponding test.
 - **Draft logic is duplicated** in `src/lib/draft.ts` and edge functions (`make-pick`, `auto-pick`). Tests cover the frontend version. When modifying draft logic, update both locations and verify tests still pass.
-- **Pre-commit hook**: Husky runs `lint-staged` (ESLint) on staged `.ts`/`.tsx` files before every commit.
-- **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) runs lint, type check, tests, and build on every push to `main` and on PRs.
+- **Pre-commit hook**: Husky runs `lint-staged` (ESLint on staged `.ts`/`.tsx` files) and then the full Vitest suite before every commit.
+- **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) runs lint, type check, tests with coverage, and build on every push to `main` and on PRs.
 - **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability. For QA, pass `QA_FRONTEND_URL` env var since Vercel preview URLs change each deploy.
+- **Keep CLAUDE.md updated**: When adding or modifying tests, implementing best practices, or changing conventions, update this file to reflect the changes.
 
 ## Environment Variables
 
