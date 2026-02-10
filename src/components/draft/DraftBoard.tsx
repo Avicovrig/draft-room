@@ -220,7 +220,6 @@ export function DraftBoard({
       await onMakePick(playerId, currentCaptain.id, captainToken)
       playSound('pickMade')
     } catch (error) {
-      console.error('Pick failed:', { leagueId: league.id, captainId: currentCaptain?.id, playerId, error })
       const errorMessage = error instanceof Error ? error.message : 'Failed to make pick. Please try again.'
       addToast(errorMessage, 'error')
     } finally {
@@ -250,7 +249,6 @@ export function DraftBoard({
       })
 
       if (response.error) {
-        console.error('Auto-pick failed:', { leagueId: league.id, pickIndex: currentPickIndex, error: response.error })
         // Only show error if it's not a race condition (multiple clients calling simultaneously)
         if (!response.error.message?.includes('Pick already made')) {
           addToast('Auto-pick failed. Please make a manual selection.', 'error')
@@ -272,8 +270,7 @@ export function DraftBoard({
         // Invalidate queries to refresh data
         queryClient.invalidateQueries({ queryKey: ['league', league.id] })
       }
-    } catch (error) {
-      console.error('Auto-pick error:', { leagueId: league.id, error })
+    } catch {
       addToast('Auto-pick failed due to a network error.', 'error')
     } finally {
       isAutoPickingRef.current = false

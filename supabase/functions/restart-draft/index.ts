@@ -1,6 +1,6 @@
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse } from '../_shared/validation.ts'
+import { UUID_RE, errorResponse, requirePost } from '../_shared/validation.ts'
 import { authenticateManager } from '../_shared/auth.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
@@ -8,6 +8,9 @@ import { logAudit, getClientIp } from '../_shared/audit.ts'
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
   if (corsResponse) return corsResponse
+
+  const methodResponse = requirePost(req)
+  if (methodResponse) return methodResponse
 
   const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 5 })
   if (rateLimitResponse) return rateLimitResponse
@@ -33,7 +36,20 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createAdminClient()
 
-    // Delete all draft picks
+    // Snapshot draft picks before deleting (for rollback)
+    const { data: existingPicks } = await supabaseAdmin
+      .from('draft_picks')
+      .select('*')
+      .eq('league_id', leagueId)
+
+    // Snapshot drafted players (for rollback)
+    const { data: draftedPlayers } = await supabaseAdmin
+      .from('players')
+      .select('id, drafted_by_captain_id, draft_pick_number')
+      .eq('league_id', leagueId)
+      .not('drafted_by_captain_id', 'is', null)
+
+    // Step 1: Delete all draft picks
     const { error: deletePicksError } = await supabaseAdmin
       .from('draft_picks')
       .delete()
@@ -44,19 +60,23 @@ Deno.serve(async (req) => {
       return errorResponse('Failed to restart draft', 500, req)
     }
 
-    // Reset all players' draft status
+    // Step 2: Reset all players' draft status
     const { error: resetPlayersError } = await supabaseAdmin
       .from('players')
       .update({ drafted_by_captain_id: null, draft_pick_number: null })
       .eq('league_id', leagueId)
 
     if (resetPlayersError) {
-      console.error('Failed to reset players:', resetPlayersError)
-      // Picks are already deleted — inconsistent state, but draft restart is destructive anyway
+      console.error('Failed to reset players, rolling back picks:', resetPlayersError)
+      // Rollback: re-insert deleted picks
+      if (existingPicks && existingPicks.length > 0) {
+        const { error: rbErr } = await supabaseAdmin.from('draft_picks').insert(existingPicks)
+        if (rbErr) console.error('CRITICAL: Rollback failed (re-insert picks):', { leagueId, rbErr })
+      }
       return errorResponse('Failed to reset players', 500, req)
     }
 
-    // Reset league status
+    // Step 3: Reset league status
     const { error: updateLeagueError } = await supabaseAdmin
       .from('leagues')
       .update({
@@ -67,7 +87,20 @@ Deno.serve(async (req) => {
       .eq('id', leagueId)
 
     if (updateLeagueError) {
-      console.error('Failed to update league:', updateLeagueError)
+      console.error('Failed to update league, rolling back:', updateLeagueError)
+      // Rollback: restore drafted players and picks
+      if (draftedPlayers && draftedPlayers.length > 0) {
+        for (const p of draftedPlayers) {
+          await supabaseAdmin.from('players').update({
+            drafted_by_captain_id: p.drafted_by_captain_id,
+            draft_pick_number: p.draft_pick_number,
+          }).eq('id', p.id)
+        }
+      }
+      if (existingPicks && existingPicks.length > 0) {
+        const { error: rbErr } = await supabaseAdmin.from('draft_picks').insert(existingPicks)
+        if (rbErr) console.error('CRITICAL: Rollback failed (re-insert picks):', { leagueId, rbErr })
+      }
       return errorResponse('Failed to update league', 500, req)
     }
 

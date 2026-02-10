@@ -5,15 +5,129 @@
 
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse } from '../_shared/validation.ts'
+import { UUID_RE, errorResponse, requirePost, timingSafeEqual } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import { authenticateManager } from '../_shared/auth.ts'
-import type { AutoPickRequest, Captain, Player } from '../_shared/types.ts'
+import { getCurrentCaptainId, getAvailablePlayersServer } from '../_shared/draftOrder.ts'
+import type { AutoPickRequest, Captain, Player, League } from '../_shared/types.ts'
+import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+/** Roll back a recorded pick: delete the pick row and optionally reset the player. */
+async function rollbackPick(
+  supabase: SupabaseClient,
+  leagueId: string,
+  pickNumber: number,
+  playerId: string,
+  resetPlayer: boolean
+): Promise<void> {
+  const { error: rb1 } = await supabase.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
+  if (rb1) console.error('CRITICAL: Rollback failed (delete pick):', { leagueId, pickNumber, rb1 })
+  if (resetPlayer) {
+    const { error: rb2 } = await supabase.from('players').update({ drafted_by_captain_id: null, draft_pick_number: null }).eq('id', playerId)
+    if (rb2) console.error('CRITICAL: Rollback failed (reset player):', { leagueId, playerId, rb2 })
+  }
+}
+
+/** Returns a 200 response with an error field for expected race conditions. */
+function raceConditionResponse(req: Request, body: Record<string, unknown>): Response {
+  return new Response(
+    JSON.stringify(body),
+    { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+  )
+}
+
+/** Validate that the timer has expired (with grace period). Skips check for auto-pick captains. */
+function validateTimer(
+  league: League,
+  captain: Captain | undefined
+): { expired: true } | { error: Record<string, unknown> } {
+  if (captain?.auto_pick_enabled) {
+    console.log(`[auto-pick] Captain ${captain.name} has auto_pick_enabled, skipping timer validation`)
+    return { expired: true }
+  }
+
+  const GRACE_PERIOD_SECONDS = 2
+  if (league.current_pick_started_at) {
+    const startTime = new Date(league.current_pick_started_at).getTime()
+    const elapsed = (Date.now() - startTime) / 1000
+    const effectiveTimeLimit = league.time_limit_seconds - GRACE_PERIOD_SECONDS
+
+    if (elapsed < effectiveTimeLimit) {
+      console.log(`[auto-pick] Timer not expired: ${elapsed}s elapsed, need ${effectiveTimeLimit}s`)
+      return {
+        error: {
+          error: 'Timer has not expired yet',
+          elapsed: Math.round(elapsed),
+          required: effectiveTimeLimit,
+        },
+      }
+    }
+  }
+  return { expired: true }
+}
+
+/** Select a player from the captain's queue, or pick randomly. */
+async function selectPlayer(
+  supabase: SupabaseClient,
+  captainId: string,
+  captainName: string | undefined,
+  availablePlayers: Player[]
+): Promise<{ player: Player; fromQueue: boolean }> {
+  const availableIds = new Set(availablePlayers.map((p) => p.id))
+
+  console.log(`[auto-pick] Checking queue for captain ${captainName}`)
+  const { data: queue } = await supabase
+    .from('captain_draft_queues')
+    .select('player_id')
+    .eq('captain_id', captainId)
+    .order('position', { ascending: true })
+
+  if (queue && queue.length > 0) {
+    for (const entry of queue) {
+      if (availableIds.has(entry.player_id)) {
+        const player = availablePlayers.find((p) => p.id === entry.player_id)!
+        console.log(`[auto-pick] Selected from queue: ${player.name}`)
+        return { player, fromQueue: true }
+      }
+    }
+  }
+
+  const randomIndex = Math.floor(Math.random() * availablePlayers.length)
+  const player = availablePlayers[randomIndex]
+  console.log(`[auto-pick] Selected random: ${player.name}`)
+  return { player, fromQueue: false }
+}
+
+/** Advance the league to the next pick, or mark complete. Uses optimistic locking. */
+async function advanceLeague(
+  supabase: SupabaseClient,
+  leagueId: string,
+  currentPickIndex: number,
+  isComplete: boolean
+): Promise<{ success: boolean; error?: unknown }> {
+  const { data, error } = await supabase
+    .from('leagues')
+    .update({
+      status: isComplete ? 'completed' : 'in_progress',
+      current_pick_index: isComplete ? currentPickIndex : currentPickIndex + 1,
+      current_pick_started_at: isComplete ? null : new Date().toISOString(),
+    })
+    .eq('id', leagueId)
+    .eq('current_pick_index', currentPickIndex)
+    .select('id')
+
+  if (error) return { success: false, error }
+  if (!data || data.length === 0) return { success: false }
+  return { success: true }
+}
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
   if (corsResponse) return corsResponse
+
+  const methodResponse = requirePost(req)
+  if (methodResponse) return methodResponse
 
   const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 30 })
   if (rateLimitResponse) return rateLimitResponse
@@ -44,7 +158,6 @@ Deno.serve(async (req) => {
       return errorResponse('League not found', 404, req)
     }
 
-    // Check if draft is in progress
     if (league.status !== 'in_progress') {
       console.log(`[auto-pick] Draft not in progress, status: ${league.status}`)
       return errorResponse('Draft is not in progress', 400, req)
@@ -57,34 +170,24 @@ Deno.serve(async (req) => {
     // checking response.data.error for expected messages (see DraftBoard.tsx).
     if (expectedPickIndex !== undefined && expectedPickIndex !== league.current_pick_index) {
       console.log(`[auto-pick] Pick index mismatch: expected ${expectedPickIndex}, actual ${league.current_pick_index}`)
-      return new Response(
-        JSON.stringify({
-          error: 'Pick already made',
-          expectedPickIndex,
-          actualPickIndex: league.current_pick_index
-        }),
-        { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
-      )
+      return raceConditionResponse(req, {
+        error: 'Pick already made',
+        expectedPickIndex,
+        actualPickIndex: league.current_pick_index,
+      })
     }
 
-    // Get current captain first (needed to check auto_pick_enabled for timer validation)
-    const sortedCaptains = [...league.captains].sort(
-      (a: Captain, b: Captain) => a.draft_position - b.draft_position
+    // Determine current captain
+    const currentCaptainId = getCurrentCaptainId(
+      league.captains,
+      league.current_pick_index,
+      league.draft_type as 'snake' | 'round_robin'
     )
-    const captainIds = sortedCaptains.map((c: Captain) => c.id)
-    const captainCount = captainIds.length
-    const currentRound = Math.floor(league.current_pick_index / captainCount)
-    const positionInRound = league.current_pick_index % captainCount
-
-    // Snake draft logic
-    const isReversedRound = league.draft_type === 'snake' && currentRound % 2 === 1
-    const orderForRound = isReversedRound ? [...captainIds].reverse() : captainIds
-    const currentCaptainId = orderForRound[positionInRound]
-    const currentCaptain = sortedCaptains.find((c: Captain) => c.id === currentCaptainId)
+    const currentCaptain = league.captains.find((c: Captain) => c.id === currentCaptainId)
 
     // Auth: captain token OR manager JWT required
     if (captainToken) {
-      if (!currentCaptain || currentCaptain.access_token !== captainToken) {
+      if (!currentCaptain || !timingSafeEqual(currentCaptain.access_token, captainToken)) {
         return errorResponse('Invalid captain token', 403, req)
       }
     } else {
@@ -92,79 +195,26 @@ Deno.serve(async (req) => {
       if (authResult instanceof Response) return authResult
     }
 
-    // Timer validation - skip if captain has auto_pick_enabled (immediate pick)
-    // Only validate timer for captains who don't have auto-pick enabled
-    if (!currentCaptain?.auto_pick_enabled) {
-      const GRACE_PERIOD_SECONDS = 2
-      if (league.current_pick_started_at) {
-        const startTime = new Date(league.current_pick_started_at).getTime()
-        const elapsed = (Date.now() - startTime) / 1000
-        const effectiveTimeLimit = league.time_limit_seconds - GRACE_PERIOD_SECONDS
-
-        if (elapsed < effectiveTimeLimit) {
-          console.log(`[auto-pick] Timer not expired: ${elapsed}s elapsed, need ${effectiveTimeLimit}s`)
-          // Returns 200 with error field for expected race condition (see design note above)
-          return new Response(
-            JSON.stringify({
-              error: 'Timer has not expired yet',
-              elapsed: Math.round(elapsed),
-              required: effectiveTimeLimit
-            }),
-            { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
-          )
-        }
-      }
-    } else {
-      console.log(`[auto-pick] Captain ${currentCaptain.name} has auto_pick_enabled, skipping timer validation`)
+    // Timer validation
+    const timerResult = validateTimer(league as League, currentCaptain)
+    if ('error' in timerResult) {
+      return raceConditionResponse(req, timerResult.error)
     }
 
-    // Get available players (exclude drafted and captain-linked players)
-    // NOTE: Keep in sync with getAvailablePlayers() in src/lib/draft.ts
-    const captainPlayerIds = new Set(
-      league.captains
-        .filter((c: Captain) => c.player_id)
-        .map((c: Captain) => c.player_id!)
-    )
-    const availablePlayers = league.players.filter(
-      (p: Player) => !p.drafted_by_captain_id && !captainPlayerIds.has(p.id)
-    )
+    // Get available players
+    const availablePlayers = getAvailablePlayersServer(league.players, league.captains)
 
     if (availablePlayers.length === 0) {
       return errorResponse('No available players', 400, req)
     }
 
-    // Determine which player to pick
-    // Always check the captain's queue first, then fall back to random
-    let selectedPlayer
-    let selectedFromQueue = false
-    const availablePlayerIds = new Set(availablePlayers.map((p: Player) => p.id))
-
-    // Get captain's queue ordered by position
-    console.log(`[auto-pick] Checking queue for captain ${currentCaptain?.name}`)
-    const { data: queue } = await supabase
-      .from('captain_draft_queues')
-      .select('player_id')
-      .eq('captain_id', currentCaptainId)
-      .order('position', { ascending: true })
-
-    if (queue && queue.length > 0) {
-      // Find first available player from queue
-      for (const queueEntry of queue) {
-        if (availablePlayerIds.has(queueEntry.player_id)) {
-          selectedPlayer = availablePlayers.find((p: Player) => p.id === queueEntry.player_id)
-          selectedFromQueue = true
-          console.log(`[auto-pick] Selected from queue: ${selectedPlayer?.name}`)
-          break
-        }
-      }
-    }
-
-    // If no player selected from queue, pick random
-    if (!selectedPlayer) {
-      const randomIndex = Math.floor(Math.random() * availablePlayers.length)
-      selectedPlayer = availablePlayers[randomIndex]
-      console.log(`[auto-pick] Selected random: ${selectedPlayer.name}`)
-    }
+    // Select player (from queue or random)
+    const { player: selectedPlayer, fromQueue: selectedFromQueue } = await selectPlayer(
+      supabase,
+      currentCaptainId!,
+      currentCaptain?.name,
+      availablePlayers
+    )
 
     const pickNumber = league.current_pick_index + 1
 
@@ -178,17 +228,9 @@ Deno.serve(async (req) => {
     })
 
     if (pickError) {
-      // Check for unique constraint violation (another client already made this pick)
       if (pickError.code === '23505') {
-        // Returns 200 with error field for expected race condition (see design note above)
         console.log(`[auto-pick] Duplicate pick detected for pick_number ${pickNumber}`)
-        return new Response(
-          JSON.stringify({
-            error: 'Pick already made',
-            pickNumber,
-          }),
-          { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
-        )
+        return raceConditionResponse(req, { error: 'Pick already made', pickNumber })
       }
       throw pickError
     }
@@ -196,16 +238,12 @@ Deno.serve(async (req) => {
     // Update player
     const { error: playerError } = await supabase
       .from('players')
-      .update({
-        drafted_by_captain_id: currentCaptainId,
-        draft_pick_number: pickNumber,
-      })
+      .update({ drafted_by_captain_id: currentCaptainId, draft_pick_number: pickNumber })
       .eq('id', selectedPlayer.id)
 
     if (playerError) {
-      // Roll back the pick insert to avoid inconsistent state
       console.error('[auto-pick] Failed to update player, rolling back pick:', playerError)
-      await supabase.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
+      await rollbackPick(supabase, leagueId, pickNumber, selectedPlayer.id, false)
       throw playerError
     }
 
@@ -216,42 +254,23 @@ Deno.serve(async (req) => {
       .eq('player_id', selectedPlayer.id)
 
     if (cleanupError) {
-      // Log but don't fail the pick - cleanup is not critical
       console.error('[auto-pick] Queue cleanup error:', cleanupError)
     }
 
-    // Check if draft is complete
+    // Check completion and advance
     const isComplete = availablePlayers.length === 1
 
-    // Update league (with optimistic lock on current_pick_index to prevent desync)
-    const { data: updatedLeague, error: updateError } = await supabase
-      .from('leagues')
-      .update({
-        status: isComplete ? 'completed' : 'in_progress',
-        current_pick_index: isComplete ? league.current_pick_index : league.current_pick_index + 1,
-        current_pick_started_at: isComplete ? null : new Date().toISOString(),
-      })
-      .eq('id', leagueId)
-      .eq('current_pick_index', league.current_pick_index)
-      .select('id')
+    const advanceResult = await advanceLeague(supabase, leagueId, league.current_pick_index, isComplete)
 
-    if (updateError) {
-      // Roll back pick and player update to avoid inconsistent state
-      console.error('[auto-pick] Failed to update league, rolling back:', updateError)
-      await supabase.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
-      await supabase.from('players').update({ drafted_by_captain_id: null, draft_pick_number: null }).eq('id', selectedPlayer.id)
-      throw updateError
-    }
-
-    // Optimistic lock: if no rows matched, a concurrent operation changed the pick index
-    if (!updatedLeague || updatedLeague.length === 0) {
-      console.error(`[auto-pick] Optimistic lock failed: current_pick_index changed since read`)
-      await supabase.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
-      await supabase.from('players').update({ drafted_by_captain_id: null, draft_pick_number: null }).eq('id', selectedPlayer.id)
-      return new Response(
-        JSON.stringify({ error: 'Draft state changed concurrently' }),
-        { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
-      )
+    if (!advanceResult.success) {
+      if (advanceResult.error) {
+        console.error('[auto-pick] Failed to update league, rolling back:', advanceResult.error)
+      } else {
+        console.error(`[auto-pick] Optimistic lock failed: current_pick_index changed since read`)
+      }
+      await rollbackPick(supabase, leagueId, pickNumber, selectedPlayer.id, true)
+      if (advanceResult.error) throw advanceResult.error
+      return raceConditionResponse(req, { error: 'Draft state changed concurrently' })
     }
 
     logAudit(supabase, {
@@ -275,7 +294,7 @@ Deno.serve(async (req) => {
         success: true,
         pick: {
           player: selectedPlayer.name,
-          captain: sortedCaptains.find((c: Captain) => c.id === currentCaptainId)?.name,
+          captain: currentCaptain?.name,
           pickNumber,
           isComplete,
         },

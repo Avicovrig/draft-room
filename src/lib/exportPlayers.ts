@@ -1,3 +1,5 @@
+import ExcelJS from 'exceljs'
+import { saveAs } from 'file-saver'
 import type { PlayerPublic, CaptainPublic, PlayerCustomField, LeagueFieldSchema } from './types'
 
 function formatExportValue(value: string, schema: LeagueFieldSchema): string {
@@ -26,7 +28,8 @@ export async function exportPlayersToSpreadsheet(
   customFieldsMap: Record<string, PlayerCustomField[]>,
   fieldSchemas: LeagueFieldSchema[] = []
 ) {
-  const XLSX = await import('xlsx')
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet('Players')
 
   // Build set of captain-linked player IDs
   const captainByPlayerId = new Map<string, CaptainPublic>()
@@ -91,22 +94,22 @@ export async function exportPlayersToSpreadsheet(
     ]
   })
 
-  // Create worksheet
-  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
+  // Add data
+  worksheet.addRows([headers, ...rows])
 
   // Set column widths
-  worksheet['!cols'] = [
-    { wch: 20 }, // Name
-    { wch: 18 }, // Status
-    { wch: 40 }, // Bio
-    ...schemaFieldNames.map(() => ({ wch: 15 })),
-    ...freeformFieldNames.map(() => ({ wch: 15 })),
-  ]
+  worksheet.getColumn(1).width = 20  // Name
+  worksheet.getColumn(2).width = 18  // Status
+  worksheet.getColumn(3).width = 40  // Bio
+  for (let i = 0; i < schemaFieldNames.length + freeformFieldNames.length; i++) {
+    worksheet.getColumn(4 + i).width = 15
+  }
 
-  // Create workbook and download
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Players')
+  // Bold header row
+  worksheet.getRow(1).font = { bold: true }
 
+  // Download
   const safeName = leagueName.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '-')
-  XLSX.writeFile(workbook, `${safeName}-players.xlsx`)
+  const buffer = await workbook.xlsx.writeBuffer()
+  saveAs(new Blob([buffer]), `${safeName}-players.xlsx`)
 }

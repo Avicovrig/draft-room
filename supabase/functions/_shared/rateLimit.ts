@@ -1,4 +1,5 @@
 import { getCorsHeaders } from './cors.ts'
+import { getClientIp } from './audit.ts'
 
 interface RateLimitEntry {
   count: number
@@ -25,18 +26,9 @@ function cleanup() {
   }
 }
 
-/** Use last x-forwarded-for entry (proxy-added, harder to spoof than first). */
-function getClientIp(req: Request): string {
-  const xff = req.headers.get('x-forwarded-for')
-  if (xff) {
-    const ips = xff.split(',').map(ip => ip.trim()).filter(Boolean)
-    if (ips.length > 0) return ips[ips.length - 1]
-  }
-  return req.headers.get('x-real-ip') ?? 'unknown'
-}
-
 /**
  * In-memory per-isolate rate limiter.
+ * Note: State does not persist across isolate restarts or share between regions.
  * Returns a 429 Response if the limit is exceeded, or null to continue.
  */
 export function rateLimit(
@@ -50,8 +42,9 @@ export function rateLimit(
   const entry = store.get(ip)
 
   if (entry && now < entry.resetAt) {
-    entry.count++
-    if (entry.count > maxRequests) {
+    const updated = { ...entry, count: entry.count + 1 }
+    store.set(ip, updated)
+    if (updated.count > maxRequests) {
       return new Response(
         JSON.stringify({ error: 'Too many requests' }),
         {

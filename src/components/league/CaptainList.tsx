@@ -142,7 +142,7 @@ export function CaptainList({ league }: CaptainListProps) {
     const playerIds = league.players.map((p) => p.id)
 
     if (playerIds.length < count) {
-      alert(`Not enough players. You need at least ${count} players.`)
+      addToast(`Not enough players. You need at least ${count} players.`, 'error')
       return
     }
 

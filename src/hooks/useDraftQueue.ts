@@ -114,14 +114,15 @@ export function useMoveInQueue() {
       const currentIndex = queue.findIndex((q) => q.id === queueEntryId)
       if (currentIndex === -1) return
 
-      // Reorder array
-      const [item] = queue.splice(currentIndex, 1)
-      queue.splice(newPosition, 0, item)
+      // Reorder array (immutable)
+      const reordered = [...queue]
+      const [item] = reordered.splice(currentIndex, 1)
+      reordered.splice(newPosition, 0, item)
 
       // Two-phase update to avoid unique constraint violations on (captain_id, position):
       // Phase 1: Set all positions to negative temporary values (parallel)
       const tempResults = await Promise.all(
-        queue.map((entry, i) =>
+        reordered.map((entry, i) =>
           supabase.from('captain_draft_queues').update({ position: -(i + 1) }).eq('id', entry.id)
         )
       )
@@ -130,7 +131,7 @@ export function useMoveInQueue() {
 
       // Phase 2: Set final positive positions (parallel)
       const finalResults = await Promise.all(
-        queue.map((entry, i) =>
+        reordered.map((entry, i) =>
           supabase.from('captain_draft_queues').update({ position: i }).eq('id', entry.id)
         )
       )

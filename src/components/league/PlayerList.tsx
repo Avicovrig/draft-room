@@ -14,20 +14,12 @@ import { useModalFocus } from '@/hooks/useModalFocus'
 import { getAvailablePlayers } from '@/lib/draft'
 import { exportPlayersToSpreadsheet } from '@/lib/exportPlayers'
 import type { LeagueFullPublic, PlayerPublic, PlayerCustomField, LeagueTokens } from '@/lib/types'
+import { getInitials } from '@/lib/utils'
 
 interface PlayerListProps {
   league: LeagueFullPublic
   customFieldsMap?: Record<string, PlayerCustomField[]>
   tokens?: LeagueTokens | null
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
 }
 
 function EditProfileModal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
@@ -115,7 +107,6 @@ export function PlayerList({ league, customFieldsMap = {}, tokens }: PlayerListP
       addToast('Profile saved successfully!', 'success')
       setEditingPlayer(null)
     } catch (err) {
-      console.error('Save error:', err)
       addToast(err instanceof Error ? err.message : 'Failed to save profile', 'error')
     }
   }

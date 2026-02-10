@@ -61,8 +61,7 @@ export function Summary() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Fallback for older browsers
-      console.error('Failed to copy link')
+      // Clipboard API unavailable — silently fail
     }
   }
 

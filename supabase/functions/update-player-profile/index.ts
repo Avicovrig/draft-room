@@ -1,6 +1,6 @@
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse, validateUrl } from '../_shared/validation.ts'
+import { UUID_RE, errorResponse, validateUrl, requirePost } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import type { UpdatePlayerProfileRequest } from '../_shared/types.ts'
@@ -14,6 +14,9 @@ const DANGEROUS_PATTERN = /<[^>]*>|javascript:|data:/i
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
   if (corsResponse) return corsResponse
+
+  const methodResponse = requirePost(req)
+  if (methodResponse) return methodResponse
 
   const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 10 })
   if (rateLimitResponse) return rateLimitResponse
@@ -173,7 +176,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Upsert custom fields
+    // Upsert custom fields — collect errors and report them
+    const fieldErrors: string[] = []
     if (customFields && customFields.length > 0) {
       for (const field of customFields) {
         if (field.id) {
@@ -191,6 +195,7 @@ Deno.serve(async (req) => {
 
           if (error) {
             console.error('Failed to update custom field:', error)
+            fieldErrors.push(field.field_name)
           }
         } else {
           // Insert new
@@ -206,9 +211,14 @@ Deno.serve(async (req) => {
 
           if (error) {
             console.error('Failed to insert custom field:', error)
+            fieldErrors.push(field.field_name)
           }
         }
       }
+    }
+
+    if (fieldErrors.length > 0) {
+      return errorResponse(`Failed to save fields: ${fieldErrors.join(', ')}`, 500, req)
     }
 
     logAudit(supabaseAdmin, {

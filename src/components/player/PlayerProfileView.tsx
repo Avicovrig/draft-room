@@ -1,19 +1,11 @@
 import { Check, X as XIcon } from 'lucide-react'
 import type { PlayerPublic, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
+import { getInitials } from '@/lib/utils'
 
 interface PlayerProfileViewProps {
   player: PlayerPublic
   customFields?: PlayerCustomField[]
   fieldSchemas?: LeagueFieldSchema[]
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
 }
 
 function formatFieldValue(field: PlayerCustomField, schema?: LeagueFieldSchema): React.ReactNode {

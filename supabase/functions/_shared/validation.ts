@@ -19,3 +19,23 @@ export function validateUrl(url: string): boolean {
     return false
   }
 }
+
+/** Reject non-POST requests. Returns a 405 Response, or null to continue. */
+export function requirePost(req: Request): Response | null {
+  if (req.method !== 'POST') {
+    return errorResponse('Method not allowed', 405, req)
+  }
+  return null
+}
+
+/**
+ * Constant-time string comparison to prevent timing attacks on token validation.
+ * Uses crypto.subtle.timingSafeEqual to avoid leaking token characters via response timing.
+ */
+export function timingSafeEqual(a: string, b: string): boolean {
+  const encoder = new TextEncoder()
+  const bufA = encoder.encode(a)
+  const bufB = encoder.encode(b)
+  if (bufA.byteLength !== bufB.byteLength) return false
+  return crypto.subtle.timingSafeEqual(bufA, bufB)
+}

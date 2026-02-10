@@ -3,7 +3,7 @@ import { Search, User, Plus, ArrowUpDown, StickyNote, Filter, X } from 'lucide-r
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
-import { cn } from '@/lib/utils'
+import { cn, getInitials } from '@/lib/utils'
 import type { PlayerPublic, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 export type SortOption = 'default' | 'name-asc' | 'name-desc' | `field:${string}`
@@ -70,15 +70,6 @@ interface PlayerPoolProps {
   filters?: Record<string, string>
   onFilterChange?: (schemaId: string, value: string) => void
   onClearFilters?: () => void
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
 }
 
 export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isPicking, showExpandedDetails = false, onAddToQueue, queuedPlayerIds = new Set(), isAddingToQueue = false, search: controlledSearch, onSearchChange, sortBy: controlledSortBy, onSortChange, searchInputRef: externalSearchRef, notes = {}, onNoteChange, fieldSchemas = [], filters = {}, onFilterChange, onClearFilters }: PlayerPoolProps) {

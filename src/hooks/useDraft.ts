@@ -222,15 +222,13 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
             captainToken,
           },
         })
-      } catch (networkError) {
-        console.error('Network error during pick:', { leagueId: league.id, captainId, playerId, error: networkError })
+      } catch {
         throw new Error('Network error. Check your connection.')
       }
 
       const { data, error, response: rawResponse } = response
 
       if (error) {
-        console.error('Pick failed:', { leagueId: league.id, captainId, playerId, error })
         const message = await parseEdgeFunctionError(rawResponse, 'Failed to make pick. Please try again.')
         throw new Error(message)
       }
@@ -273,7 +271,7 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
  */
 export function useCaptainByToken(leagueId: string | undefined, token: string | null) {
   return useQuery({
-    queryKey: ['captain-by-token', leagueId, token],
+    queryKey: ['captain-by-token', leagueId, !!token],
     queryFn: async () => {
       if (!leagueId || !token) return null
 
@@ -294,7 +292,7 @@ export function useCaptainByToken(leagueId: string | undefined, token: string | 
  */
 export function useSpectatorAccess(leagueId: string | undefined, token: string | null) {
   return useQuery({
-    queryKey: ['spectator-access', leagueId, token],
+    queryKey: ['spectator-access', leagueId, !!token],
     queryFn: async () => {
       if (!leagueId || !token) return false
 

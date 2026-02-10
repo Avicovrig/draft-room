@@ -1,6 +1,6 @@
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse } from '../_shared/validation.ts'
+import { UUID_RE, errorResponse, requirePost, timingSafeEqual } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import { authenticateManager } from '../_shared/auth.ts'
@@ -9,6 +9,9 @@ import type { ToggleAutoPickRequest } from '../_shared/types.ts'
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
   if (corsResponse) return corsResponse
+
+  const methodResponse = requirePost(req)
+  if (methodResponse) return methodResponse
 
   const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 20 })
   if (rateLimitResponse) return rateLimitResponse
@@ -40,7 +43,7 @@ Deno.serve(async (req) => {
 
     // Auth: captain token OR manager JWT required
     if (captainToken) {
-      if (captain.access_token !== captainToken) {
+      if (!timingSafeEqual(captain.access_token, captainToken)) {
         return errorResponse('Invalid captain token', 403, req)
       }
     } else {

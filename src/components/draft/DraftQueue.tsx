@@ -4,21 +4,13 @@ import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import { useDraftQueue, useRemoveFromQueue, useMoveInQueue, useToggleAutoPick } from '@/hooks/useDraftQueue'
 import type { CaptainPublic, PlayerPublic } from '@/lib/types'
+import { getInitials } from '@/lib/utils'
 
 interface DraftQueueProps {
   captain: CaptainPublic
   availablePlayers: PlayerPublic[]
   leagueId: string
   captainToken?: string
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
 }
 
 export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }: DraftQueueProps) {
@@ -109,10 +101,9 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
         leagueId,
         captainToken,
       })
-    } catch (error) {
+    } catch {
       // Revert optimistic update on error
       setIsAutoPickEnabled(!newEnabled)
-      console.error('Toggle auto-pick failed:', { captainId: captain.id, attempted: newEnabled, error })
       addToast('Failed to toggle auto-pick', 'error')
     }
   }

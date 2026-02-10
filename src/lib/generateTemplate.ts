@@ -1,10 +1,10 @@
+import ExcelJS from 'exceljs'
+import { saveAs } from 'file-saver'
 import type { LeagueFieldSchema } from './types'
 
 export async function downloadPlayerTemplate(fieldSchemas?: LeagueFieldSchema[]) {
-  const XLSX = await import('xlsx')
-
-  // Create workbook and worksheet
-  const workbook = XLSX.utils.book_new()
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet('Players')
 
   // Build schema field columns
   const sortedSchemas = [...(fieldSchemas || [])].sort((a, b) => a.field_order - b.field_order)
@@ -15,21 +15,19 @@ export async function downloadPlayerTemplate(fieldSchemas?: LeagueFieldSchema[])
   const exampleRow1 = ['John Smith', 'Team captain with 5 years experience', ...schemaHeaders.map(() => '')]
   const exampleRow2 = ['Jane Doe', '', ...schemaHeaders.map(() => '')]
 
-  const data = [headers, exampleRow1, exampleRow2]
-
-  // Create worksheet from data
-  const worksheet = XLSX.utils.aoa_to_sheet(data)
+  worksheet.addRows([headers, exampleRow1, exampleRow2])
 
   // Set column widths for better readability
-  worksheet['!cols'] = [
-    { wch: 20 }, // Name
-    { wch: 40 }, // Bio
-    ...schemaHeaders.map(() => ({ wch: 15 })),
-  ]
+  worksheet.getColumn(1).width = 20  // Name
+  worksheet.getColumn(2).width = 40  // Bio
+  for (let i = 0; i < schemaHeaders.length; i++) {
+    worksheet.getColumn(3 + i).width = 15
+  }
 
-  // Add worksheet to workbook
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Players')
+  // Bold header row
+  worksheet.getRow(1).font = { bold: true }
 
   // Generate and download file
-  XLSX.writeFile(workbook, 'player-import-template.xlsx')
+  const buffer = await workbook.xlsx.writeBuffer()
+  saveAs(new Blob([buffer]), 'player-import-template.xlsx')
 }

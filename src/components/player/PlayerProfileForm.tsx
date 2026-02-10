@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select'
 import { X, Plus, Camera } from 'lucide-react'
 import { useToast } from '@/components/ui/Toast'
 import type { PlayerPublic, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
+import { getInitials } from '@/lib/utils'
 
 interface PlayerProfileFormProps {
   player: PlayerPublic
@@ -23,15 +24,6 @@ export interface ProfileFormData {
   profilePictureBlob?: Blob | null
   customFields: Array<{ id?: string; field_name: string; field_value: string; field_order: number; schema_id?: string | null }>
   deletedCustomFieldIds: string[]
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
 }
 
 export function PlayerProfileForm({

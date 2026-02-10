@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Crown, User } from 'lucide-react'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber'
-import { cn } from '@/lib/utils'
+import { cn, getInitials } from '@/lib/utils'
 import type { CaptainPublic, PlayerPublic, PlayerCustomField } from '@/lib/types'
 
 function AnimatedCount({ count, label }: { count: number; label: string }) {
@@ -12,15 +12,6 @@ function AnimatedCount({ count, label }: { count: number; label: string }) {
       {display} {label}
     </span>
   )
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
 }
 
 interface TeamRosterProps {

@@ -23,17 +23,29 @@ export function parseFile(file: File): Promise<SpreadsheetData> {
 
     reader.onload = async (e) => {
       try {
-        const XLSX = await import('xlsx')
+        const ExcelJS = await import('exceljs')
         const data = e.target?.result
-        const workbook = XLSX.read(data, { type: 'array' })
-        const firstSheetName = workbook.SheetNames[0]
-        const worksheet = workbook.Sheets[firstSheetName]
+        if (!data || !(data instanceof ArrayBuffer)) {
+          reject(new Error('Failed to read file data'))
+          return
+        }
 
-        // Convert to array of arrays, with empty cells as empty strings
-        const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, {
-          header: 1,
-          defval: '',
-          raw: false, // Convert all values to strings
+        const workbook = new ExcelJS.default.Workbook()
+        await workbook.xlsx.load(data)
+        const worksheet = workbook.worksheets[0]
+
+        if (!worksheet || worksheet.rowCount === 0) {
+          reject(new Error('The file appears to be empty'))
+          return
+        }
+
+        // Convert worksheet to array of string arrays
+        const jsonData: string[][] = []
+        worksheet.eachRow((row) => {
+          const rowValues = row.values as (string | number | boolean | null | undefined)[]
+          // ExcelJS row.values is 1-indexed (index 0 is undefined), so slice(1)
+          const cells = rowValues.slice(1).map((cell) => String(cell ?? '').trim())
+          jsonData.push(cells)
         })
 
         if (jsonData.length === 0) {
@@ -42,7 +54,7 @@ export function parseFile(file: File): Promise<SpreadsheetData> {
         }
 
         // First row as headers, rest as data rows
-        const headers = (jsonData[0] || []).map((h) => String(h).trim())
+        const headers = jsonData[0].map((h) => String(h).trim())
         const rows = jsonData.slice(1).map((row) =>
           row.map((cell) => String(cell ?? '').trim())
         )
@@ -275,8 +287,7 @@ export function useImportPlayers({ leagueId }: UseImportPlayersOptions) {
           .insert(customFieldsToInsert)
 
         if (customFieldsError) {
-          console.error('Failed to create custom fields:', customFieldsError)
-          // Don't fail the whole import for custom fields
+          // Don't fail the whole import for custom fields — they can be added manually
         }
       }
 

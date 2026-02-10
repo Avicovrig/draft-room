@@ -38,7 +38,7 @@ export function usePlayerProfile(playerId: string | undefined) {
 
 export function usePlayerByEditToken(playerId: string | undefined, editToken: string | null) {
   return useQuery({
-    queryKey: ['player-by-token', playerId, editToken],
+    queryKey: ['player-by-token', playerId, !!editToken],
     queryFn: async () => {
       if (!playerId || !editToken) return null
 
@@ -48,7 +48,6 @@ export function usePlayerByEditToken(playerId: string | undefined, editToken: st
       })
 
       if (error) {
-        console.error('Token validation error:', { playerId, error })
         return null
       }
 

@@ -98,6 +98,26 @@ describe('validateUrl', () => {
   })
 })
 
+// Re-implement requirePost for testing
+function requirePost(req: Request): Response | null {
+  if (req.method !== 'POST') {
+    return errorResponse('Method not allowed', 405, req)
+  }
+  return null
+}
+
+// Re-implement timingSafeEqual for testing
+// Note: Node 20+ supports crypto.subtle.timingSafeEqual but for test simplicity
+// we verify the logic (length check + comparison). The crypto.subtle call is Deno-specific.
+function timingSafeEqual(a: string, b: string): boolean {
+  const encoder = new TextEncoder()
+  const bufA = encoder.encode(a)
+  const bufB = encoder.encode(b)
+  if (bufA.byteLength !== bufB.byteLength) return false
+  // In tests we use Buffer.compare as a stand-in for crypto.subtle.timingSafeEqual
+  return Buffer.from(bufA).equals(Buffer.from(bufB))
+}
+
 // Re-implement errorResponse for testing
 function errorResponse(message: string, status: number, req: Request): Response {
   const origin = req.headers.get('Origin') ?? ''
@@ -139,5 +159,72 @@ describe('errorResponse', () => {
     const response = errorResponse('Error', 500, makeRequest('https://example.com'))
     expect(response.headers.get('Access-Control-Allow-Origin')).toBeTruthy()
     expect(response.headers.get('Vary')).toBe('Origin')
+  })
+})
+
+describe('requirePost', () => {
+  it('returns null for POST requests', () => {
+    const req = new Request('https://example.com', { method: 'POST' })
+    expect(requirePost(req)).toBeNull()
+  })
+
+  it('returns 405 for GET requests', () => {
+    const req = new Request('https://example.com', { method: 'GET' })
+    const response = requirePost(req)
+    expect(response).not.toBeNull()
+    expect(response!.status).toBe(405)
+  })
+
+  it('returns 405 for PUT requests', () => {
+    const req = new Request('https://example.com', { method: 'PUT' })
+    const response = requirePost(req)
+    expect(response).not.toBeNull()
+    expect(response!.status).toBe(405)
+  })
+
+  it('returns 405 for DELETE requests', () => {
+    const req = new Request('https://example.com', { method: 'DELETE' })
+    const response = requirePost(req)
+    expect(response!.status).toBe(405)
+  })
+
+  it('returns error body with "Method not allowed"', async () => {
+    const req = new Request('https://example.com', { method: 'GET' })
+    const response = requirePost(req)
+    const body = await response!.json()
+    expect(body.error).toBe('Method not allowed')
+  })
+})
+
+describe('timingSafeEqual', () => {
+  it('returns true for identical strings', () => {
+    expect(timingSafeEqual('abc123', 'abc123')).toBe(true)
+  })
+
+  it('returns false for different strings of same length', () => {
+    expect(timingSafeEqual('abc123', 'abc456')).toBe(false)
+  })
+
+  it('returns false for strings of different length', () => {
+    expect(timingSafeEqual('short', 'longer-string')).toBe(false)
+  })
+
+  it('returns true for empty strings', () => {
+    expect(timingSafeEqual('', '')).toBe(true)
+  })
+
+  it('returns false for empty vs non-empty', () => {
+    expect(timingSafeEqual('', 'a')).toBe(false)
+    expect(timingSafeEqual('a', '')).toBe(false)
+  })
+
+  it('handles UUID-like token strings', () => {
+    const token = '550e8400-e29b-41d4-a716-446655440000'
+    expect(timingSafeEqual(token, token)).toBe(true)
+    expect(timingSafeEqual(token, '550e8400-e29b-41d4-a716-446655440001')).toBe(false)
+  })
+
+  it('is case-sensitive', () => {
+    expect(timingSafeEqual('ABC', 'abc')).toBe(false)
   })
 })

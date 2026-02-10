@@ -91,7 +91,6 @@ export function EditProfile() {
       setSaved(true)
       refetch()
     } catch (err) {
-      console.error('Save error:', err)
       addToast(err instanceof Error ? err.message : 'Failed to save profile', 'error')
     }
   }
