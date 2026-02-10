@@ -18,6 +18,8 @@ Draft Room is a custom league draft application. League managers can create leag
 - `npm test` - Run unit tests (Vitest)
 - `npm run test:watch` - Run tests in watch mode during development
 - `npm run test:coverage` - Run tests with coverage report
+- `npm test -- draft.test.ts` - Run a single test file by name
+- `npm test -- --grep "snake draft"` - Run tests matching a pattern
 - `supabase functions deploy <function-name>` - Deploy a single edge function
 - `./scripts/smoke-test.sh [qa|prod]` - Post-deployment verification
 
@@ -113,6 +115,7 @@ Token is stripped from the URL on page load and stored in `sessionStorage` via `
 - Hooks follow the pattern: `use<Entity>` for queries, `useCreate<Entity>`/`useUpdate<Entity>`/`useDelete<Entity>` for mutations
 - Tables with unique constraints on position columns use two-phase updates with `Promise.all`: set positions to negative temps first, then final values
 - **TypeScript**: Strict mode with `noUnusedLocals`/`noUnusedParameters` enforced — removing code that references variables/imports will cause build failures if you don't clean up unused references.
+- **TypeScript imports**: `verbatimModuleSyntax` is enabled — use `import type { Foo }` for type-only imports. A bare `import { Foo }` where `Foo` is only a type will fail.
 
 For detailed patterns (React 19, TanStack Query, Tailwind, modals, forms, lazy loading, etc.), see the **frontend-dev** skill. For edge function patterns, see the **edge-functions** skill.
 
@@ -140,8 +143,9 @@ Dev docs are gitignored (`dev/active/`) — they're local working files, not com
 - **All new pure functions MUST have corresponding unit tests.** When adding a function to `src/lib/` or `supabase/functions/_shared/`, write tests for it.
 - **Edge function shared utilities** (`supabase/functions/_shared/`) use Deno-style `.ts` imports that Vitest can't resolve directly. Tests for these re-implement the logic under test. When modifying these files, update both the source and the corresponding test.
 - **Draft logic is duplicated** in `src/lib/draft.ts` and edge functions (`make-pick`, `auto-pick`). Tests cover the frontend version. When modifying draft logic, update both locations and verify tests still pass.
-- **Pre-commit hook**: Husky runs `lint-staged` (ESLint on staged `.ts`/`.tsx` files) and then the full Vitest suite before every commit.
-- **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) runs lint, type check, tests with coverage, and build on every push to `main` and on PRs.
+- **Pre-commit hook**: Husky runs `lint-staged` (ESLint with `--max-warnings 0` on staged `.ts`/`.tsx` files — any warning blocks the commit) and then the full Vitest suite before every commit.
+- **Claude Code stop hook**: `.claude/hooks/build-check.sh` runs `tsc -b` when Claude finishes responding. If type errors exist, it exits with code 2 (shows errors to Claude, expects them to be fixed before stopping).
+- **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) on every push to `main` and on PRs. Three jobs: `lint-and-typecheck` (ESLint + `tsc -b`), `test` (coverage), then `build` (depends on both; uses dummy env vars since it only checks compilation).
 - **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability. For QA, pass `QA_FRONTEND_URL` env var since Vercel preview URLs change each deploy.
 - **Keep CLAUDE.md updated**: When adding or modifying tests, implementing best practices, or changing conventions, update this file to reflect the changes.
 
