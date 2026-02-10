@@ -8,14 +8,25 @@ export function useLeagueCustomFields(leagueId: string | undefined) {
     queryFn: async () => {
       if (!leagueId) return {}
 
-      // Single query using resource embedding to filter through players FK
-      const { data: customFields, error } = await supabase
+      // Get all player IDs for this league
+      const { data: players, error: playersError } = await supabase
+        .from('players')
+        .select('id')
+        .eq('league_id', leagueId)
+
+      if (playersError) throw playersError
+      if (!players || players.length === 0) return {}
+
+      const playerIds = players.map((p) => p.id)
+
+      // Get all custom fields for these players
+      const { data: customFields, error: fieldsError } = await supabase
         .from('player_custom_fields')
-        .select('id, player_id, field_name, field_value, field_order, schema_id, created_at, players!inner()')
-        .eq('players.league_id', leagueId)
+        .select('*')
+        .in('player_id', playerIds)
         .order('field_order', { ascending: true })
 
-      if (error) throw error
+      if (fieldsError) throw fieldsError
 
       // Group by player_id
       const map: Record<string, PlayerCustomField[]> = {}
