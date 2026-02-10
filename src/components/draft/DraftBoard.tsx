@@ -25,7 +25,7 @@ interface DraftBoardProps {
   currentCaptain: CaptainPublic | undefined
   availablePlayers: LeagueFullPublic['players']
   pickOrder: string[]
-  isSubscribed: boolean
+  dataUpdatedAt: number
   customFieldsMap?: Record<string, PlayerCustomField[]>
   canPick: boolean
   isManager: boolean
@@ -45,7 +45,7 @@ export function DraftBoard({
   currentCaptain,
   availablePlayers,
   pickOrder,
-  isSubscribed,
+  dataUpdatedAt,
   customFieldsMap = {},
   canPick,
   isManager,
@@ -122,15 +122,20 @@ export function DraftBoard({
     )
   }
 
-  // Show refresh hint after 15 seconds of disconnection
+  // Show refresh hint only when data is actually stale (no successful fetch in 15+ seconds)
+  // This avoids false alarms when realtime is down but polling keeps data fresh
   useEffect(() => {
-    if (!isSubscribed && league.status === 'in_progress') {
-      const timer = setTimeout(() => setShowRefreshHint(true), 15000)
-      return () => clearTimeout(timer)
-    } else {
+    if (league.status !== 'in_progress') {
       setShowRefreshHint(false)
+      return
     }
-  }, [isSubscribed, league.status])
+    const checkStaleness = () => {
+      setShowRefreshHint(Date.now() - dataUpdatedAt > 15000)
+    }
+    checkStaleness()
+    const interval = setInterval(checkStaleness, 5000)
+    return () => clearInterval(interval)
+  }, [league.status, dataUpdatedAt])
 
   const isActive = league.status === 'in_progress'
   const currentRound = getCurrentRound(league.current_pick_index, league.captains.length)
@@ -252,7 +257,7 @@ export function DraftBoard({
         }
       } else if (response.data?.error) {
         // Don't show toast for expected race condition errors
-        const expectedErrors = ['Pick already made', 'Timer has not expired yet', 'Draft is not in progress']
+        const expectedErrors = ['Pick already made', 'Timer has not expired yet', 'Draft is not in progress', 'Draft state changed concurrently']
         if (!expectedErrors.includes(response.data.error)) {
           addToast(`Auto-pick failed: ${response.data.error}`, 'error')
         }
@@ -358,20 +363,15 @@ export function DraftBoard({
           <div className="text-sm text-muted-foreground">
             {availablePlayers.length} players remaining
           </div>
-          {!isSubscribed && isActive && (
-            <div className="mt-1 flex items-center justify-end gap-1 text-xs text-yellow-600 dark:text-yellow-400">
-              <WifiOff className="h-3 w-3" />
-              Reconnecting...
-            </div>
-          )}
+          {/* Connection status is now handled by the staleness-based banner below */}
         </div>
       </div>
 
-      {/* Connection lost banner */}
-      {showRefreshHint && !isSubscribed && isActive && (
+      {/* Stale data banner — only shown when both realtime and polling fail */}
+      {showRefreshHint && isActive && (
         <div className="flex items-center gap-2 rounded-md border border-yellow-500/50 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-600 dark:text-yellow-400">
           <WifiOff className="h-4 w-4 flex-shrink-0" />
-          <span>Connection lost. Try refreshing the page.</span>
+          <span>Data may be outdated. Check your connection.</span>
           <button
             type="button"
             onClick={() => window.location.reload()}

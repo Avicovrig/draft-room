@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
+import { supabase, parseEdgeFunctionError } from '@/lib/supabase'
 import { useLeague, useUpdateLeague } from './useLeagues'
 import { getPickOrder, getCaptainAtPick, getAvailablePlayers } from '@/lib/draft'
 import type { LeagueFullPublic, PlayerPublic, CaptainPublic, ValidatedCaptain } from '@/lib/types'
@@ -10,6 +10,7 @@ interface UseDraftReturn {
   isLoading: boolean
   error: Error | null
   isSubscribed: boolean
+  dataUpdatedAt: number
   currentCaptain: CaptainPublic | undefined
   availablePlayers: PlayerPublic[]
   pickOrder: string[]
@@ -28,7 +29,7 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
 
   // Use polling as fallback when subscription isn't connected or draft is active
   // Poll every 2 seconds during active draft for reliability
-  const { data: league, isLoading, error } = useLeague(leagueId, {
+  const { data: league, isLoading, error, dataUpdatedAt } = useLeague(leagueId, {
     refetchInterval: isSubscribed ? false : 2000,
   })
 
@@ -168,7 +169,8 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
     })
 
     if (response.error) {
-      throw new Error(response.error.message || 'Failed to restart draft')
+      const message = await parseEdgeFunctionError(response.response, 'Failed to restart draft')
+      throw new Error(message)
     }
     if (response.data?.error) {
       throw new Error(response.data.error)
@@ -192,7 +194,8 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
     })
 
     if (response.error) {
-      throw new Error(response.error.message || 'Failed to undo pick')
+      const message = await parseEdgeFunctionError(response.response, 'Failed to undo pick')
+      throw new Error(message)
     }
     if (response.data?.error) {
       throw new Error(response.data.error)
@@ -223,11 +226,12 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
         throw new Error('Network error. Check your connection.')
       }
 
-      const { data, error } = response
+      const { data, error, response: rawResponse } = response
 
       if (error) {
         console.error('Pick failed:', { leagueId: league.id, captainId, playerId, error })
-        throw new Error(error.message || 'Failed to make pick. Please try again.')
+        const message = await parseEdgeFunctionError(rawResponse, 'Failed to make pick. Please try again.')
+        throw new Error(message)
       }
 
       if (data?.error) {
@@ -249,6 +253,7 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
     isLoading,
     error: error as Error | null,
     isSubscribed,
+    dataUpdatedAt,
     currentCaptain,
     availablePlayers,
     pickOrder,

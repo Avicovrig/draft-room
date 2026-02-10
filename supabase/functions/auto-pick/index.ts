@@ -223,8 +223,8 @@ Deno.serve(async (req) => {
     // Check if draft is complete
     const isComplete = availablePlayers.length === 1
 
-    // Update league
-    const { error: updateError } = await supabase
+    // Update league (with optimistic lock on current_pick_index to prevent desync)
+    const { data: updatedLeague, error: updateError } = await supabase
       .from('leagues')
       .update({
         status: isComplete ? 'completed' : 'in_progress',
@@ -232,6 +232,8 @@ Deno.serve(async (req) => {
         current_pick_started_at: isComplete ? null : new Date().toISOString(),
       })
       .eq('id', leagueId)
+      .eq('current_pick_index', league.current_pick_index)
+      .select('id')
 
     if (updateError) {
       // Roll back pick and player update to avoid inconsistent state
@@ -239,6 +241,17 @@ Deno.serve(async (req) => {
       await supabase.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
       await supabase.from('players').update({ drafted_by_captain_id: null, draft_pick_number: null }).eq('id', selectedPlayer.id)
       throw updateError
+    }
+
+    // Optimistic lock: if no rows matched, a concurrent operation changed the pick index
+    if (!updatedLeague || updatedLeague.length === 0) {
+      console.error(`[auto-pick] Optimistic lock failed: current_pick_index changed since read`)
+      await supabase.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
+      await supabase.from('players').update({ drafted_by_captain_id: null, draft_pick_number: null }).eq('id', selectedPlayer.id)
+      return new Response(
+        JSON.stringify({ error: 'Draft state changed concurrently' }),
+        { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
+      )
     }
 
     logAudit(supabase, {

@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     // Find the last pick, verifying it matches the expected pick number.
     // This prevents race conditions where concurrent undo requests could
     // both try to undo the same pick.
-    const expectedPickNumber = league.current_pick_index - 1
+    const expectedPickNumber = league.current_pick_index
     const { data: picks, error: picksError } = await supabaseAdmin
       .from('draft_picks')
       .select('*')
@@ -86,14 +86,16 @@ Deno.serve(async (req) => {
       return errorResponse('Failed to reset player', 500, req)
     }
 
-    // Decrement pick index and reset timer
-    const { error: updateLeagueError } = await supabaseAdmin
+    // Decrement pick index and reset timer (with optimistic lock to prevent desync)
+    const { data: updatedLeague, error: updateLeagueError } = await supabaseAdmin
       .from('leagues')
       .update({
         current_pick_index: league.current_pick_index - 1,
         current_pick_started_at: league.status === 'in_progress' ? new Date().toISOString() : null,
       })
       .eq('id', leagueId)
+      .eq('current_pick_index', league.current_pick_index)
+      .select('id')
 
     if (updateLeagueError) {
       // Roll back: re-insert pick and re-update player
@@ -113,6 +115,26 @@ Deno.serve(async (req) => {
       }).eq('id', lastPick.player_id)
       if (rb2) console.error('Rollback failed (re-update player):', rb2)
       return errorResponse('Failed to update league', 500, req)
+    }
+
+    // Optimistic lock: if no rows matched, a concurrent operation changed the pick index
+    if (!updatedLeague || updatedLeague.length === 0) {
+      console.error('[undo-pick] Optimistic lock failed: current_pick_index changed since read')
+      const { error: rb1 } = await supabaseAdmin.from('draft_picks').insert({
+        id: lastPick.id,
+        league_id: lastPick.league_id,
+        captain_id: lastPick.captain_id,
+        player_id: lastPick.player_id,
+        pick_number: lastPick.pick_number,
+        is_auto_pick: lastPick.is_auto_pick,
+      })
+      if (rb1) console.error('Rollback failed (re-insert pick):', rb1)
+      const { error: rb2 } = await supabaseAdmin.from('players').update({
+        drafted_by_captain_id: lastPick.captain_id,
+        draft_pick_number: lastPick.pick_number,
+      }).eq('id', lastPick.player_id)
+      if (rb2) console.error('Rollback failed (re-update player):', rb2)
+      return errorResponse('Draft state changed concurrently. Please try again.', 409, req)
     }
 
     logAudit(supabaseAdmin, {

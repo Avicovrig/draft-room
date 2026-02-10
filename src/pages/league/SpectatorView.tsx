@@ -17,7 +17,7 @@ export function SpectatorView() {
     league,
     isLoading,
     error,
-    isSubscribed,
+    dataUpdatedAt,
     currentCaptain,
     availablePlayers,
     pickOrder,
@@ -98,7 +98,7 @@ export function SpectatorView() {
           currentCaptain={currentCaptain}
           availablePlayers={availablePlayers}
           pickOrder={pickOrder}
-          isSubscribed={isSubscribed}
+          dataUpdatedAt={dataUpdatedAt}
           customFieldsMap={customFieldsMap}
           fieldSchemas={fieldSchemas}
           canPick={false}

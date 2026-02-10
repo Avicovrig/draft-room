@@ -23,7 +23,7 @@ export function CaptainView() {
     league,
     isLoading,
     error,
-    isSubscribed,
+    dataUpdatedAt,
     currentCaptain,
     availablePlayers,
     pickOrder,
@@ -255,7 +255,7 @@ export function CaptainView() {
           currentCaptain={currentCaptain}
           availablePlayers={availablePlayers}
           pickOrder={pickOrder}
-          isSubscribed={isSubscribed}
+          dataUpdatedAt={dataUpdatedAt}
           customFieldsMap={customFieldsMap}
           fieldSchemas={fieldSchemas}
           canPick={canPick}
