@@ -362,10 +362,28 @@ inspector_port = 8083
 deno_version = 2
 
 # Edge function configurations
+# All functions validate auth internally (captain token or manager JWT via authenticateManager).
+# Gateway JWT verification is disabled because Supabase Auth issues ES256 user tokens,
+# but the gateway validates using HS256 JWT_SECRET — causing 401 for manager calls.
 [functions.auto-pick]
 verify_jwt = false
 
 [functions.make-pick]
+verify_jwt = false
+
+[functions.restart-draft]
+verify_jwt = false
+
+[functions.undo-pick]
+verify_jwt = false
+
+[functions.toggle-auto-pick]
+verify_jwt = false
+
+[functions.update-captain-color]
+verify_jwt = false
+
+[functions.update-player-profile]
 verify_jwt = false
 
 # [edge_runtime.secrets]

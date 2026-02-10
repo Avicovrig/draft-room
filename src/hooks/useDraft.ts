@@ -5,40 +5,6 @@ import { useLeague, useUpdateLeague } from './useLeagues'
 import { getPickOrder, getCaptainAtPick, getAvailablePlayers } from '@/lib/draft'
 import type { LeagueFullPublic, PlayerPublic, CaptainPublic, ValidatedCaptain } from '@/lib/types'
 
-/**
- * Invoke a Supabase Edge Function with a fresh manager JWT.
- * Uses raw fetch() to bypass the Supabase client's fetchWithAuth middleware,
- * which can fail to pass the refreshed token during long draft sessions.
- */
-async function invokeWithManagerAuth(functionName: string, body: Record<string, unknown>) {
-  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-  if (refreshError || !refreshData.session) {
-    throw new Error('Session expired. Please refresh the page and log in again.')
-  }
-
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${refreshData.session.access_token}`,
-      'apikey': supabaseAnonKey,
-    },
-    body: JSON.stringify(body),
-  })
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => null)
-    throw new Error(data?.error || `Failed to call ${functionName} (${response.status})`)
-  }
-
-  const data = await response.json()
-  if (data.error) throw new Error(data.error)
-  return data
-}
-
 interface UseDraftReturn {
   league: LeagueFullPublic | null | undefined
   isLoading: boolean
@@ -190,14 +156,48 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
 
   const restartDraft = useCallback(async () => {
     if (!league || league.status !== 'paused') return
-    await invokeWithManagerAuth('restart-draft', { leagueId: league.id })
+
+    // Proactively refresh session — during long draft sessions, the JWT may have expired
+    const { error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError) {
+      throw new Error('Session expired. Please refresh the page and log in again.')
+    }
+
+    const response = await supabase.functions.invoke('restart-draft', {
+      body: { leagueId: league.id },
+    })
+
+    if (response.error) {
+      throw new Error(response.error.message || 'Failed to restart draft')
+    }
+    if (response.data?.error) {
+      throw new Error(response.data.error)
+    }
+
     queryClient.invalidateQueries({ queryKey: ['league', league.id] })
   }, [league, queryClient])
 
   const undoLastPick = useCallback(async () => {
     if (!league || league.draft_picks.length === 0) return
     if (league.status !== 'in_progress' && league.status !== 'paused') return
-    await invokeWithManagerAuth('undo-pick', { leagueId: league.id })
+
+    // Proactively refresh session — during long draft sessions, the JWT may have expired
+    const { error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError) {
+      throw new Error('Session expired. Please refresh the page and log in again.')
+    }
+
+    const response = await supabase.functions.invoke('undo-pick', {
+      body: { leagueId: league.id },
+    })
+
+    if (response.error) {
+      throw new Error(response.error.message || 'Failed to undo pick')
+    }
+    if (response.data?.error) {
+      throw new Error(response.data.error)
+    }
+
     queryClient.invalidateQueries({ queryKey: ['league', league.id] })
   }, [league, queryClient])
 
