@@ -88,6 +88,7 @@ export interface UpdatePlayerProfileRequest {
   editToken: string
   bio?: string | null
   profile_picture_url?: string | null
+  profilePictureBlob?: string // base64-encoded JPEG for token-based uploads
   customFields?: Array<{
     id?: string
     field_name: string

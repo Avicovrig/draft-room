@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
       editToken,
       bio,
       profile_picture_url,
+      profilePictureBlob,
       customFields,
       deletedCustomFieldIds,
     }: UpdatePlayerProfileRequest = await req.json()
@@ -85,6 +86,30 @@ Deno.serve(async (req) => {
       return errorResponse('Invalid player or token', 403, req)
     }
 
+    // Handle base64 photo blob upload (used by token-based users who can't upload to storage directly)
+    let resolvedProfilePictureUrl = profile_picture_url
+    if (profilePictureBlob) {
+      if (profilePictureBlob.length > 2_800_000) {
+        return errorResponse('Profile picture exceeds maximum size', 400, req)
+      }
+      const binaryData = Uint8Array.from(atob(profilePictureBlob), c => c.charCodeAt(0))
+      const filePath = `${player.league_id}/${playerId}.jpg`
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('profile-pictures')
+        .upload(filePath, binaryData, { upsert: true, contentType: 'image/jpeg' })
+
+      if (uploadError) {
+        console.error('Failed to upload profile picture:', uploadError)
+        return errorResponse('Failed to upload profile picture', 500, req)
+      }
+
+      const { data: urlData } = supabaseAdmin.storage
+        .from('profile-pictures')
+        .getPublicUrl(filePath)
+
+      resolvedProfilePictureUrl = `${urlData.publicUrl}?t=${Date.now()}`
+    }
+
     // Validate required schema fields (always check, even if customFields is empty/missing)
     const { data: requiredSchemas } = await supabaseAdmin
       .from('league_field_schemas')
@@ -118,7 +143,7 @@ Deno.serve(async (req) => {
     // Update player profile
     const updateData: Record<string, unknown> = {}
     if (bio !== undefined) updateData.bio = bio
-    if (profile_picture_url !== undefined) updateData.profile_picture_url = profile_picture_url
+    if (resolvedProfilePictureUrl !== undefined) updateData.profile_picture_url = resolvedProfilePictureUrl
 
     if (Object.keys(updateData).length > 0) {
       const { error: updateError } = await supabaseAdmin

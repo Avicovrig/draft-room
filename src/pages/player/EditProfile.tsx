@@ -53,30 +53,17 @@ export function EditProfile() {
     if (!player || !playerId || !token) return
 
     try {
-      // Upload profile picture if provided
-      let profilePictureUrl = player.profile_picture_url
+      // Convert profile picture blob to base64 if provided
+      // (token-based users can't upload to storage directly — no auth session)
+      let profilePictureBlob: string | undefined
       if (data.profilePictureBlob) {
-        const filePath = `${player.league_id}/${player.id}.jpg`
-
-        // Upload directly to storage (no auth required with updated policy)
-        const { error: uploadError } = await supabase.storage
-          .from('profile-pictures')
-          .upload(filePath, data.profilePictureBlob, {
-            upsert: true,
-            contentType: 'image/jpeg',
-          })
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError)
-          throw new Error('Failed to upload profile picture')
+        const buffer = await data.profilePictureBlob.arrayBuffer()
+        const bytes = new Uint8Array(buffer)
+        let binary = ''
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i])
         }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('profile-pictures')
-          .getPublicUrl(filePath)
-
-        profilePictureUrl = `${urlData.publicUrl}?t=${Date.now()}`
+        profilePictureBlob = btoa(binary)
       }
 
       // Update profile via edge function
@@ -85,7 +72,8 @@ export function EditProfile() {
           playerId,
           editToken: token,
           bio: data.bio,
-          profile_picture_url: profilePictureUrl,
+          profile_picture_url: profilePictureBlob ? undefined : player.profile_picture_url,
+          profilePictureBlob,
           customFields: data.customFields,
           deletedCustomFieldIds: data.deletedCustomFieldIds,
         },
