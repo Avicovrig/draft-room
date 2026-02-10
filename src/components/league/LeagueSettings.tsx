@@ -46,7 +46,7 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
     },
   })
 
-  const scheduledValue = watch('scheduled_start_at')
+  const scheduledValue = watch('scheduled_start_at') // eslint-disable-line react-hooks/incompatible-library
 
   async function onSubmit(data: {
     name: string

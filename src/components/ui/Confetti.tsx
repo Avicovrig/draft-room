@@ -7,6 +7,7 @@ interface ConfettiPiece {
   color: string
   size: number
   rotation: number
+  isCircle: boolean
 }
 
 interface ConfettiProps {
@@ -17,29 +18,30 @@ interface ConfettiProps {
 // Detroit Lions colors
 const COLORS = ['#0076B6', '#B0B7BC', '#000000', '#FFFFFF']
 
+function generatePieces(count: number): ConfettiPiece[] {
+  return Array.from({ length: count }, (_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    delay: Math.random() * 2,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    size: Math.random() * 8 + 4,
+    rotation: Math.random() * 360,
+    isCircle: Math.random() > 0.5,
+  }))
+}
+
 export function Confetti({ duration = 3000, pieceCount = 50 }: ConfettiProps) {
-  const [pieces, setPieces] = useState<ConfettiPiece[]>([])
+  const [pieces] = useState(() => generatePieces(pieceCount))
   const [visible, setVisible] = useState(true)
 
+  // Clean up after animation
   useEffect(() => {
-    // Generate confetti pieces
-    const newPieces = Array.from({ length: pieceCount }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      delay: Math.random() * 2,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
-      size: Math.random() * 8 + 4,
-      rotation: Math.random() * 360,
-    }))
-    setPieces(newPieces)
-
-    // Clean up after animation
     const timer = setTimeout(() => {
       setVisible(false)
     }, duration + 2000) // Extra time for animations to complete
 
     return () => clearTimeout(timer)
-  }, [duration, pieceCount])
+  }, [duration])
 
   if (!visible) return null
 
@@ -56,7 +58,7 @@ export function Confetti({ duration = 3000, pieceCount = 50 }: ConfettiProps) {
             backgroundColor: piece.color,
             animationDelay: `${piece.delay}s`,
             transform: `rotate(${piece.rotation}deg)`,
-            borderRadius: Math.random() > 0.5 ? '50%' : '0',
+            borderRadius: piece.isCircle ? '50%' : '0',
           }}
         />
       ))}

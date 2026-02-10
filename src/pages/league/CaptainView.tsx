@@ -45,8 +45,9 @@ export function CaptainView() {
   const [showTeamPhotoCropper, setShowTeamPhotoCropper] = useState(false)
 
   // Sync team name from server when captain data loads
+  // (intentional controlled form input pattern — local state needed for editing)
   useEffect(() => {
-    if (captain) setTeamName(captain.team_name || '')
+    if (captain) setTeamName(captain.team_name || '') // eslint-disable-line react-hooks/set-state-in-effect
   }, [captain?.team_name]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-redirect to summary page when draft completes

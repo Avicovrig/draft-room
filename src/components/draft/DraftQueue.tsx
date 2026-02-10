@@ -36,8 +36,9 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
   const [isAutoPickEnabled, setIsAutoPickEnabled] = useState(captain.auto_pick_enabled)
 
   // Sync local state with server state when it changes
+  // (intentional optimistic update pattern — local state enables instant UI feedback)
   useEffect(() => {
-    setIsAutoPickEnabled(captain.auto_pick_enabled)
+    setIsAutoPickEnabled(captain.auto_pick_enabled) // eslint-disable-line react-hooks/set-state-in-effect
   }, [captain.auto_pick_enabled])
 
   // Filter queue to only show available players (not drafted yet)

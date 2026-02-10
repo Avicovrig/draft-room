@@ -97,7 +97,7 @@ export function SpreadsheetImportModal({
     const players = transformData(spreadsheetData, mappings, firstRowIsHeader, fieldSchemas)
     setParsedPlayers(players)
     setStep('preview')
-  }, [spreadsheetData, mappings, firstRowIsHeader])
+  }, [spreadsheetData, mappings, firstRowIsHeader, fieldSchemas])
 
   const handleImport = useCallback(async () => {
     try {

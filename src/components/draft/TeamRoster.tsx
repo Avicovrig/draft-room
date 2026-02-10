@@ -56,7 +56,7 @@ export function TeamRoster({
       }
     })
     if (newIds.size > 0) {
-      setNewPlayerIds(newIds)
+      setNewPlayerIds(newIds) // eslint-disable-line react-hooks/set-state-in-effect
       // Clear animation class after animation completes
       const timer = setTimeout(() => setNewPlayerIds(new Set()), 1800)
       knownPlayerIdsRef.current = new Set(allDraftedIds)
