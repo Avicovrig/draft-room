@@ -157,14 +157,16 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
   const restartDraft = useCallback(async () => {
     if (!league || league.status !== 'paused') return
 
-    // Refresh session to avoid expired JWT during long draft sessions
-    const { error: refreshError } = await supabase.auth.refreshSession()
-    if (refreshError) {
+    // Refresh session and pass the fresh token explicitly — the Supabase client's
+    // internal auth state may not update before functions.invoke() reads it.
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError || !refreshData.session) {
       throw new Error('Session expired. Please refresh the page and log in again.')
     }
 
     const response = await supabase.functions.invoke('restart-draft', {
       body: { leagueId: league.id },
+      headers: { Authorization: `Bearer ${refreshData.session.access_token}` },
     })
 
     if (response.error) {
@@ -181,14 +183,15 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
     if (!league || league.draft_picks.length === 0) return
     if (league.status !== 'in_progress' && league.status !== 'paused') return
 
-    // Refresh session to avoid expired JWT during long draft sessions
-    const { error: refreshError } = await supabase.auth.refreshSession()
-    if (refreshError) {
+    // Refresh session and pass the fresh token explicitly
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError || !refreshData.session) {
       throw new Error('Session expired. Please refresh the page and log in again.')
     }
 
     const response = await supabase.functions.invoke('undo-pick', {
       body: { leagueId: league.id },
+      headers: { Authorization: `Bearer ${refreshData.session.access_token}` },
     })
 
     if (response.error) {
