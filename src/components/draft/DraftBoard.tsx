@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Maximize2, Minimize2, WifiOff, Zap } from 'lucide-react'
+import { Bell, Maximize2, Minimize2, WifiOff, X, Zap } from 'lucide-react'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { KeyboardShortcutsModal } from '@/components/ui/KeyboardShortcutsModal'
@@ -79,6 +79,10 @@ export function DraftBoard({
   const [showAutoPickFlash, setShowAutoPickFlash] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showRefreshHint, setShowRefreshHint] = useState(false)
+  const [notificationDismissed, setNotificationDismissed] = useState(false)
+  const [notificationPermission, setNotificationPermission] = useState(
+    () => typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+  )
   const searchInputRef = useRef<HTMLInputElement>(null)
   const isAutoPickingRef = useRef(false)
   const queryClient = useQueryClient()
@@ -190,12 +194,14 @@ export function DraftBoard({
     prevIsMyTurnRef.current = isMyTurn
   }, [isMyTurn, league.status, league.name, viewingAsCaptain])
 
-  // Request notification permission on first render for captain view
-  useEffect(() => {
-    if (viewingAsCaptain && typeof Notification !== 'undefined' && Notification.permission === 'default') {
-      Notification.requestPermission()
-    }
-  }, [viewingAsCaptain])
+  const showNotificationBanner = !!viewingAsCaptain
+    && notificationPermission === 'default'
+    && !notificationDismissed
+
+  async function handleEnableNotifications() {
+    const permission = await Notification.requestPermission()
+    setNotificationPermission(permission)
+  }
 
   async function handlePick(playerId: string) {
     if (!currentCaptain) return
@@ -205,7 +211,7 @@ export function DraftBoard({
       await onMakePick(playerId, currentCaptain.id, captainToken)
       playSound('pickMade')
     } catch (error) {
-      console.error('Pick failed:', error)
+      console.error('Pick failed:', { leagueId: league.id, captainId: currentCaptain?.id, playerId, error })
       const errorMessage = error instanceof Error ? error.message : 'Failed to make pick. Please try again.'
       addToast(errorMessage, 'error')
     } finally {
@@ -233,7 +239,7 @@ export function DraftBoard({
       })
 
       if (response.error) {
-        console.error('Auto-pick failed:', response.error)
+        console.error('Auto-pick failed:', { leagueId: league.id, pickIndex: league.current_pick_index, error: response.error })
         // Only show error if it's not a race condition (multiple clients calling simultaneously)
         if (!response.error.message?.includes('Pick already made')) {
           addToast('Auto-pick failed. Please make a manual selection.', 'error')
@@ -256,7 +262,7 @@ export function DraftBoard({
         queryClient.invalidateQueries({ queryKey: ['league', league.id] })
       }
     } catch (error) {
-      console.error('Auto-pick error:', error)
+      console.error('Auto-pick error:', { leagueId: league.id, error })
       addToast('Auto-pick failed due to a network error.', 'error')
     } finally {
       isAutoPickingRef.current = false
@@ -366,6 +372,29 @@ export function DraftBoard({
             className="ml-auto font-medium underline"
           >
             Refresh
+          </button>
+        </div>
+      )}
+
+      {/* Notification permission banner */}
+      {showNotificationBanner && (
+        <div className="flex items-center gap-2 rounded-md border border-primary/50 bg-primary/10 px-3 py-2 text-sm">
+          <Bell className="h-4 w-4 flex-shrink-0 text-primary" />
+          <span>Enable notifications to know when it's your turn.</span>
+          <button
+            type="button"
+            onClick={handleEnableNotifications}
+            className="ml-auto font-medium text-primary hover:underline whitespace-nowrap"
+          >
+            Enable
+          </button>
+          <button
+            type="button"
+            onClick={() => setNotificationDismissed(true)}
+            className="p-1 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
+            aria-label="Dismiss"
+          >
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}

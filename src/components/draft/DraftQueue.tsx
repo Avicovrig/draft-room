@@ -8,7 +8,7 @@ import type { CaptainPublic, PlayerPublic } from '@/lib/types'
 interface DraftQueueProps {
   captain: CaptainPublic
   availablePlayers: PlayerPublic[]
-  leagueId?: string
+  leagueId: string
   captainToken?: string
 }
 
@@ -112,7 +112,7 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
     } catch (error) {
       // Revert optimistic update on error
       setIsAutoPickEnabled(!newEnabled)
-      console.error('Toggle auto-pick failed:', error)
+      console.error('Toggle auto-pick failed:', { captainId: captain.id, attempted: newEnabled, error })
       addToast('Failed to toggle auto-pick', 'error')
     }
   }

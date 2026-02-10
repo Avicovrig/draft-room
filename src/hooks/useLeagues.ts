@@ -26,7 +26,6 @@ export function useLeagues() {
       return data as LeaguePublic[]
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000,
   })
 }
 

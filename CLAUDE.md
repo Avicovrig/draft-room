@@ -44,7 +44,7 @@ All draft-critical mutations go through Deno edge functions in `supabase/functio
 - **`restart-draft`** - Manager-only. Deletes all picks, resets players, sets league back to `not_started`. Requires JWT auth.
 - **`undo-pick`** - Manager-only. Removes last pick, resets that player, decrements pick index. Requires JWT auth.
 
-All edge functions share utilities in `supabase/functions/_shared/`: CORS origin checking (`cors.ts`), rate limiting (`rateLimit.ts`), UUID/URL validation (`validation.ts`), manager JWT auth (`auth.ts`), and audit logging (`audit.ts`). All validate UUID format on ID parameters before hitting the database.
+All edge functions share utilities in `supabase/functions/_shared/`: CORS origin checking (`cors.ts`), rate limiting (`rateLimit.ts`), UUID/URL validation (`validation.ts`), manager JWT auth (`auth.ts`), audit logging (`audit.ts`), and shared type definitions (`types.ts`). All validate UUID format on ID parameters before hitting the database. Request body types and entity interfaces are defined in `_shared/types.ts` — use these instead of inline type annotations.
 
 ### Token Security
 
@@ -112,11 +112,15 @@ Token is stripped from the URL on page load and stored in `sessionStorage` via `
 - Toast notifications: use `useToast()` hook from `@/components/ui/Toast`
 - Each route in `App.tsx` is wrapped in its own `<ErrorBoundary>` for route-level error isolation. An outer `ErrorBoundary` wraps the entire app as a final fallback. When adding new routes, always wrap them in `<ErrorBoundary>`.
 - Hooks follow the pattern: `use<Entity>` for queries, `useCreate<Entity>`/`useUpdate<Entity>`/`useDelete<Entity>` for mutations
-- Tables with unique constraints on position columns (`captains.draft_position`, `captain_draft_queues.position`) use two-phase updates: set positions to negative temps first, then final values
+- Tables with unique constraints on position columns (`captains.draft_position`, `captain_draft_queues.position`) use two-phase updates with `Promise.all`: set positions to negative temps first, then final values (parallel within each phase)
 - All modals use `useModalFocus` hook (`src/hooks/useModalFocus.ts`) for ESC key, click-outside, body scroll lock, focus trap, and ARIA attributes
 - `DraftBoard` receives props from 3 callers (`DraftView`, `CaptainView`, `SpectatorView`). Adding new props requires updating all 3.
+- **Lazy loading**: `ManageLeague` uses `React.lazy` + `Suspense` for tab components (PlayerList, CaptainList, FieldSchemaList, LeagueSettings, ShareLinks). Each tab loads on demand.
+- **Notification permission**: `DraftBoard` shows a dismissible banner asking captains to enable notifications instead of auto-requesting on mount. The banner only appears when `Notification.permission === 'default'`.
+- **Structured error logging**: `console.error` calls in hooks and components include context objects (leagueId, captainId, playerId, etc.) for easier debugging.
 - `Button` component accepts `loading` boolean — shows spinner and auto-disables. Use this for all async actions.
-- **TanStack Query staleTime**: All query hooks should have an appropriate `staleTime`. Use `5 * 60 * 1000` (5 min) for static/rarely-changing data (league list, field schemas, token validation), `30 * 1000` (30 sec) for data edited in the current view (player profiles, custom fields), and no staleTime for live draft state (`useLeague` with realtime/polling).
+- **TanStack Query defaults**: `QueryClient` in `App.tsx` sets global defaults: `staleTime: 5 * 60 * 1000` (5 min) and `retry: 1`. Hooks that need different staleTime override it (e.g., `30 * 1000` for player profiles/custom fields). Don't add `staleTime` to new hooks unless they need a non-default value.
+- **Cache invalidation**: Mutations should invalidate specific query keys (e.g., `['league', leagueId]`), not broad prefixes (e.g., `['league']`). Pass `leagueId` through mutation inputs if needed for targeted invalidation.
 - **React 19 patterns**:
   - Do NOT mutate refs during render — use `useEffect` instead
   - Prefer derived values over `useState` + sync `useEffect` when state can be computed from props/other state

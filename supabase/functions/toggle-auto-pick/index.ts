@@ -3,6 +3,7 @@ import { createAdminClient } from '../_shared/supabase.ts'
 import { UUID_RE, errorResponse } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
+import type { ToggleAutoPickRequest } from '../_shared/types.ts'
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
@@ -12,7 +13,7 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const { captainId, enabled, captainToken, leagueId } = await req.json()
+    const { captainId, enabled, captainToken, leagueId }: ToggleAutoPickRequest = await req.json()
 
     if (!captainId || enabled === undefined || !leagueId) {
       return errorResponse('Missing required fields', 400, req)

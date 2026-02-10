@@ -24,7 +24,14 @@ const Summary = lazy(() => import('@/pages/league/Summary').then(m => ({ default
 const EditProfile = lazy(() => import('@/pages/player/EditProfile').then(m => ({ default: m.EditProfile })))
 const NotFound = lazy(() => import('@/pages/NotFound').then(m => ({ default: m.NotFound })))
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 min default
+      retry: 1,
+    },
+  },
+})
 
 function App() {
   return (

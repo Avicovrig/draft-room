@@ -3,6 +3,7 @@ import { createAdminClient } from '../_shared/supabase.ts'
 import { UUID_RE, errorResponse } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
+import type { MakePickRequest, Captain, League } from '../_shared/types.ts'
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
@@ -12,7 +13,7 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const { leagueId, captainId, playerId, captainToken } = await req.json()
+    const { leagueId, captainId, playerId, captainToken }: MakePickRequest = await req.json()
 
     if (!leagueId || !captainId || !playerId) {
       return errorResponse('Missing required fields', 400, req)
@@ -41,7 +42,7 @@ Deno.serve(async (req) => {
 
     // Validate captain token if provided (for non-manager picks)
     if (captainToken) {
-      const captain = league.captains.find((c: { id: string; access_token: string }) =>
+      const captain = (league as League).captains.find((c: Captain) =>
         c.id === captainId && c.access_token === captainToken
       )
       if (!captain) {
@@ -50,7 +51,7 @@ Deno.serve(async (req) => {
     }
 
     // Verify it's this captain's turn
-    const sortedCaptains = [...league.captains].sort((a: { draft_position: number }, b: { draft_position: number }) =>
+    const sortedCaptains = [...league.captains].sort((a: Captain, b: Captain) =>
       a.draft_position - b.draft_position
     )
     const captainCount = sortedCaptains.length
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
     // Reject captain-linked players (they are on teams already as captains)
     // NOTE: Keep in sync with getAvailablePlayers() in src/lib/draft.ts
     const isCaptainPlayer = league.captains.some(
-      (c: { player_id: string | null }) => c.player_id === playerId
+      (c: Captain) => c.player_id === playerId
     )
     if (isCaptainPlayer) {
       return errorResponse('Cannot draft a captain', 400, req)
@@ -148,8 +149,8 @@ Deno.serve(async (req) => {
     // Count remaining available players (exclude drafted and captain-linked players)
     // NOTE: Keep in sync with getAvailablePlayers() in src/lib/draft.ts
     const captainPlayerIds = league.captains
-      .filter((c: { player_id: string | null }) => c.player_id && UUID_RE.test(c.player_id))
-      .map((c: { player_id: string }) => c.player_id)
+      .filter((c: Captain) => c.player_id && UUID_RE.test(c.player_id))
+      .map((c: Captain) => c.player_id!)
 
     let query = supabaseAdmin
       .from('players')

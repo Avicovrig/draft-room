@@ -62,7 +62,7 @@ export function PickTimer({
       aria-live="polite"
       aria-label={
         isExpired ? 'Time expired, auto-picking' :
-        isActive ? `${formatTime(remainingTime)} remaining` :
+        isActive ? `${formatTime(shakeKey)} remaining` :
         'Waiting to start'
       }
     >

@@ -8,11 +8,7 @@ import { createAdminClient } from '../_shared/supabase.ts'
 import { UUID_RE, errorResponse } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
-
-interface RequestBody {
-  leagueId: string
-  expectedPickIndex?: number // For idempotency - ensure we're picking for the expected turn
-}
+import type { AutoPickRequest, Captain, Player } from '../_shared/types.ts'
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
@@ -24,7 +20,7 @@ Deno.serve(async (req) => {
   try {
     const supabase = createAdminClient()
 
-    const { leagueId, expectedPickIndex }: RequestBody = await req.json()
+    const { leagueId, expectedPickIndex }: AutoPickRequest = await req.json()
 
     if (!leagueId) {
       return errorResponse('leagueId is required', 400, req)
@@ -72,10 +68,9 @@ Deno.serve(async (req) => {
 
     // Get current captain first (needed to check auto_pick_enabled for timer validation)
     const sortedCaptains = [...league.captains].sort(
-      (a: { draft_position: number }, b: { draft_position: number }) =>
-        a.draft_position - b.draft_position
+      (a: Captain, b: Captain) => a.draft_position - b.draft_position
     )
-    const captainIds = sortedCaptains.map((c: { id: string }) => c.id)
+    const captainIds = sortedCaptains.map((c: Captain) => c.id)
     const captainCount = captainIds.length
     const currentRound = Math.floor(league.current_pick_index / captainCount)
     const positionInRound = league.current_pick_index % captainCount
@@ -84,7 +79,7 @@ Deno.serve(async (req) => {
     const isReversedRound = league.draft_type === 'snake' && currentRound % 2 === 1
     const orderForRound = isReversedRound ? [...captainIds].reverse() : captainIds
     const currentCaptainId = orderForRound[positionInRound]
-    const currentCaptain = sortedCaptains.find((c: { id: string }) => c.id === currentCaptainId)
+    const currentCaptain = sortedCaptains.find((c: Captain) => c.id === currentCaptainId)
 
     // Timer validation - skip if captain has auto_pick_enabled (immediate pick)
     // Only validate timer for captains who don't have auto-pick enabled
@@ -116,12 +111,11 @@ Deno.serve(async (req) => {
     // NOTE: Keep in sync with getAvailablePlayers() in src/lib/draft.ts
     const captainPlayerIds = new Set(
       league.captains
-        .filter((c: { player_id: string | null }) => c.player_id)
-        .map((c: { player_id: string }) => c.player_id)
+        .filter((c: Captain) => c.player_id)
+        .map((c: Captain) => c.player_id!)
     )
     const availablePlayers = league.players.filter(
-      (p: { id: string; drafted_by_captain_id: string | null }) =>
-        !p.drafted_by_captain_id && !captainPlayerIds.has(p.id)
+      (p: Player) => !p.drafted_by_captain_id && !captainPlayerIds.has(p.id)
     )
 
     if (availablePlayers.length === 0) {
@@ -131,7 +125,7 @@ Deno.serve(async (req) => {
     // Determine which player to pick
     // Always check the captain's queue first, then fall back to random
     let selectedPlayer
-    const availablePlayerIds = new Set(availablePlayers.map((p: { id: string }) => p.id))
+    const availablePlayerIds = new Set(availablePlayers.map((p: Player) => p.id))
 
     // Get captain's queue ordered by position
     console.log(`[auto-pick] Checking queue for captain ${currentCaptain?.name}`)
@@ -145,7 +139,7 @@ Deno.serve(async (req) => {
       // Find first available player from queue
       for (const queueEntry of queue) {
         if (availablePlayerIds.has(queueEntry.player_id)) {
-          selectedPlayer = availablePlayers.find((p: { id: string }) => p.id === queueEntry.player_id)
+          selectedPlayer = availablePlayers.find((p: Player) => p.id === queueEntry.player_id)
           console.log(`[auto-pick] Selected from queue: ${selectedPlayer?.name}`)
           break
         }
@@ -255,7 +249,7 @@ Deno.serve(async (req) => {
         success: true,
         pick: {
           player: selectedPlayer.name,
-          captain: sortedCaptains.find((c: { id: string }) => c.id === currentCaptainId)?.name,
+          captain: sortedCaptains.find((c: Captain) => c.id === currentCaptainId)?.name,
           pickNumber,
           isComplete,
         },

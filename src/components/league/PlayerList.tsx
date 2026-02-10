@@ -99,6 +99,7 @@ export function PlayerList({ league, customFieldsMap = {}, tokens }: PlayerListP
       // Update profile
       await updateProfile.mutateAsync({
         playerId: editingPlayer.id,
+        leagueId: league.id,
         bio: data.bio,
         profile_picture_url: profilePictureUrl,
       })

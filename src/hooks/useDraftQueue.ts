@@ -119,23 +119,23 @@ export function useMoveInQueue() {
       queue.splice(newPosition, 0, item)
 
       // Two-phase update to avoid unique constraint violations on (captain_id, position):
-      // Phase 1: Set all positions to negative temporary values
-      for (let i = 0; i < queue.length; i++) {
-        const { error } = await supabase
-          .from('captain_draft_queues')
-          .update({ position: -(i + 1) })
-          .eq('id', queue[i].id)
-        if (error) throw error
-      }
+      // Phase 1: Set all positions to negative temporary values (parallel)
+      const tempResults = await Promise.all(
+        queue.map((entry, i) =>
+          supabase.from('captain_draft_queues').update({ position: -(i + 1) }).eq('id', entry.id)
+        )
+      )
+      const tempError = tempResults.find((r) => r.error)
+      if (tempError?.error) throw tempError.error
 
-      // Phase 2: Set final positive positions
-      for (let i = 0; i < queue.length; i++) {
-        const { error } = await supabase
-          .from('captain_draft_queues')
-          .update({ position: i })
-          .eq('id', queue[i].id)
-        if (error) throw error
-      }
+      // Phase 2: Set final positive positions (parallel)
+      const finalResults = await Promise.all(
+        queue.map((entry, i) =>
+          supabase.from('captain_draft_queues').update({ position: i }).eq('id', entry.id)
+        )
+      )
+      const finalError = finalResults.find((r) => r.error)
+      if (finalError?.error) throw finalError.error
     },
     onMutate: async ({ captainId, queueEntryId, newPosition }) => {
       // Cancel outgoing refetches so they don't overwrite our optimistic update
@@ -174,7 +174,7 @@ export function useMoveInQueue() {
 interface ToggleAutoPickInput {
   captainId: string
   enabled: boolean
-  leagueId?: string
+  leagueId: string
   captainToken?: string
 }
 
@@ -204,12 +204,7 @@ export function useToggleAutoPick() {
       return response.data
     },
     onSuccess: (_, variables) => {
-      // Invalidate specific league if provided, otherwise all leagues
-      if (variables.leagueId) {
-        queryClient.invalidateQueries({ queryKey: ['league', variables.leagueId] })
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['league'] })
-      }
+      queryClient.invalidateQueries({ queryKey: ['league', variables.leagueId] })
     },
   })
 }

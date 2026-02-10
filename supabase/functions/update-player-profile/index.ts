@@ -3,6 +3,7 @@ import { createAdminClient } from '../_shared/supabase.ts'
 import { UUID_RE, errorResponse, validateUrl } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
+import type { UpdatePlayerProfileRequest } from '../_shared/types.ts'
 
 const MAX_BIO_LENGTH = 5000
 const MAX_PROFILE_PICTURE_SIZE = 2 * 1024 * 1024 // 2MB
@@ -25,7 +26,7 @@ Deno.serve(async (req) => {
       profile_picture_url,
       customFields,
       deletedCustomFieldIds,
-    } = await req.json()
+    }: UpdatePlayerProfileRequest = await req.json()
 
     if (!playerId || !editToken) {
       return errorResponse('Missing required fields', 400, req)

@@ -48,19 +48,19 @@ export function usePlayerByEditToken(playerId: string | undefined, editToken: st
       })
 
       if (error) {
-        console.error('Token validation error:', error)
+        console.error('Token validation error:', { playerId, error })
         return null
       }
 
       return (data as ValidatedPlayerProfile) ?? null
     },
     enabled: !!playerId && !!editToken,
-    staleTime: 5 * 60 * 1000,
   })
 }
 
 interface UpdatePlayerProfileInput {
   playerId: string
+  leagueId?: string
   bio?: string | null
   profile_picture_url?: string | null
 }
@@ -69,10 +69,11 @@ export function useUpdatePlayerProfile() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ playerId, ...data }: UpdatePlayerProfileInput) => {
+    mutationFn: async ({ playerId, leagueId, ...updateData }: UpdatePlayerProfileInput) => {
+      void leagueId // Used in onSuccess via variables, not in mutationFn
       const { data: player, error } = await supabase
         .from('players')
-        .update(data)
+        .update(updateData)
         .eq('id', playerId)
         .select(PLAYER_COLUMNS)
         .single()
@@ -80,9 +81,11 @@ export function useUpdatePlayerProfile() {
       if (error) throw error
       return player as PlayerPublic
     },
-    onSuccess: (player) => {
+    onSuccess: (player, variables) => {
       queryClient.invalidateQueries({ queryKey: ['player-profile', player.id] })
-      queryClient.invalidateQueries({ queryKey: ['league'] })
+      if (variables.leagueId) {
+        queryClient.invalidateQueries({ queryKey: ['league', variables.leagueId] })
+      }
     },
   })
 }
@@ -129,9 +132,9 @@ export function useUploadProfilePicture() {
       if (updateError) throw updateError
       return player as PlayerPublic
     },
-    onSuccess: (player) => {
+    onSuccess: (player, variables) => {
       queryClient.invalidateQueries({ queryKey: ['player-profile', player.id] })
-      queryClient.invalidateQueries({ queryKey: ['league'] })
+      queryClient.invalidateQueries({ queryKey: ['league', variables.leagueId] })
     },
   })
 }

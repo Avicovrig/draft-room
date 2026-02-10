@@ -18,7 +18,6 @@ export function useLeagueFieldSchemas(leagueId: string | undefined) {
       return (data || []) as LeagueFieldSchema[]
     },
     enabled: !!leagueId,
-    staleTime: 5 * 60 * 1000,
   })
 }
 

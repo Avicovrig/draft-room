@@ -207,14 +207,14 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
           },
         })
       } catch (networkError) {
-        console.error('Network error during pick:', networkError)
+        console.error('Network error during pick:', { leagueId: league.id, captainId, playerId, error: networkError })
         throw new Error('Network error. Check your connection.')
       }
 
       const { data, error } = response
 
       if (error) {
-        console.error('Pick failed:', error)
+        console.error('Pick failed:', { leagueId: league.id, captainId, playerId, error })
         throw new Error(error.message || 'Failed to make pick. Please try again.')
       }
 
@@ -268,7 +268,6 @@ export function useCaptainByToken(leagueId: string | undefined, token: string | 
       return (data as ValidatedCaptain) ?? null
     },
     enabled: !!leagueId && !!token,
-    staleTime: 5 * 60 * 1000,
   })
 }
 
@@ -290,6 +289,5 @@ export function useSpectatorAccess(leagueId: string | undefined, token: string |
       return data as boolean
     },
     enabled: !!leagueId && !!token,
-    staleTime: 5 * 60 * 1000,
   })
 }

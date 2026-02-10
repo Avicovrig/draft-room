@@ -1,21 +1,22 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Settings, Users, Crown, Share2, Play, Trash2, ListChecks } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
-import { ManageLeagueSkeleton } from '@/components/ui/Skeleton'
+import { ManageLeagueSkeleton, Skeleton } from '@/components/ui/Skeleton'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { useLeague, useDeleteLeague, useLeagueTokens } from '@/hooks/useLeagues'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
-import { LeagueSettings } from '@/components/league/LeagueSettings'
-import { PlayerList } from '@/components/league/PlayerList'
-import { CaptainList } from '@/components/league/CaptainList'
-import { ShareLinks } from '@/components/league/ShareLinks'
-import { FieldSchemaList } from '@/components/league/FieldSchemaList'
 import { DraftReadinessChecklist } from '@/components/league/DraftReadinessChecklist'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+
+const PlayerList = lazy(() => import('@/components/league/PlayerList').then(m => ({ default: m.PlayerList })))
+const CaptainList = lazy(() => import('@/components/league/CaptainList').then(m => ({ default: m.CaptainList })))
+const FieldSchemaList = lazy(() => import('@/components/league/FieldSchemaList').then(m => ({ default: m.FieldSchemaList })))
+const LeagueSettings = lazy(() => import('@/components/league/LeagueSettings').then(m => ({ default: m.LeagueSettings })))
+const ShareLinks = lazy(() => import('@/components/league/ShareLinks').then(m => ({ default: m.ShareLinks })))
 
 type Tab = 'settings' | 'players' | 'captains' | 'fields' | 'share'
 
@@ -145,11 +146,13 @@ export function ManageLeague() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'players' && <PlayerList league={league} customFieldsMap={customFieldsMap} tokens={tokens} />}
-        {activeTab === 'captains' && <CaptainList league={league} />}
-        {activeTab === 'fields' && <FieldSchemaList league={league} />}
-        {activeTab === 'settings' && <LeagueSettings league={league} />}
-        {activeTab === 'share' && <ShareLinks league={league} tokens={tokens} />}
+        <Suspense fallback={<TabSkeleton />}>
+          {activeTab === 'players' && <PlayerList league={league} customFieldsMap={customFieldsMap} tokens={tokens} />}
+          {activeTab === 'captains' && <CaptainList league={league} />}
+          {activeTab === 'fields' && <FieldSchemaList league={league} />}
+          {activeTab === 'settings' && <LeagueSettings league={league} />}
+          {activeTab === 'share' && <ShareLinks league={league} tokens={tokens} />}
+        </Suspense>
 
         {/* Danger Zone */}
         {league.status === 'not_started' && (
@@ -186,6 +189,15 @@ export function ManageLeague() {
           </Card>
         )}
       </main>
+    </div>
+  )
+}
+
+function TabSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-64 w-full" />
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { createAdminClient } from '../_shared/supabase.ts'
 import { UUID_RE, errorResponse, validateUrl } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
+import type { UpdateCaptainColorRequest } from '../_shared/types.ts'
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/
 const MAX_TEAM_NAME_LENGTH = 50
@@ -15,7 +16,7 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const { captainId, captainToken, leagueId, color, teamName, teamPhotoUrl } = await req.json()
+    const { captainId, captainToken, leagueId, color, teamName, teamPhotoUrl }: UpdateCaptainColorRequest = await req.json()
 
     if (!captainId || !leagueId) {
       return errorResponse('Missing required fields', 400, req)

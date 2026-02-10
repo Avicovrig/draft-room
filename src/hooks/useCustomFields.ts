@@ -8,25 +8,14 @@ export function useLeagueCustomFields(leagueId: string | undefined) {
     queryFn: async () => {
       if (!leagueId) return {}
 
-      // Get all player IDs for this league
-      const { data: players, error: playersError } = await supabase
-        .from('players')
-        .select('id')
-        .eq('league_id', leagueId)
-
-      if (playersError) throw playersError
-      if (!players || players.length === 0) return {}
-
-      const playerIds = players.map((p) => p.id)
-
-      // Get all custom fields for these players
-      const { data: customFields, error: fieldsError } = await supabase
+      // Single query using resource embedding to filter through players FK
+      const { data: customFields, error } = await supabase
         .from('player_custom_fields')
-        .select('*')
-        .in('player_id', playerIds)
+        .select('id, player_id, field_name, field_value, field_order, schema_id, created_at, players!inner()')
+        .eq('players.league_id', leagueId)
         .order('field_order', { ascending: true })
 
-      if (fieldsError) throw fieldsError
+      if (error) throw error
 
       // Group by player_id
       const map: Record<string, PlayerCustomField[]> = {}
@@ -187,8 +176,8 @@ export function useUpsertCustomFields() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['player-profile', data.playerId] })
-      queryClient.invalidateQueries({ queryKey: ['league'] })
       if (data.leagueId) {
+        queryClient.invalidateQueries({ queryKey: ['league', data.leagueId] })
         queryClient.invalidateQueries({ queryKey: ['league-custom-fields', data.leagueId] })
       }
     },
