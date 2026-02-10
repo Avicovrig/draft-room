@@ -21,9 +21,9 @@ export function EditProfile() {
 
   const { data: player, isLoading, error, refetch } = usePlayerByEditToken(playerId, token)
   const { data: league } = useLeague(player?.league_id)
-  const { data: fieldSchemas } = useLeagueFieldSchemas(player?.league_id)
+  const { data: fieldSchemas, isLoading: schemasLoading } = useLeagueFieldSchemas(player?.league_id)
 
-  if (isLoading) {
+  if (isLoading || (player && schemasLoading)) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
