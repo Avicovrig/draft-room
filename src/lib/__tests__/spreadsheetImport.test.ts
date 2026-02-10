@@ -193,4 +193,94 @@ describe('transformData', () => {
     const players = transformData(data, mappings, true, schemas)
     expect(players[0].customFields[0].field_value).toBe('170')
   })
+
+  it('passes through number values without units', () => {
+    const schemas = [makeSchema({ id: 's1', field_name: 'Age', field_type: 'number' })]
+    const data: SpreadsheetData = {
+      headers: ['Name', 'Age'],
+      rows: [['Alice', '25']],
+      fileName: 'test.xlsx',
+    }
+    const mappings = {
+      'Name': { type: 'standard' as const, field: 'name' as const },
+      'Age': { type: 'schema' as const, schemaId: 's1', fieldName: 'Age' },
+    }
+    const players = transformData(data, mappings, true, schemas)
+    expect(players[0].customFields[0].field_value).toBe('25')
+  })
+
+  it('passes through checkbox values that are not yes/no/true/false', () => {
+    const schemas = [makeSchema({ id: 's1', field_name: 'Active', field_type: 'checkbox' })]
+    const data: SpreadsheetData = {
+      headers: ['Name', 'Active'],
+      rows: [['Alice', 'maybe']],
+      fileName: 'test.xlsx',
+    }
+    const mappings = {
+      'Name': { type: 'standard' as const, field: 'name' as const },
+      'Active': { type: 'schema' as const, schemaId: 's1', fieldName: 'Active' },
+    }
+    const players = transformData(data, mappings, true, schemas)
+    expect(players[0].customFields[0].field_value).toBe('maybe')
+  })
+
+  it('normalizes date values to ISO format', () => {
+    const schemas = [makeSchema({ id: 's1', field_name: 'DOB', field_type: 'date' })]
+    const data: SpreadsheetData = {
+      headers: ['Name', 'DOB'],
+      rows: [['Alice', '2000-06-15T00:00:00.000Z']],
+      fileName: 'test.xlsx',
+    }
+    const mappings = {
+      'Name': { type: 'standard' as const, field: 'name' as const },
+      'DOB': { type: 'schema' as const, schemaId: 's1', fieldName: 'DOB' },
+    }
+    const players = transformData(data, mappings, true, schemas)
+    expect(players[0].customFields[0].field_value).toBe('2000-06-15')
+  })
+
+  it('normalizes date with includeTime option', () => {
+    const schemas = [makeSchema({ id: 's1', field_name: 'Event', field_type: 'date', field_options: { includeTime: true } })]
+    const data: SpreadsheetData = {
+      headers: ['Name', 'Event'],
+      rows: [['Alice', '2025-12-25T14:30:00.000Z']],
+      fileName: 'test.xlsx',
+    }
+    const mappings = {
+      'Name': { type: 'standard' as const, field: 'name' as const },
+      'Event': { type: 'schema' as const, schemaId: 's1', fieldName: 'Event' },
+    }
+    const players = transformData(data, mappings, true, schemas)
+    expect(players[0].customFields[0].field_value).toBe('2025-12-25T14:30')
+  })
+
+  it('passes through invalid date strings', () => {
+    const schemas = [makeSchema({ id: 's1', field_name: 'DOB', field_type: 'date' })]
+    const data: SpreadsheetData = {
+      headers: ['Name', 'DOB'],
+      rows: [['Alice', 'not-a-date']],
+      fileName: 'test.xlsx',
+    }
+    const mappings = {
+      'Name': { type: 'standard' as const, field: 'name' as const },
+      'DOB': { type: 'schema' as const, schemaId: 's1', fieldName: 'DOB' },
+    }
+    const players = transformData(data, mappings, true, schemas)
+    expect(players[0].customFields[0].field_value).toBe('not-a-date')
+  })
+
+  it('passes through text schema fields without normalization', () => {
+    const schemas = [makeSchema({ id: 's1', field_name: 'Notes', field_type: 'text' })]
+    const data: SpreadsheetData = {
+      headers: ['Name', 'Notes'],
+      rows: [['Alice', 'Some notes here']],
+      fileName: 'test.xlsx',
+    }
+    const mappings = {
+      'Name': { type: 'standard' as const, field: 'name' as const },
+      'Notes': { type: 'schema' as const, schemaId: 's1', fieldName: 'Notes' },
+    }
+    const players = transformData(data, mappings, true, schemas)
+    expect(players[0].customFields[0].field_value).toBe('Some notes here')
+  })
 })
