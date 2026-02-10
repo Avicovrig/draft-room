@@ -8,6 +8,7 @@ import { createAdminClient } from '../_shared/supabase.ts'
 import { UUID_RE, errorResponse } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
+import { authenticateManager } from '../_shared/auth.ts'
 import type { AutoPickRequest, Captain, Player } from '../_shared/types.ts'
 
 Deno.serve(async (req) => {
@@ -20,7 +21,7 @@ Deno.serve(async (req) => {
   try {
     const supabase = createAdminClient()
 
-    const { leagueId, expectedPickIndex }: AutoPickRequest = await req.json()
+    const { leagueId, expectedPickIndex, captainToken }: AutoPickRequest = await req.json()
 
     if (!leagueId) {
       return errorResponse('leagueId is required', 400, req)
@@ -80,6 +81,16 @@ Deno.serve(async (req) => {
     const orderForRound = isReversedRound ? [...captainIds].reverse() : captainIds
     const currentCaptainId = orderForRound[positionInRound]
     const currentCaptain = sortedCaptains.find((c: Captain) => c.id === currentCaptainId)
+
+    // Auth: captain token OR manager JWT required
+    if (captainToken) {
+      if (!currentCaptain || currentCaptain.access_token !== captainToken) {
+        return errorResponse('Invalid captain token', 403, req)
+      }
+    } else {
+      const authResult = await authenticateManager(req, leagueId)
+      if (authResult instanceof Response) return authResult
+    }
 
     // Timer validation - skip if captain has auto_pick_enabled (immediate pick)
     // Only validate timer for captains who don't have auto-pick enabled

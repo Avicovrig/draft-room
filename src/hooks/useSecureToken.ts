@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 /**
@@ -11,12 +11,12 @@ export function useSecureToken(prefix: string, id: string | undefined): string |
   const storageKey = id ? `${prefix}-token-${id}` : ''
   const tokenFromUrl = searchParams.get('token')
 
-  const [token] = useState<string | null>(() => {
+  const token = useMemo(() => {
     // Prefer URL param (first load), fall back to sessionStorage
     if (tokenFromUrl) return tokenFromUrl
     if (storageKey) return sessionStorage.getItem(storageKey)
     return null
-  })
+  }, [tokenFromUrl, storageKey])
 
   useEffect(() => {
     if (!token || !storageKey) return

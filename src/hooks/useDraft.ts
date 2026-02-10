@@ -19,7 +19,7 @@ interface UseDraftReturn {
   resumeDraft: () => Promise<void>
   restartDraft: () => Promise<void>
   undoLastPick: () => Promise<void>
-  makePick: (playerId: string, captainId: string) => Promise<void>
+  makePick: (playerId: string, captainId: string, captainToken?: string) => Promise<void>
 }
 
 export function useDraft(leagueId: string | undefined): UseDraftReturn {

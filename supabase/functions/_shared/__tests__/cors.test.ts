@@ -9,7 +9,7 @@ const ALLOWED_ORIGINS = [
 
 function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_ORIGINS.includes(origin)) return true
-  if (/^https:\/\/[\w-]+\.vercel\.app$/.test(origin)) return true
+  if (/^https:\/\/draft-room[\w-]*\.vercel\.app$/.test(origin)) return true
   if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return true
   return false
 }
@@ -42,9 +42,14 @@ describe('isAllowedOrigin', () => {
     expect(isAllowedOrigin('https://draft-room-eta.vercel.app')).toBe(true)
   })
 
-  it('allows Vercel preview deploy origins', () => {
+  it('allows draft-room Vercel preview deploy origins', () => {
     expect(isAllowedOrigin('https://draft-room-abc123.vercel.app')).toBe(true)
-    expect(isAllowedOrigin('https://my-branch-deploy.vercel.app')).toBe(true)
+    expect(isAllowedOrigin('https://draft-room-abc123-team.vercel.app')).toBe(true)
+  })
+
+  it('rejects non-draft-room Vercel preview deploys', () => {
+    expect(isAllowedOrigin('https://my-branch-deploy.vercel.app')).toBe(false)
+    expect(isAllowedOrigin('https://other-project-abc.vercel.app')).toBe(false)
   })
 
   it('allows localhost with port', () => {

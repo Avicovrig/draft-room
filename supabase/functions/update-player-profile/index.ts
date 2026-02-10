@@ -41,6 +41,10 @@ Deno.serve(async (req) => {
       return errorResponse(`Bio exceeds maximum length of ${MAX_BIO_LENGTH} characters`, 400, req)
     }
 
+    if (bio && DANGEROUS_PATTERN.test(bio)) {
+      return errorResponse('Bio contains invalid characters', 400, req)
+    }
+
     if (profile_picture_url && profile_picture_url.length > MAX_PROFILE_PICTURE_SIZE) {
       return errorResponse('Profile picture exceeds maximum size of 2MB', 400, req)
     }
@@ -81,33 +85,33 @@ Deno.serve(async (req) => {
       return errorResponse('Invalid player or token', 403, req)
     }
 
-    // Validate required schema fields
-    if (customFields && customFields.length > 0) {
-      const { data: requiredSchemas } = await supabaseAdmin
-        .from('league_field_schemas')
-        .select('id, field_name, field_type')
-        .eq('league_id', player.league_id)
-        .eq('is_required', true)
+    // Validate required schema fields (always check, even if customFields is empty/missing)
+    const { data: requiredSchemas } = await supabaseAdmin
+      .from('league_field_schemas')
+      .select('id, field_name, field_type')
+      .eq('league_id', player.league_id)
+      .eq('is_required', true)
 
-      if (requiredSchemas && requiredSchemas.length > 0) {
-        const submittedBySchemaId = new Map<string, string>()
+    if (requiredSchemas && requiredSchemas.length > 0) {
+      const submittedBySchemaId = new Map<string, string>()
+      if (customFields) {
         for (const field of customFields) {
           if (field.schema_id) {
             submittedBySchemaId.set(field.schema_id, field.field_value || '')
           }
         }
+      }
 
-        const missingFields: string[] = []
-        for (const schema of requiredSchemas) {
-          const value = submittedBySchemaId.get(schema.id)
-          if (!value || !value.trim()) {
-            missingFields.push(schema.field_name)
-          }
+      const missingFields: string[] = []
+      for (const schema of requiredSchemas) {
+        const value = submittedBySchemaId.get(schema.id)
+        if (!value || !value.trim()) {
+          missingFields.push(schema.field_name)
         }
+      }
 
-        if (missingFields.length > 0) {
-          return errorResponse(`Required fields missing: ${missingFields.join(', ')}`, 400, req)
-        }
+      if (missingFields.length > 0) {
+        return errorResponse(`Required fields missing: ${missingFields.join(', ')}`, 400, req)
       }
     }
 

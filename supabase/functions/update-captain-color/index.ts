@@ -3,6 +3,7 @@ import { createAdminClient } from '../_shared/supabase.ts'
 import { UUID_RE, errorResponse, validateUrl } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
+import { authenticateManager } from '../_shared/auth.ts'
 import type { UpdateCaptainColorRequest } from '../_shared/types.ts'
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/
@@ -60,9 +61,14 @@ Deno.serve(async (req) => {
       return errorResponse('Captain not found in this league', 404, req)
     }
 
-    // Validate captain token if provided
-    if (captainToken && captain.access_token !== captainToken) {
-      return errorResponse('Invalid captain token', 403, req)
+    // Auth: captain token OR manager JWT required
+    if (captainToken) {
+      if (captain.access_token !== captainToken) {
+        return errorResponse('Invalid captain token', 403, req)
+      }
+    } else {
+      const authResult = await authenticateManager(req, leagueId)
+      if (authResult instanceof Response) return authResult
     }
 
     // Build update object dynamically

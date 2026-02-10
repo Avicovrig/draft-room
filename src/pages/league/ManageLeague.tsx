@@ -11,6 +11,7 @@ import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { DraftReadinessChecklist } from '@/components/league/DraftReadinessChecklist'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
+import { getAvailablePlayers } from '@/lib/draft'
 
 const PlayerList = lazy(() => import('@/components/league/PlayerList').then(m => ({ default: m.PlayerList })))
 const CaptainList = lazy(() => import('@/components/league/CaptainList').then(m => ({ default: m.CaptainList })))
@@ -64,9 +65,10 @@ export function ManageLeague() {
     )
   }
 
+  const availablePlayers = getAvailablePlayers(league.players, league.captains)
   const canStartDraft = league.status === 'not_started' &&
     league.captains.length >= 2 &&
-    league.players.length >= league.captains.length
+    availablePlayers.length >= league.captains.length
 
   const tabs = [
     { id: 'players' as const, label: 'Players', icon: Users, count: league.players.length },

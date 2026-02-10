@@ -33,16 +33,23 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createAdminClient()
 
-    // Find the last pick
+    if (league.current_pick_index <= 0) {
+      return errorResponse('No picks to undo', 400, req)
+    }
+
+    // Find the last pick, verifying it matches the expected pick number.
+    // This prevents race conditions where concurrent undo requests could
+    // both try to undo the same pick.
+    const expectedPickNumber = league.current_pick_index - 1
     const { data: picks, error: picksError } = await supabaseAdmin
       .from('draft_picks')
       .select('*')
       .eq('league_id', leagueId)
-      .order('pick_number', { ascending: false })
+      .eq('pick_number', expectedPickNumber)
       .limit(1)
 
     if (picksError || !picks || picks.length === 0) {
-      return errorResponse('No picks to undo', 400, req)
+      return errorResponse('No picks to undo (pick may have already been undone)', 400, req)
     }
 
     const lastPick = picks[0]

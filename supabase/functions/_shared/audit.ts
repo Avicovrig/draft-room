@@ -32,11 +32,16 @@ export function logAudit(
     })
 }
 
-/** Extract client IP from request headers. */
+/**
+ * Extract client IP from request headers.
+ * Uses the last entry in x-forwarded-for (added by the infrastructure proxy)
+ * rather than the first (which can be client-spoofed).
+ */
 export function getClientIp(req: Request): string {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('x-real-ip') ??
-    'unknown'
-  )
+  const xff = req.headers.get('x-forwarded-for')
+  if (xff) {
+    const ips = xff.split(',').map(ip => ip.trim()).filter(Boolean)
+    if (ips.length > 0) return ips[ips.length - 1]
+  }
+  return req.headers.get('x-real-ip') ?? 'unknown'
 }

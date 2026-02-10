@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Plus, Trash2, Shuffle, ChevronUp, ChevronDown, Crown, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/Select'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { ImageCropper } from '@/components/ui/ImageCropper'
 import { useToast } from '@/components/ui/Toast'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import {
   useCreateCaptain,
   useDeleteCaptain,
@@ -39,6 +40,8 @@ export function CaptainList({ league }: CaptainListProps) {
   const updateColor = useUpdateCaptainColor()
   const uploadTeamPhoto = useUploadTeamPhoto()
   const { addToast } = useToast()
+  const closePhotoModal = useCallback(() => setEditingTeamPhotoId(null), [])
+  const { overlayProps: photoModalOverlayProps } = useModalFocus({ onClose: closePhotoModal, enabled: !!editingTeamPhotoId })
 
   const defaultColors = ['#3B82F6', '#EF4444', '#22C55E', '#A855F7']
 
@@ -468,7 +471,7 @@ export function CaptainList({ league }: CaptainListProps) {
       </Card>
 
       {editingTeamPhotoId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...photoModalOverlayProps}>
           <div className="mx-4 w-full max-w-md rounded-lg bg-background p-4">
             <ImageCropper
               onCropComplete={(blob) => {

@@ -3,6 +3,7 @@ import { createAdminClient } from '../_shared/supabase.ts'
 import { UUID_RE, errorResponse } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
+import { authenticateManager } from '../_shared/auth.ts'
 import type { MakePickRequest, Captain, League } from '../_shared/types.ts'
 
 Deno.serve(async (req) => {
@@ -40,7 +41,7 @@ Deno.serve(async (req) => {
       return errorResponse('Draft is not in progress', 400, req)
     }
 
-    // Validate captain token if provided (for non-manager picks)
+    // Auth: captain token OR manager JWT required
     if (captainToken) {
       const captain = (league as League).captains.find((c: Captain) =>
         c.id === captainId && c.access_token === captainToken
@@ -48,6 +49,10 @@ Deno.serve(async (req) => {
       if (!captain) {
         return errorResponse('Invalid captain token', 403, req)
       }
+    } else {
+      // No captain token — caller must be the league manager
+      const authResult = await authenticateManager(req, leagueId)
+      if (authResult instanceof Response) return authResult
     }
 
     // Verify it's this captain's turn

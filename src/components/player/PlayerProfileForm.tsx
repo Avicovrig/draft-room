@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
@@ -76,9 +76,21 @@ export function PlayerProfileForm({
   )
   const [deletedFieldIds, setDeletedFieldIds] = useState<string[]>([])
 
+  // Track blob URLs for cleanup
+  const blobUrlRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+    }
+  }, [])
+
   function handleCropComplete(blob: Blob) {
+    if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+    const newUrl = URL.createObjectURL(blob)
+    blobUrlRef.current = newUrl
     setProfilePictureBlob(blob)
-    setPreviewUrl(URL.createObjectURL(blob))
+    setPreviewUrl(newUrl)
     setShowCropper(false)
   }
 

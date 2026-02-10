@@ -2,11 +2,11 @@ const ALLOWED_ORIGINS = [
   'https://draft-room-eta.vercel.app',
 ]
 
-/** Check if the origin is allowed. Supports exact matches and *.vercel.app pattern. */
+/** Check if the origin is allowed. Supports exact matches and draft-room Vercel previews. */
 function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_ORIGINS.includes(origin)) return true
-  // Allow all Vercel preview deploys
-  if (/^https:\/\/[\w-]+\.vercel\.app$/.test(origin)) return true
+  // Allow draft-room Vercel preview deploys only (not arbitrary Vercel apps)
+  if (/^https:\/\/draft-room[\w-]*\.vercel\.app$/.test(origin)) return true
   // Allow localhost for development
   if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return true
   return false

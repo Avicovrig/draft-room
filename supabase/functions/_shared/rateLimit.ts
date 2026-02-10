@@ -25,12 +25,14 @@ function cleanup() {
   }
 }
 
+/** Use last x-forwarded-for entry (proxy-added, harder to spoof than first). */
 function getClientIp(req: Request): string {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('x-real-ip') ??
-    'unknown'
-  )
+  const xff = req.headers.get('x-forwarded-for')
+  if (xff) {
+    const ips = xff.split(',').map(ip => ip.trim()).filter(Boolean)
+    if (ips.length > 0) return ips[ips.length - 1]
+  }
+  return req.headers.get('x-real-ip') ?? 'unknown'
 }
 
 /**

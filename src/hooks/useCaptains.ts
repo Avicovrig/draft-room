@@ -279,10 +279,15 @@ export function useAssignRandomCaptains() {
       count: number
     }) => {
       // First, delete existing captains
-      await supabase.from('captains').delete().eq('league_id', leagueId)
+      const { error: deleteError } = await supabase.from('captains').delete().eq('league_id', leagueId)
+      if (deleteError) throw deleteError
 
-      // Shuffle and pick random players
-      const shuffled = [...playerIds].sort(() => Math.random() - 0.5)
+      // Fisher-Yates shuffle for uniform randomness
+      const shuffled = [...playerIds]
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+      }
       const selectedIds = shuffled.slice(0, count)
 
       // Get player names

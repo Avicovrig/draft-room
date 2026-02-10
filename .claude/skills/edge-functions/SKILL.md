@@ -91,16 +91,26 @@ import type { Captain, League, MakePickRequest } from '../_shared/types.ts'
 
 Each step checks for errors and rolls back all prior writes on failure. New edge functions with multi-step writes should follow this pattern.
 
-## Captain Token Validation
+## Dual Auth (Captain Token OR Manager JWT)
 
-For captain-initiated actions (`make-pick`, `toggle-auto-pick`, `update-captain-color`):
+For actions callable by both captains and managers (`make-pick`, `auto-pick`, `toggle-auto-pick`, `update-captain-color`):
 
-1. Request body includes `captainToken`
-2. Load league with captains: `.select('*, captains(*)')`
-3. Find captain: `captains.find(c => c.id === captainId && c.access_token === captainToken)`
-4. Reject with 403 if no match
+```typescript
+if (captainToken) {
+  // Validate captain token
+  if (captain.access_token !== captainToken) {
+    return errorResponse('Invalid captain token', 403, req)
+  }
+} else {
+  // No captain token — require manager JWT
+  const authResult = await authenticateManager(req, leagueId)
+  if (authResult instanceof Response) return authResult
+}
+```
 
-## Manager Auth
+Every edge function must authenticate via one of these two paths. Never allow unauthenticated access.
+
+## Manager-Only Auth
 
 For manager-only actions (`restart-draft`, `undo-pick`):
 

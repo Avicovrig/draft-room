@@ -37,13 +37,13 @@ Draft Room is a custom league draft application. League managers can create leag
 
 All draft-critical mutations go through Deno edge functions in `supabase/functions/` that use `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS:
 
-- **`make-pick`** - Captain or manager makes a pick. Validates turn order, player availability, captain token. Handles race conditions via unique constraint on `pick_number`. Rolls back pick/player writes if later steps fail.
-- **`auto-pick`** - Called on timer expiry or when captain has `auto_pick_enabled`. Picks from captain's draft queue first, falls back to random. Has 2-second grace period on timer validation. Uses `expectedPickIndex` for idempotency. Rolls back on partial failure.
-- **`toggle-auto-pick`** - Toggles a captain's auto-pick setting. Validates captain belongs to the specified league.
+- **`make-pick`** - Captain or manager makes a pick. Requires captain token OR manager JWT. Validates turn order, player availability. Handles race conditions via unique constraints on `pick_number` and `(league_id, player_id)`. Rolls back pick/player writes if later steps fail.
+- **`auto-pick`** - Called on timer expiry or when captain has `auto_pick_enabled`. Requires captain token OR manager JWT. Picks from captain's draft queue first, falls back to random. Has 2-second grace period on timer validation. Uses `expectedPickIndex` for idempotency. Rolls back on partial failure.
+- **`toggle-auto-pick`** - Toggles a captain's auto-pick setting. Requires captain token OR manager JWT. Validates captain belongs to the specified league.
 - **`update-player-profile`** - Player self-service profile updates via edit token. Validates required schema fields, rejects HTML in field names/values.
-- **`update-captain-color`** - Updates a captain's team color, team name, and team photo.
-- **`restart-draft`** - Manager-only. Deletes all picks, resets players, sets league back to `not_started`. Requires JWT auth.
-- **`undo-pick`** - Manager-only. Removes last pick, resets that player, decrements pick index. Requires JWT auth.
+- **`update-captain-color`** - Updates a captain's team color, team name, and team photo. Requires captain token OR manager JWT.
+- **`restart-draft`** - Manager-only. Deletes all picks, resets players, sets league back to `not_started`. Requires manager JWT.
+- **`undo-pick`** - Manager-only. Removes last pick, resets that player, decrements pick index. Requires manager JWT.
 
 All edge functions share utilities in `supabase/functions/_shared/`: CORS origin checking (`cors.ts`), rate limiting (`rateLimit.ts`), UUID/URL validation (`validation.ts`), manager JWT auth (`auth.ts`), audit logging (`audit.ts`), and shared type definitions (`types.ts`). All validate UUID format on ID parameters before hitting the database. Request body types and entity interfaces are defined in `_shared/types.ts` — use these instead of inline type annotations.
 
@@ -84,7 +84,7 @@ Eight tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_p
 
 **Important**: `useLeague` selects explicit columns (not `*`) from related tables to minimize payload and because token columns are not accessible. When adding new columns to the schema, they must also be added to the select in `src/hooks/useLeagues.ts`.
 
-Migrations are in `supabase/migrations/` (001-014), applied sequentially.
+Migrations are in `supabase/migrations/` (001-015), applied sequentially.
 
 ### Draft State Machine
 
@@ -160,6 +160,6 @@ Edge functions use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (set automatic
 
 ## Supabase Setup
 
-1. Run migrations from `supabase/migrations/` in order (001-014)
+1. Run migrations from `supabase/migrations/` in order (001-015)
 2. Deploy all 7 edge functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`
 3. Enable realtime on tables: `leagues`, `players`, `draft_picks`, `captains`

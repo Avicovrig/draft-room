@@ -85,6 +85,10 @@ export function DraftBoard({
   )
   const searchInputRef = useRef<HTMLInputElement>(null)
   const isAutoPickingRef = useRef(false)
+  // Keep pick index in a ref so the auto-pick callback always reads the latest
+  // value, even if called from a setTimeout after a stale closure was captured
+  const pickIndexRef = useRef(league.current_pick_index)
+  pickIndexRef.current = league.current_pick_index
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const { user } = useAuth()
@@ -231,15 +235,17 @@ export function DraftBoard({
 
     try {
       // Call the edge function for auto-pick with idempotency key
+      const currentPickIndex = pickIndexRef.current
       const response = await supabase.functions.invoke('auto-pick', {
         body: {
           leagueId: league.id,
-          expectedPickIndex: league.current_pick_index,
+          expectedPickIndex: currentPickIndex,
+          captainToken,
         },
       })
 
       if (response.error) {
-        console.error('Auto-pick failed:', { leagueId: league.id, pickIndex: league.current_pick_index, error: response.error })
+        console.error('Auto-pick failed:', { leagueId: league.id, pickIndex: currentPickIndex, error: response.error })
         // Only show error if it's not a race condition (multiple clients calling simultaneously)
         if (!response.error.message?.includes('Pick already made')) {
           addToast('Auto-pick failed. Please make a manual selection.', 'error')
@@ -267,7 +273,7 @@ export function DraftBoard({
     } finally {
       isAutoPickingRef.current = false
     }
-  }, [currentCaptain, availablePlayers.length, league.id, league.current_pick_index, addToast, queryClient])
+  }, [currentCaptain, availablePlayers.length, league.id, captainToken, addToast, queryClient])
 
   // Trigger immediate auto-pick if current captain has auto_pick_enabled
   // This runs when:

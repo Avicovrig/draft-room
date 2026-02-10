@@ -27,11 +27,12 @@ function cleanup() {
 }
 
 function getClientIp(req: Request): string {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('x-real-ip') ??
-    'unknown'
-  )
+  const xff = req.headers.get('x-forwarded-for')
+  if (xff) {
+    const ips = xff.split(',').map(ip => ip.trim()).filter(Boolean)
+    if (ips.length > 0) return ips[ips.length - 1]
+  }
+  return req.headers.get('x-real-ip') ?? 'unknown'
 }
 
 function rateLimit(
@@ -81,9 +82,16 @@ afterEach(() => {
 })
 
 describe('getClientIp', () => {
-  it('extracts IP from x-forwarded-for', () => {
+  it('uses last IP from x-forwarded-for (proxy-added)', () => {
     const req = new Request('https://example.com', {
       headers: { 'x-forwarded-for': '1.2.3.4, 5.6.7.8' },
+    })
+    expect(getClientIp(req)).toBe('5.6.7.8')
+  })
+
+  it('uses single IP from x-forwarded-for', () => {
+    const req = new Request('https://example.com', {
+      headers: { 'x-forwarded-for': '1.2.3.4' },
     })
     expect(getClientIp(req)).toBe('1.2.3.4')
   })
@@ -100,11 +108,11 @@ describe('getClientIp', () => {
     expect(getClientIp(req)).toBe('unknown')
   })
 
-  it('trims whitespace from x-forwarded-for', () => {
+  it('trims whitespace from x-forwarded-for entries', () => {
     const req = new Request('https://example.com', {
-      headers: { 'x-forwarded-for': '  1.2.3.4  , 5.6.7.8' },
+      headers: { 'x-forwarded-for': '  1.2.3.4  ,  5.6.7.8  ' },
     })
-    expect(getClientIp(req)).toBe('1.2.3.4')
+    expect(getClientIp(req)).toBe('5.6.7.8')
   })
 })
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { CheckCircle2, XCircle, AlertCircle, ClipboardCheck } from 'lucide-react'
-import { formatScheduledTime } from '@/lib/draft'
+import { formatScheduledTime, getAvailablePlayers } from '@/lib/draft'
 import type { LeagueFullPublic, LeagueFieldSchema, PlayerCustomField } from '@/lib/types'
 
 type Status = 'pass' | 'fail' | 'warn'
@@ -45,15 +45,16 @@ export function DraftReadinessChecklist({ league, fieldSchemas, customFieldsMap 
         : `Need at least 2 captains (${captainCount} added)`,
     })
 
-    // 2. Enough players (blocking)
-    const playerCount = league.players.length
+    // 2. Enough available players (blocking) — excludes captain-linked players
+    const availablePlayers = getAvailablePlayers(league.players, league.captains)
+    const availableCount = availablePlayers.length
     result.push({
       id: 'players',
       label: 'Enough players',
-      status: playerCount >= captainCount ? 'pass' : 'fail',
-      detail: playerCount >= captainCount
-        ? `${playerCount} players for ${captainCount} captains`
-        : `Need at least ${captainCount} players (${playerCount} added)`,
+      status: availableCount >= captainCount ? 'pass' : 'fail',
+      detail: availableCount >= captainCount
+        ? `${availableCount} available players for ${captainCount} captains`
+        : `Need at least ${captainCount} available players (${availableCount} available)`,
     })
 
     // 3. Player profiles complete (warning, only if required schemas exist)

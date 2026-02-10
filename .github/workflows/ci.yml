@@ -26,6 +26,10 @@ jobs:
       - name: Type check
         run: npx tsc -b
 
+      - name: Security audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
