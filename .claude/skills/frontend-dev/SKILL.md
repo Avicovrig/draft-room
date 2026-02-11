@@ -127,11 +127,12 @@ Creating or modifying React components, pages, hooks, modals, forms, or any code
 
 ## Spreadsheet Import/Export
 
-- Uses `xlsx` library
-- Import: `SpreadsheetImportModal` component
+- Uses `exceljs` + `file-saver`
+- Import: `SpreadsheetImportModal` component (parsing in `useSpreadsheetImport.ts`)
 - Export: `exportPlayersToSpreadsheet()` in `src/lib/exportPlayers.ts`
+- Draft results: `exportDraftResults()` in `src/lib/exportDraftResults.ts`
 - Template: `downloadPlayerTemplate()` in `src/lib/generateTemplate.ts`
-- Pattern: `XLSX.utils.aoa_to_sheet()` + `XLSX.writeFile()`
+- Pattern: ExcelJS `Workbook` API + `saveAs()`
 
 ## Celebration Replay
 
