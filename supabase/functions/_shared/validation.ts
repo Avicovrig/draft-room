@@ -2,6 +2,12 @@ import { getCorsHeaders } from './cors.ts'
 
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/** Max base64 string length for uploaded images (~2MB decoded). */
+export const MAX_BASE64_BLOB_LENGTH = 2_800_000
+
+/** Pattern to detect HTML tags, javascript: URIs, and data: URIs in user input. */
+export const DANGEROUS_PATTERN = /<[^>]*>|javascript:|data:/i
+
 /** Create a JSON error response with CORS headers. */
 export function errorResponse(message: string, status: number, req: Request): Response {
   return new Response(JSON.stringify({ error: message }), {

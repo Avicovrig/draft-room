@@ -18,6 +18,9 @@ import {
 } from '@/hooks/useCaptains'
 import type { LeagueFullPublic } from '@/lib/types'
 
+const MAX_CAPTAINS = 4
+const DEFAULT_COLORS = ['#3B82F6', '#EF4444', '#22C55E', '#A855F7']
+
 interface CaptainListProps {
   league: LeagueFullPublic
 }
@@ -46,8 +49,6 @@ export function CaptainList({ league }: CaptainListProps) {
     enabled: !!editingTeamPhotoId,
   })
 
-  const defaultColors = ['#3B82F6', '#EF4444', '#22C55E', '#A855F7']
-
   const isEditable = league.status === 'not_started'
   const sortedCaptains = [...league.captains].sort((a, b) => a.draft_position - b.draft_position)
 
@@ -57,10 +58,14 @@ export function CaptainList({ league }: CaptainListProps) {
     const temp = newOrder[index]
     newOrder[index] = newOrder[index - 1]
     newOrder[index - 1] = temp
-    await reorderCaptains.mutateAsync({
-      leagueId: league.id,
-      captainIds: newOrder.map((c) => c.id),
-    })
+    try {
+      await reorderCaptains.mutateAsync({
+        leagueId: league.id,
+        captainIds: newOrder.map((c) => c.id),
+      })
+    } catch {
+      // Error handled by mutation
+    }
   }
 
   async function handleMoveDown(index: number) {
@@ -69,10 +74,14 @@ export function CaptainList({ league }: CaptainListProps) {
     const temp = newOrder[index]
     newOrder[index] = newOrder[index + 1]
     newOrder[index + 1] = temp
-    await reorderCaptains.mutateAsync({
-      leagueId: league.id,
-      captainIds: newOrder.map((c) => c.id),
-    })
+    try {
+      await reorderCaptains.mutateAsync({
+        leagueId: league.id,
+        captainIds: newOrder.map((c) => c.id),
+      })
+    } catch {
+      // Error handled by mutation
+    }
   }
 
   // Get players who are not already captains
@@ -134,10 +143,14 @@ export function CaptainList({ league }: CaptainListProps) {
       const j = Math.floor(Math.random() * (i + 1)) // eslint-disable-line react-hooks/purity
       ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
     }
-    await reorderCaptains.mutateAsync({
-      leagueId: league.id,
-      captainIds: shuffled.map((c) => c.id),
-    })
+    try {
+      await reorderCaptains.mutateAsync({
+        leagueId: league.id,
+        captainIds: shuffled.map((c) => c.id),
+      })
+    } catch {
+      // Error handled by mutation
+    }
   }
 
   async function handleRandomAssign() {
@@ -207,7 +220,8 @@ export function CaptainList({ league }: CaptainListProps) {
                     onChange={(e) => setSelectedPlayerId(e.target.value)}
                     className="flex-1"
                     disabled={
-                      league.captains.length >= 4 || availablePlayersForCaptain.length === 0
+                      league.captains.length >= MAX_CAPTAINS ||
+                      availablePlayersForCaptain.length === 0
                     }
                   >
                     <option value="">Select a player...</option>
@@ -220,7 +234,9 @@ export function CaptainList({ league }: CaptainListProps) {
                   <Button
                     type="submit"
                     disabled={
-                      createCaptain.isPending || !selectedPlayerId || league.captains.length >= 4
+                      createCaptain.isPending ||
+                      !selectedPlayerId ||
+                      league.captains.length >= MAX_CAPTAINS
                     }
                   >
                     <Plus className="mr-2 h-4 w-4" />
@@ -234,14 +250,14 @@ export function CaptainList({ league }: CaptainListProps) {
                     value={newCaptainName}
                     onChange={(e) => setNewCaptainName(e.target.value)}
                     className="flex-1"
-                    disabled={league.captains.length >= 4}
+                    disabled={league.captains.length >= MAX_CAPTAINS}
                   />
                   <Button
                     type="submit"
                     disabled={
                       createCaptain.isPending ||
                       !newCaptainName.trim() ||
-                      league.captains.length >= 4
+                      league.captains.length >= MAX_CAPTAINS
                     }
                   >
                     <Plus className="mr-2 h-4 w-4" />
@@ -262,12 +278,14 @@ export function CaptainList({ league }: CaptainListProps) {
               )}
             </form>
 
-            {league.captains.length >= 4 && (
-              <p className="text-sm text-muted-foreground">Maximum of 4 captains reached.</p>
+            {league.captains.length >= MAX_CAPTAINS && (
+              <p className="text-sm text-muted-foreground">
+                Maximum of {MAX_CAPTAINS} captains reached.
+              </p>
             )}
             {captainMode === 'select' &&
               availablePlayersForCaptain.length === 0 &&
-              league.captains.length < 4 && (
+              league.captains.length < MAX_CAPTAINS && (
                 <p className="text-sm text-yellow-600 dark:text-yellow-400">
                   All players are already captains. Add more players or create a non-player captain.
                 </p>
@@ -382,7 +400,7 @@ export function CaptainList({ league }: CaptainListProps) {
                     {isEditable && (
                       <input
                         type="color"
-                        value={captain.team_color || defaultColors[index % defaultColors.length]}
+                        value={captain.team_color || DEFAULT_COLORS[index % DEFAULT_COLORS.length]}
                         onChange={(e) =>
                           updateColor.mutate({
                             captainId: captain.id,

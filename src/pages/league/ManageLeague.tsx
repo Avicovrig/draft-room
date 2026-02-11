@@ -135,10 +135,17 @@ export function ManageLeague() {
         </div>
 
         {/* Tabs */}
-        <div className="scrollbar-hide mb-6 flex gap-1 overflow-x-auto border-b border-border">
+        <div
+          role="tablist"
+          aria-label="League management"
+          className="scrollbar-hide mb-6 flex gap-1 overflow-x-auto border-b border-border"
+        >
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`tabpanel-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
               className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors sm:px-4 ${
                 activeTab === tab.id
@@ -156,15 +163,17 @@ export function ManageLeague() {
         </div>
 
         {/* Tab Content */}
-        <Suspense fallback={<TabSkeleton />}>
-          {activeTab === 'players' && (
-            <PlayerList league={league} customFieldsMap={customFieldsMap} tokens={tokens} />
-          )}
-          {activeTab === 'captains' && <CaptainList league={league} />}
-          {activeTab === 'fields' && <FieldSchemaList league={league} />}
-          {activeTab === 'settings' && <LeagueSettings league={league} />}
-          {activeTab === 'share' && <ShareLinks league={league} tokens={tokens} />}
-        </Suspense>
+        <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={activeTab}>
+          <Suspense fallback={<TabSkeleton />}>
+            {activeTab === 'players' && (
+              <PlayerList league={league} customFieldsMap={customFieldsMap} tokens={tokens} />
+            )}
+            {activeTab === 'captains' && <CaptainList league={league} />}
+            {activeTab === 'fields' && <FieldSchemaList league={league} />}
+            {activeTab === 'settings' && <LeagueSettings league={league} />}
+            {activeTab === 'share' && <ShareLinks league={league} tokens={tokens} />}
+          </Suspense>
+        </div>
 
         {/* Danger Zone */}
         {league.status === 'not_started' && (

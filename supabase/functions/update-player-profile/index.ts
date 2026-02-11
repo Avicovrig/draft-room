@@ -8,6 +8,8 @@ import {
   requireJson,
   isValidJpeg,
   timingSafeEqual,
+  MAX_BASE64_BLOB_LENGTH,
+  DANGEROUS_PATTERN,
 } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
@@ -19,7 +21,6 @@ const MAX_FIELD_NAME_LENGTH = 200
 const MAX_FIELD_VALUE_LENGTH = 1000
 const MAX_CUSTOM_FIELDS = 50
 const MAX_DELETED_FIELD_IDS = 50
-const DANGEROUS_PATTERN = /<[^>]*>|javascript:|data:/i
 
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
@@ -131,7 +132,7 @@ Deno.serve(async (req) => {
     // Handle base64 photo blob upload (used by token-based users who can't upload to storage directly)
     let resolvedProfilePictureUrl = profile_picture_url
     if (profilePictureBlob) {
-      if (profilePictureBlob.length > 2_800_000) {
+      if (profilePictureBlob.length > MAX_BASE64_BLOB_LENGTH) {
         return errorResponse('Profile picture exceeds maximum size', 400, req)
       }
       let binaryData: Uint8Array
@@ -221,41 +222,44 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Upsert custom fields — collect errors and report them
+    // Upsert custom fields — batch inserts and updates for efficiency
     const fieldErrors: string[] = []
     if (customFields && customFields.length > 0) {
-      for (const field of customFields) {
-        if (field.id) {
-          // Update existing
-          const { error } = await supabaseAdmin
-            .from('player_custom_fields')
-            .update({
-              field_name: field.field_name,
-              field_value: field.field_value || null,
-              field_order: field.field_order,
-              schema_id: field.schema_id || null,
-            })
-            .eq('id', field.id)
-            .eq('player_id', playerId)
+      const toInsert = customFields.filter((f) => !f.id)
+      const toUpdate = customFields.filter((f) => f.id)
 
-          if (error) {
-            console.error('Failed to update custom field:', error)
-            fieldErrors.push(field.field_name)
-          }
-        } else {
-          // Insert new
-          const { error } = await supabaseAdmin.from('player_custom_fields').insert({
+      // Batch insert new fields
+      if (toInsert.length > 0) {
+        const { error } = await supabaseAdmin.from('player_custom_fields').insert(
+          toInsert.map((f) => ({
             player_id: playerId,
-            field_name: field.field_name,
-            field_value: field.field_value || null,
-            field_order: field.field_order,
-            schema_id: field.schema_id || null,
-          })
+            field_name: f.field_name,
+            field_value: f.field_value || null,
+            field_order: f.field_order,
+            schema_id: f.schema_id || null,
+          }))
+        )
+        if (error) {
+          console.error('Failed to insert custom fields:', error)
+          fieldErrors.push(...toInsert.map((f) => f.field_name))
+        }
+      }
 
-          if (error) {
-            console.error('Failed to insert custom field:', error)
-            fieldErrors.push(field.field_name)
-          }
+      // Batch update existing fields via upsert
+      if (toUpdate.length > 0) {
+        const { error } = await supabaseAdmin.from('player_custom_fields').upsert(
+          toUpdate.map((f) => ({
+            id: f.id,
+            player_id: playerId,
+            field_name: f.field_name,
+            field_value: f.field_value || null,
+            field_order: f.field_order,
+            schema_id: f.schema_id || null,
+          }))
+        )
+        if (error) {
+          console.error('Failed to update custom fields:', error)
+          fieldErrors.push(...toUpdate.map((f) => f.field_name))
         }
       }
     }

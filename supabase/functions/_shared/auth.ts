@@ -13,7 +13,6 @@ export interface LeagueRow {
   current_pick_started_at: string | null
   time_limit_seconds: number
   spectator_token: string
-  [key: string]: unknown
 }
 
 /**
@@ -33,14 +32,19 @@ export async function authenticateManager(
 
   const supabaseAdmin = existingClient ?? createAdminClient()
 
-  const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(authHeader)
+  const {
+    data: { user },
+    error: authError,
+  } = await supabaseAdmin.auth.getUser(authHeader)
   if (authError || !user) {
     return errorResponse('Unauthorized', 401, req)
   }
 
   const { data: league, error: leagueError } = await supabaseAdmin
     .from('leagues')
-    .select('*')
+    .select(
+      'id, name, manager_id, status, draft_type, current_pick_index, current_pick_started_at, time_limit_seconds, spectator_token'
+    )
     .eq('id', leagueId)
     .single()
 

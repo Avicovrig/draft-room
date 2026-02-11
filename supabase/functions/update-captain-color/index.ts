@@ -1,12 +1,22 @@
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse, validateUrl, requirePost, requireJson, timingSafeEqual, isValidJpeg } from '../_shared/validation.ts'
+import {
+  UUID_RE,
+  errorResponse,
+  validateUrl,
+  requirePost,
+  requireJson,
+  timingSafeEqual,
+  isValidJpeg,
+  isValidHexColor,
+  MAX_BASE64_BLOB_LENGTH,
+  DANGEROUS_PATTERN,
+} from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import { authenticateManager } from '../_shared/auth.ts'
 import type { UpdateCaptainColorRequest } from '../_shared/types.ts'
 
-const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/
 const MAX_TEAM_NAME_LENGTH = 50
 
 Deno.serve(async (req) => {
@@ -23,7 +33,15 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const { captainId, captainToken, leagueId, color, teamName, teamPhotoUrl, teamPhotoBlob }: UpdateCaptainColorRequest = await req.json()
+    const {
+      captainId,
+      captainToken,
+      leagueId,
+      color,
+      teamName,
+      teamPhotoUrl,
+      teamPhotoBlob,
+    }: UpdateCaptainColorRequest = await req.json()
 
     if (!captainId || !leagueId) {
       return errorResponse('Missing required fields', 400, req)
@@ -34,18 +52,35 @@ Deno.serve(async (req) => {
     }
 
     // At least one field to update must be provided
-    if (color === undefined && teamName === undefined && teamPhotoUrl === undefined && !teamPhotoBlob) {
+    if (
+      color === undefined &&
+      teamName === undefined &&
+      teamPhotoUrl === undefined &&
+      !teamPhotoBlob
+    ) {
       return errorResponse('No fields to update', 400, req)
     }
 
     // Validate color if provided
-    if (color !== undefined && color !== null && !HEX_COLOR_RE.test(color)) {
+    if (color !== undefined && color !== null && !isValidHexColor(color)) {
       return errorResponse('Invalid color format. Must be a hex color like #FF0000', 400, req)
     }
 
     // Validate team name if provided
-    if (teamName !== undefined && teamName !== null && typeof teamName === 'string' && teamName.length > MAX_TEAM_NAME_LENGTH) {
-      return errorResponse(`Team name exceeds maximum length of ${MAX_TEAM_NAME_LENGTH} characters`, 400, req)
+    if (teamName !== undefined && teamName !== null) {
+      if (typeof teamName !== 'string') {
+        return errorResponse('teamName must be a string', 400, req)
+      }
+      if (teamName.length > MAX_TEAM_NAME_LENGTH) {
+        return errorResponse(
+          `Team name exceeds maximum length of ${MAX_TEAM_NAME_LENGTH} characters`,
+          400,
+          req
+        )
+      }
+      if (DANGEROUS_PATTERN.test(teamName)) {
+        return errorResponse('Team name contains invalid characters', 400, req)
+      }
     }
 
     // Validate team photo URL protocol
@@ -54,7 +89,7 @@ Deno.serve(async (req) => {
     }
 
     // Validate base64 blob size (max ~2MB decoded ≈ ~2.7MB base64)
-    if (teamPhotoBlob && teamPhotoBlob.length > 2_800_000) {
+    if (teamPhotoBlob && teamPhotoBlob.length > MAX_BASE64_BLOB_LENGTH) {
       return errorResponse('Team photo exceeds maximum size', 400, req)
     }
 
@@ -87,7 +122,7 @@ Deno.serve(async (req) => {
     if (teamPhotoBlob) {
       let binaryData: Uint8Array
       try {
-        binaryData = Uint8Array.from(atob(teamPhotoBlob), c => c.charCodeAt(0))
+        binaryData = Uint8Array.from(atob(teamPhotoBlob), (c) => c.charCodeAt(0))
       } catch {
         return errorResponse('Invalid base64 encoding', 400, req)
       }

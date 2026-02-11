@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { blobToBase64 } from '@/lib/utils'
 import type { CaptainPublic, PlayerPublic } from '@/lib/types'
 
 const CAPTAIN_COLUMNS =
@@ -27,34 +28,6 @@ export function useCreateCaptain() {
           draft_position: data.draft_position,
           player_id: data.player_id ?? null,
         })
-        .select(CAPTAIN_COLUMNS)
-        .single()
-
-      if (error) throw error
-      return captain as CaptainPublic
-    },
-    onSuccess: (captain) => {
-      queryClient.invalidateQueries({ queryKey: ['league', captain.league_id] })
-    },
-  })
-}
-
-interface UpdateCaptainInput {
-  id: string
-  name?: string
-  is_participant?: boolean
-  draft_position?: number
-}
-
-export function useUpdateCaptain() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async ({ id, ...data }: UpdateCaptainInput) => {
-      const { data: captain, error } = await supabase
-        .from('captains')
-        .update(data)
-        .eq('id', id)
         .select(CAPTAIN_COLUMNS)
         .single()
 
@@ -259,13 +232,7 @@ export function useUploadTeamPhotoAsCaptain() {
       captainToken: string
     }) => {
       // Convert blob to base64 — captains can't upload to storage directly (no auth session)
-      const buffer = await blob.arrayBuffer()
-      const bytes = new Uint8Array(buffer)
-      let binary = ''
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i])
-      }
-      const base64 = btoa(binary)
+      const base64 = await blobToBase64(blob)
 
       const response = await supabase.functions.invoke('update-captain-color', {
         body: { captainId, captainToken, leagueId, teamPhotoBlob: base64 },

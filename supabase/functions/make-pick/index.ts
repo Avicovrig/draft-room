@@ -1,28 +1,19 @@
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse, requirePost, requireJson, timingSafeEqual } from '../_shared/validation.ts'
+import {
+  UUID_RE,
+  errorResponse,
+  requirePost,
+  requireJson,
+  timingSafeEqual,
+} from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import { authenticateManager } from '../_shared/auth.ts'
 import { getCurrentCaptainId } from '../_shared/draftOrder.ts'
+import { rollbackPick, advanceLeague } from '../_shared/draftHelpers.ts'
 import type { MakePickRequest, Captain, League } from '../_shared/types.ts'
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-/** Roll back a recorded pick: delete the pick row and optionally reset the player. */
-async function rollbackPick(
-  supabase: SupabaseClient,
-  leagueId: string,
-  pickNumber: number,
-  playerId: string,
-  resetPlayer: boolean
-): Promise<void> {
-  const { error: rb1 } = await supabase.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
-  if (rb1) console.error('CRITICAL: Rollback failed (delete pick):', { leagueId, pickNumber, rb1 })
-  if (resetPlayer) {
-    const { error: rb2 } = await supabase.from('players').update({ drafted_by_captain_id: null, draft_pick_number: null }).eq('id', playerId)
-    if (rb2) console.error('CRITICAL: Rollback failed (reset player):', { leagueId, playerId, rb2 })
-  }
-}
 
 /** Verify the requested captain is the one whose turn it is. */
 function verifyTurn(
@@ -34,7 +25,9 @@ function verifyTurn(
     league.current_pick_index,
     league.draft_type as 'snake' | 'round_robin'
   )
-  const sorted = [...league.captains].sort((a: Captain, b: Captain) => a.draft_position - b.draft_position)
+  const sorted = [...league.captains].sort(
+    (a: Captain, b: Captain) => a.draft_position - b.draft_position
+  )
   const expectedCaptain = sorted.find((c) => c.id === expectedId)
 
   if (!expectedCaptain || expectedCaptain.id !== captainId) {
@@ -68,29 +61,6 @@ async function countRemainingPlayers(
   return count ?? 0
 }
 
-/** Advance the league to the next pick, or mark complete. Uses optimistic locking. */
-async function advanceLeague(
-  supabase: SupabaseClient,
-  leagueId: string,
-  currentPickIndex: number,
-  isComplete: boolean
-): Promise<{ success: boolean; error?: unknown }> {
-  const { data, error } = await supabase
-    .from('leagues')
-    .update({
-      status: isComplete ? 'completed' : 'in_progress',
-      current_pick_index: isComplete ? currentPickIndex : currentPickIndex + 1,
-      current_pick_started_at: isComplete ? null : new Date().toISOString(),
-    })
-    .eq('id', leagueId)
-    .eq('current_pick_index', currentPickIndex)
-    .select('id')
-
-  if (error) return { success: false, error }
-  if (!data || data.length === 0) return { success: false }
-  return { success: true }
-}
-
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
   if (corsResponse) return corsResponse
@@ -120,7 +90,9 @@ Deno.serve(async (req) => {
     // Get the league and verify status
     const { data: league, error: leagueError } = await supabaseAdmin
       .from('leagues')
-      .select('id, status, draft_type, current_pick_index, current_pick_started_at, time_limit_seconds, captains(id, name, draft_position, player_id, access_token, auto_pick_enabled)')
+      .select(
+        'id, status, draft_type, current_pick_index, current_pick_started_at, time_limit_seconds, captains(id, name, draft_position, player_id, access_token, auto_pick_enabled)'
+      )
       .eq('id', leagueId)
       .single()
 
@@ -134,8 +106,8 @@ Deno.serve(async (req) => {
 
     // Auth: captain token OR manager JWT required
     if (captainToken) {
-      const captain = (league as League).captains.find((c: Captain) =>
-        c.id === captainId && timingSafeEqual(c.access_token, captainToken)
+      const captain = (league as League).captains.find(
+        (c: Captain) => c.id === captainId && timingSafeEqual(c.access_token, captainToken)
       )
       if (!captain) {
         return errorResponse('Invalid captain token', 403, req)
@@ -155,7 +127,7 @@ Deno.serve(async (req) => {
     // Verify player is available (not drafted and not linked to a captain)
     const { data: player, error: playerError } = await supabaseAdmin
       .from('players')
-      .select('*')
+      .select('id, name')
       .eq('id', playerId)
       .eq('league_id', leagueId)
       .is('drafted_by_captain_id', null)
@@ -167,9 +139,7 @@ Deno.serve(async (req) => {
 
     // Reject captain-linked players (they are on teams already as captains)
     // NOTE: Keep in sync with getAvailablePlayers() in src/lib/draft.ts
-    const isCaptainPlayer = league.captains.some(
-      (c: Captain) => c.player_id === playerId
-    )
+    const isCaptainPlayer = league.captains.some((c: Captain) => c.player_id === playerId)
     if (isCaptainPlayer) {
       return errorResponse('Cannot draft a captain', 400, req)
     }
@@ -177,23 +147,21 @@ Deno.serve(async (req) => {
     const pickNumber = league.current_pick_index + 1
 
     // Insert draft pick
-    const { error: pickError } = await supabaseAdmin
-      .from('draft_picks')
-      .insert({
-        league_id: leagueId,
-        captain_id: captainId,
-        player_id: playerId,
-        pick_number: pickNumber,
-        is_auto_pick: false,
-      })
+    const { error: pickError } = await supabaseAdmin.from('draft_picks').insert({
+      league_id: leagueId,
+      captain_id: captainId,
+      player_id: playerId,
+      pick_number: pickNumber,
+      is_auto_pick: false,
+    })
 
     if (pickError) {
       if (pickError.code === '23505') {
-        console.log(`[make-pick] Duplicate pick detected for pick_number ${pickNumber}`)
-        return new Response(
-          JSON.stringify({ error: 'Pick already made by another player' }),
-          { status: 409, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
-        )
+        console.warn(`[make-pick] Duplicate pick detected for pick_number ${pickNumber}`)
+        return new Response(JSON.stringify({ error: 'Pick already made by another player' }), {
+          status: 409,
+          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        })
       }
       console.error('Failed to insert pick:', pickError)
       return errorResponse('Failed to record pick', 500, req)
@@ -225,7 +193,12 @@ Deno.serve(async (req) => {
     const remainingCount = await countRemainingPlayers(supabaseAdmin, leagueId, league.captains)
     const isComplete = remainingCount <= 0
 
-    const advanceResult = await advanceLeague(supabaseAdmin, leagueId, league.current_pick_index, isComplete)
+    const advanceResult = await advanceLeague(
+      supabaseAdmin,
+      leagueId,
+      league.current_pick_index,
+      isComplete
+    )
 
     if (!advanceResult.success) {
       if (advanceResult.error) {

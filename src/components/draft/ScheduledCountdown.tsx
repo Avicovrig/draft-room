@@ -12,6 +12,8 @@ export function ScheduledCountdown({ scheduledTime, className = '' }: ScheduledC
   const [isPast, setIsPast] = useState(() => !getTimeUntilStart(scheduledTime))
 
   useEffect(() => {
+    const CLOSE_THRESHOLD_MS = 5 * 60 * 1000
+
     const updateCountdown = () => {
       const timeUntil = getTimeUntilStart(scheduledTime)
       if (!timeUntil) {
@@ -26,12 +28,20 @@ export function ScheduledCountdown({ scheduledTime, className = '' }: ScheduledC
     // Update immediately
     updateCountdown()
 
-    // Update every minute, or every second if less than 5 minutes away
-    const timeUntil = getTimeUntilStart(scheduledTime)
-    const intervalMs = timeUntil && timeUntil.totalMs < 5 * 60 * 1000 ? 1000 : 60000
+    // Dynamically adjust interval: 1s when close, 60s otherwise.
+    // Re-check every tick so the interval switches when crossing the threshold.
+    const tick = () => {
+      updateCountdown()
+      const timeUntil = getTimeUntilStart(scheduledTime)
+      const nextMs = timeUntil && timeUntil.totalMs < CLOSE_THRESHOLD_MS ? 1000 : 60000
+      timer = setTimeout(tick, nextMs)
+    }
 
-    const interval = setInterval(updateCountdown, intervalMs)
-    return () => clearInterval(interval)
+    const timeUntil = getTimeUntilStart(scheduledTime)
+    const initialMs = timeUntil && timeUntil.totalMs < CLOSE_THRESHOLD_MS ? 1000 : 60000
+    let timer = setTimeout(tick, initialMs)
+
+    return () => clearTimeout(timer)
   }, [scheduledTime])
 
   return (

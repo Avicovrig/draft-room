@@ -66,28 +66,3 @@ export function useTimer(
     isExpired: remainingTime <= 0,
   }
 }
-
-/**
- * Hook for auto-pick functionality
- * Calls the provided callback when timer expires
- */
-export function useAutoPick(
-  isActive: boolean,
-  isMyTurn: boolean,
-  isExpired: boolean,
-  onAutoPick: () => void
-) {
-  const hasTriggeredRef = useRef(false)
-
-  useEffect(() => {
-    // Reset trigger when turn changes
-    hasTriggeredRef.current = false
-  }, [isMyTurn])
-
-  useEffect(() => {
-    if (isActive && isExpired && !hasTriggeredRef.current) {
-      hasTriggeredRef.current = true
-      onAutoPick()
-    }
-  }, [isActive, isExpired, onAutoPick])
-}

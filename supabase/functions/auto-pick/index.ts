@@ -5,29 +5,20 @@
 
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse, requirePost, requireJson, timingSafeEqual } from '../_shared/validation.ts'
+import {
+  UUID_RE,
+  errorResponse,
+  requirePost,
+  requireJson,
+  timingSafeEqual,
+} from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import { authenticateManager } from '../_shared/auth.ts'
 import { getCurrentCaptainId, getAvailablePlayersServer } from '../_shared/draftOrder.ts'
+import { rollbackPick, advanceLeague } from '../_shared/draftHelpers.ts'
 import type { AutoPickRequest, Captain, Player, League } from '../_shared/types.ts'
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-/** Roll back a recorded pick: delete the pick row and optionally reset the player. */
-async function rollbackPick(
-  supabase: SupabaseClient,
-  leagueId: string,
-  pickNumber: number,
-  playerId: string,
-  resetPlayer: boolean
-): Promise<void> {
-  const { error: rb1 } = await supabase.from('draft_picks').delete().eq('league_id', leagueId).eq('pick_number', pickNumber)
-  if (rb1) console.error('CRITICAL: Rollback failed (delete pick):', { leagueId, pickNumber, rb1 })
-  if (resetPlayer) {
-    const { error: rb2 } = await supabase.from('players').update({ drafted_by_captain_id: null, draft_pick_number: null }).eq('id', playerId)
-    if (rb2) console.error('CRITICAL: Rollback failed (reset player):', { leagueId, playerId, rb2 })
-  }
-}
 
 /**
  * Returns a 200 response with an error field for expected race conditions.
@@ -35,10 +26,10 @@ async function rollbackPick(
  * is expected behavior. The first succeeds, others get 200 + {error: "Pick already made"}.
  */
 function raceConditionResponse(req: Request, body: Record<string, unknown>): Response {
-  return new Response(
-    JSON.stringify(body),
-    { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
-  )
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+  })
 }
 
 /** Validate that the timer has expired (with grace period). Skips check for auto-pick captains. */
@@ -97,29 +88,6 @@ async function selectPlayer(
   return { player, fromQueue: false }
 }
 
-/** Advance the league to the next pick, or mark complete. Uses optimistic locking. */
-async function advanceLeague(
-  supabase: SupabaseClient,
-  leagueId: string,
-  currentPickIndex: number,
-  isComplete: boolean
-): Promise<{ success: boolean; error?: unknown }> {
-  const { data, error } = await supabase
-    .from('leagues')
-    .update({
-      status: isComplete ? 'completed' : 'in_progress',
-      current_pick_index: isComplete ? currentPickIndex : currentPickIndex + 1,
-      current_pick_started_at: isComplete ? null : new Date().toISOString(),
-    })
-    .eq('id', leagueId)
-    .eq('current_pick_index', currentPickIndex)
-    .select('id')
-
-  if (error) return { success: false, error }
-  if (!data || data.length === 0) return { success: false }
-  return { success: true }
-}
-
 Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
   if (corsResponse) return corsResponse
@@ -134,7 +102,7 @@ Deno.serve(async (req) => {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    const supabase = createAdminClient()
+    const supabaseAdmin = createAdminClient()
 
     const { leagueId, expectedPickIndex, captainToken }: AutoPickRequest = await req.json()
 
@@ -146,10 +114,17 @@ Deno.serve(async (req) => {
       return errorResponse('Invalid field format', 400, req)
     }
 
+    // Validate expectedPickIndex type if provided
+    if (expectedPickIndex !== undefined && typeof expectedPickIndex !== 'number') {
+      return errorResponse('expectedPickIndex must be a number', 400, req)
+    }
+
     // Get the league
-    const { data: league, error: leagueError } = await supabase
+    const { data: league, error: leagueError } = await supabaseAdmin
       .from('leagues')
-      .select('*, captains(id, name, draft_position, player_id, access_token, auto_pick_enabled), players(id, name, drafted_by_captain_id)')
+      .select(
+        'id, status, draft_type, current_pick_index, current_pick_started_at, time_limit_seconds, captains(id, name, draft_position, player_id, access_token, auto_pick_enabled), players(id, name, drafted_by_captain_id)'
+      )
       .eq('id', leagueId)
       .single()
 
@@ -188,7 +163,7 @@ Deno.serve(async (req) => {
         return errorResponse('Invalid captain token', 403, req)
       }
     } else {
-      const authResult = await authenticateManager(req, leagueId, supabase)
+      const authResult = await authenticateManager(req, leagueId, supabaseAdmin)
       if (authResult instanceof Response) return authResult
     }
 
@@ -207,7 +182,7 @@ Deno.serve(async (req) => {
 
     // Select player (from queue or random)
     const { player: selectedPlayer, fromQueue: selectedFromQueue } = await selectPlayer(
-      supabase,
+      supabaseAdmin,
       currentCaptainId!,
       availablePlayers
     )
@@ -215,7 +190,7 @@ Deno.serve(async (req) => {
     const pickNumber = league.current_pick_index + 1
 
     // Insert draft pick
-    const { error: pickError } = await supabase.from('draft_picks').insert({
+    const { error: pickError } = await supabaseAdmin.from('draft_picks').insert({
       league_id: leagueId,
       captain_id: currentCaptainId,
       player_id: selectedPlayer.id,
@@ -231,19 +206,19 @@ Deno.serve(async (req) => {
     }
 
     // Update player
-    const { error: playerError } = await supabase
+    const { error: playerError } = await supabaseAdmin
       .from('players')
       .update({ drafted_by_captain_id: currentCaptainId, draft_pick_number: pickNumber })
       .eq('id', selectedPlayer.id)
 
     if (playerError) {
       console.error('[auto-pick] Failed to update player, rolling back pick:', playerError)
-      await rollbackPick(supabase, leagueId, pickNumber, selectedPlayer.id, false)
+      await rollbackPick(supabaseAdmin, leagueId, pickNumber, selectedPlayer.id, false)
       throw playerError
     }
 
     // Clean up: Remove picked player from ALL captain queues
-    const { error: cleanupError } = await supabase
+    const { error: cleanupError } = await supabaseAdmin
       .from('captain_draft_queues')
       .delete()
       .eq('player_id', selectedPlayer.id)
@@ -255,7 +230,12 @@ Deno.serve(async (req) => {
     // Check completion and advance
     const isComplete = availablePlayers.length === 1
 
-    const advanceResult = await advanceLeague(supabase, leagueId, league.current_pick_index, isComplete)
+    const advanceResult = await advanceLeague(
+      supabaseAdmin,
+      leagueId,
+      league.current_pick_index,
+      isComplete
+    )
 
     if (!advanceResult.success) {
       if (advanceResult.error) {
@@ -263,12 +243,12 @@ Deno.serve(async (req) => {
       } else {
         console.error(`[auto-pick] Optimistic lock failed: current_pick_index changed since read`)
       }
-      await rollbackPick(supabase, leagueId, pickNumber, selectedPlayer.id, true)
+      await rollbackPick(supabaseAdmin, leagueId, pickNumber, selectedPlayer.id, true)
       if (advanceResult.error) throw advanceResult.error
       return raceConditionResponse(req, { error: 'Draft state changed concurrently' })
     }
 
-    logAudit(supabase, {
+    logAudit(supabaseAdmin, {
       action: 'auto_pick_made',
       leagueId,
       actorType: 'system',

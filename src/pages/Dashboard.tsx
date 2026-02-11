@@ -46,12 +46,17 @@ export function Dashboard() {
         </div>
 
         {leagues && leagues.length > 0 && (
-          <div className="mt-6 flex gap-2 overflow-x-auto">
+          <div
+            role="group"
+            aria-label="Filter by status"
+            className="mt-6 flex gap-2 overflow-x-auto"
+          >
             {['all', 'not_started', 'in_progress', 'paused', 'completed'].map((status) => (
               <button
                 key={status}
                 type="button"
                 onClick={() => setStatusFilter(status)}
+                aria-pressed={statusFilter === status}
                 className={cn(
                   'rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
                   statusFilter === status

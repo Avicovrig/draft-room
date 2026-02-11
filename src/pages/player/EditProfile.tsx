@@ -11,6 +11,7 @@ import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { useSecureToken } from '@/hooks/useSecureToken'
 import { useToast } from '@/components/ui/Toast'
 import { supabase } from '@/lib/supabase'
+import { blobToBase64 } from '@/lib/utils'
 
 export function EditProfile() {
   const { playerId } = useParams<{ playerId: string }>()
@@ -57,13 +58,7 @@ export function EditProfile() {
       // (token-based users can't upload to storage directly — no auth session)
       let profilePictureBlob: string | undefined
       if (data.profilePictureBlob) {
-        const buffer = await data.profilePictureBlob.arrayBuffer()
-        const bytes = new Uint8Array(buffer)
-        let binary = ''
-        for (let i = 0; i < bytes.length; i++) {
-          binary += String.fromCharCode(bytes[i])
-        }
-        profilePictureBlob = btoa(binary)
+        profilePictureBlob = await blobToBase64(data.profilePictureBlob)
       }
 
       // Update profile via edge function

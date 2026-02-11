@@ -25,7 +25,7 @@ export function getCorsHeaders(req: Request): Record<string, string> {
 /** Returns a Response for OPTIONS preflight requests, or null to continue. */
 export function handleCors(req: Request): Response | null {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: getCorsHeaders(req) })
+    return new Response(null, { status: 204, headers: getCorsHeaders(req) })
   }
   return null
 }
