@@ -36,6 +36,7 @@ export function useCreateCaptain() {
     },
     onSuccess: (captain) => {
       queryClient.invalidateQueries({ queryKey: ['league', captain.league_id] })
+      queryClient.invalidateQueries({ queryKey: ['league-tokens', captain.league_id] })
     },
   })
 }
@@ -52,6 +53,7 @@ export function useDeleteCaptain() {
     },
     onSuccess: ({ leagueId }) => {
       queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
+      queryClient.invalidateQueries({ queryKey: ['league-tokens', leagueId] })
     },
   })
 }
@@ -307,7 +309,9 @@ export function useAssignRandomCaptains() {
     },
     onSuccess: (captains) => {
       if (captains.length > 0) {
-        queryClient.invalidateQueries({ queryKey: ['league', captains[0].league_id] })
+        const leagueId = captains[0].league_id
+        queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
+        queryClient.invalidateQueries({ queryKey: ['league-tokens', leagueId] })
       }
     },
   })

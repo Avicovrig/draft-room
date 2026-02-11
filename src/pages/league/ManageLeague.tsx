@@ -170,45 +170,48 @@ export function ManageLeague() {
             )}
             {activeTab === 'captains' && <CaptainList league={league} />}
             {activeTab === 'fields' && <FieldSchemaList league={league} />}
-            {activeTab === 'settings' && <LeagueSettings league={league} />}
+            {activeTab === 'settings' && (
+              <>
+                <LeagueSettings league={league} />
+                {league.status === 'not_started' && (
+                  <Card className="mt-8 border-destructive/50">
+                    <CardHeader>
+                      <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {showDeleteConfirm ? (
+                        <div className="space-y-4">
+                          <p className="text-sm text-muted-foreground">
+                            Are you sure you want to delete this league? This action cannot be
+                            undone.
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="destructive"
+                              onClick={handleDelete}
+                              disabled={deleteLeague.isPending}
+                            >
+                              {deleteLeague.isPending ? 'Deleting...' : 'Yes, Delete League'}
+                            </Button>
+                            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete League
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
             {activeTab === 'share' && <ShareLinks league={league} tokens={tokens} />}
           </Suspense>
         </div>
-
-        {/* Danger Zone */}
-        {league.status === 'not_started' && (
-          <Card className="mt-8 border-destructive/50">
-            <CardHeader>
-              <CardTitle className="text-destructive">Danger Zone</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {showDeleteConfirm ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Are you sure you want to delete this league? This action cannot be undone.
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="destructive"
-                      onClick={handleDelete}
-                      disabled={deleteLeague.isPending}
-                    >
-                      {deleteLeague.isPending ? 'Deleting...' : 'Yes, Delete League'}
-                    </Button>
-                    <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete League
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
       </main>
     </div>
   )

@@ -397,8 +397,8 @@ export function DraftBoard({
               sortBy={poolSortBy}
               onSortChange={setPoolSortBy}
               searchInputRef={searchInputRef}
-              notes={notes}
-              onNoteChange={setNote}
+              notes={notesOwnerId ? notes : undefined}
+              onNoteChange={notesOwnerId ? setNote : undefined}
               fieldSchemas={fieldSchemas}
               filters={poolFilters}
               onFilterChange={handleFilterChange}
@@ -501,8 +501,8 @@ export function DraftBoard({
                 onSearchChange={setPoolSearch}
                 sortBy={poolSortBy}
                 onSortChange={setPoolSortBy}
-                notes={notes}
-                onNoteChange={setNote}
+                notes={notesOwnerId ? notes : undefined}
+                onNoteChange={notesOwnerId ? setNote : undefined}
                 fieldSchemas={fieldSchemas}
                 filters={poolFilters}
                 onFilterChange={handleFilterChange}
