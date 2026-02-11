@@ -152,8 +152,8 @@ echo ""
 echo "CORS headers:"
 
 CORS_ALLOWED=$(curl -s -o /dev/null -w "%{http_code}" -X OPTIONS "$SUPABASE_URL/functions/v1/make-pick" -H "Origin: https://draft-room-eta.vercel.app" -H "Access-Control-Request-Method: POST")
-if [ "$CORS_ALLOWED" = "200" ]; then
-  pass "CORS preflight returns 200 for allowed origin"
+if [ "$CORS_ALLOWED" = "204" ]; then
+  pass "CORS preflight returns 204 for allowed origin"
 else
   fail "CORS preflight returned $CORS_ALLOWED for allowed origin"
 fi
