@@ -1,5 +1,21 @@
 import { useState, useEffect } from 'react'
 import { ChevronUp, ChevronDown, X, ListOrdered, GripVertical } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import {
@@ -18,16 +34,126 @@ interface DraftQueueProps {
   captainToken?: string
 }
 
+interface QueueEntry {
+  id: string
+  player_id: string
+  player: PlayerPublic
+}
+
+interface SortableQueueItemProps {
+  item: QueueEntry
+  index: number
+  isFirst: boolean
+  isLast: boolean
+  onMoveUp: (index: number) => void
+  onMoveDown: (index: number) => void
+  onRemove: (id: string) => void
+  isRemoving: boolean
+}
+
+function SortableQueueItem({
+  item,
+  index,
+  isFirst,
+  isLast,
+  onMoveUp,
+  onMoveDown,
+  onRemove,
+  isRemoving,
+}: SortableQueueItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+  }
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 px-3 py-2 transition-colors hover:bg-accent/50"
+    >
+      {/* Drag handle */}
+      <button
+        type="button"
+        className="cursor-grab touch-none p-0.5 text-muted-foreground/50 hover:text-muted-foreground active:cursor-grabbing"
+        aria-label="Drag to reorder"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4 flex-shrink-0" />
+      </button>
+
+      {/* Position number */}
+      <span className="w-6 text-center text-sm font-medium text-muted-foreground">{index + 1}</span>
+
+      {/* Player info */}
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        {item.player.profile_picture_url ? (
+          <img
+            src={item.player.profile_picture_url}
+            alt={item.player.name}
+            loading="lazy"
+            className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+            {getInitials(item.player.name)}
+          </div>
+        )}
+        <span className="truncate text-sm">{item.player.name}</span>
+      </div>
+
+      {/* Move buttons */}
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() => onMoveUp(index)}
+          disabled={isFirst}
+          title="Move up"
+          aria-label="Move up"
+        >
+          <ChevronUp className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() => onMoveDown(index)}
+          disabled={isLast}
+          title="Move down"
+          aria-label="Move down"
+        >
+          <ChevronDown className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+          onClick={() => onRemove(item.id)}
+          disabled={isRemoving}
+          title="Remove from queue"
+          aria-label="Remove from queue"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    </li>
+  )
+}
+
 export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }: DraftQueueProps) {
   const { data: queue = [], isLoading } = useDraftQueue(captain.id)
   const removeFromQueue = useRemoveFromQueue()
   const moveInQueue = useMoveInQueue()
   const toggleAutoPick = useToggleAutoPick()
   const { addToast } = useToast()
-
-  // Drag state
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   // Local state for optimistic UI updates
   const [isAutoPickEnabled, setIsAutoPickEnabled] = useState(captain.auto_pick_enabled)
@@ -41,6 +167,27 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
   // Filter queue to only show available players (not drafted yet)
   const availablePlayerIds = new Set(availablePlayers.map((p) => p.id))
   const availableQueue = queue.filter((q) => availablePlayerIds.has(q.player_id))
+
+  // Drag-and-drop sensors (PointerSensor handles both mouse and touch)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = availableQueue.findIndex((q) => q.id === active.id)
+    const newIndex = availableQueue.findIndex((q) => q.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    moveInQueue.mutate({
+      captainId: captain.id,
+      queueEntryId: active.id as string,
+      newPosition: newIndex,
+    })
+  }
 
   function handleMoveUp(index: number) {
     if (index === 0) return
@@ -67,29 +214,6 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
       captainId: captain.id,
       queueEntryId,
     })
-  }
-
-  function handleDragStart(index: number) {
-    setDragIndex(index)
-  }
-
-  function handleDragOver(e: React.DragEvent, index: number) {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setDragOverIndex(index)
-  }
-
-  function handleDragEnd() {
-    if (dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
-      const item = availableQueue[dragIndex]
-      moveInQueue.mutate({
-        captainId: captain.id,
-        queueEntryId: item.id,
-        newPosition: dragOverIndex,
-      })
-    }
-    setDragIndex(null)
-    setDragOverIndex(null)
   }
 
   async function handleToggleAutoPick() {
@@ -123,15 +247,15 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
           aria-checked={isAutoPickEnabled}
           onClick={handleToggleAutoPick}
           disabled={toggleAutoPick.isPending}
-          className="flex items-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex cursor-pointer items-center gap-3 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <div
-            className={`relative w-11 h-6 rounded-full transition-colors ${
+            className={`relative h-6 w-11 rounded-full transition-colors ${
               isAutoPickEnabled ? 'bg-primary' : 'bg-muted'
             }`}
           >
             <div
-              className={`absolute top-1 w-4 h-4 bg-background rounded-full transition-transform ${
+              className={`absolute top-1 h-4 w-4 rounded-full bg-background transition-transform ${
                 isAutoPickEnabled ? 'left-6' : 'left-1'
               }`}
             />
@@ -152,100 +276,44 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
             Loading queue...
           </div>
         ) : availableQueue.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center p-8 text-muted-foreground text-center">
+          <div className="flex h-full flex-col items-center justify-center p-8 text-center text-muted-foreground">
             <ListOrdered className="mb-2 h-8 w-8 text-muted-foreground/50" />
             <p>Your queue is empty</p>
-            <p className="text-xs mt-1">Click the + button on players to add them</p>
+            <p className="mt-1 text-xs">Click the + button on players to add them</p>
           </div>
         ) : (
-          <ul className="divide-y divide-border">
-            {availableQueue.map((item, index) => (
-              <li
-                key={item.id}
-                draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                className={`flex items-center gap-2 px-3 py-2 transition-colors hover:bg-accent/50 ${
-                  dragIndex === index ? 'opacity-50' : ''
-                } ${
-                  dragOverIndex === index && dragIndex !== null && dragIndex !== index
-                    ? dragIndex < index
-                      ? 'border-b-2 border-b-primary'
-                      : 'border-t-2 border-t-primary'
-                    : ''
-                }`}
-              >
-                {/* Drag handle */}
-                <GripVertical className="h-4 w-4 flex-shrink-0 cursor-grab text-muted-foreground/50 active:cursor-grabbing" />
-
-                {/* Position number */}
-                <span className="w-6 text-center text-sm font-medium text-muted-foreground">
-                  {index + 1}
-                </span>
-
-                {/* Player info */}
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {item.player.profile_picture_url ? (
-                    <img
-                      src={item.player.profile_picture_url}
-                      alt={item.player.name}
-                      loading="lazy"
-                      className="h-8 w-8 rounded-full object-cover flex-shrink-0"
-                    />
-                  ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground flex-shrink-0">
-                      {getInitials(item.player.name)}
-                    </div>
-                  )}
-                  <span className="truncate text-sm">{item.player.name}</span>
-                </div>
-
-                {/* Move buttons */}
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => handleMoveUp(index)}
-                    disabled={index === 0}
-                    title="Move up"
-                    aria-label="Move up"
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => handleMoveDown(index)}
-                    disabled={index === availableQueue.length - 1}
-                    title="Move down"
-                    aria-label="Move down"
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => handleRemove(item.id)}
-                    disabled={removeFromQueue.isPending}
-                    title="Remove from queue"
-                    aria-label="Remove from queue"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={availableQueue.map((q) => q.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <ul className="divide-y divide-border">
+                {availableQueue.map((item, index) => (
+                  <SortableQueueItem
+                    key={item.id}
+                    item={item}
+                    index={index}
+                    isFirst={index === 0}
+                    isLast={index === availableQueue.length - 1}
+                    onMoveUp={handleMoveUp}
+                    onMoveDown={handleMoveDown}
+                    onRemove={handleRemove}
+                    isRemoving={removeFromQueue.isPending}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 
       {/* Queue count */}
       {availableQueue.length > 0 && (
-        <div className="mt-2 text-xs text-muted-foreground text-center">
+        <div className="mt-2 text-center text-xs text-muted-foreground">
           {availableQueue.length} player{availableQueue.length !== 1 ? 's' : ''} in queue
         </div>
       )}

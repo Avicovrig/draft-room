@@ -139,7 +139,7 @@ function SortableCaptainItem({
         {isEditable && (
           <input
             type="color"
-            value={captain.team_color || DEFAULT_COLORS[index % DEFAULT_COLORS.length]}
+            value={captain.team_color || '#3B82F6'}
             onChange={(e) => onColorChange(captain.id, e.target.value)}
             className="h-8 w-8 cursor-pointer rounded border-0 p-0"
             title="Team color"
@@ -316,6 +316,8 @@ export function CaptainList({ league }: CaptainListProps) {
 
     const nextPosition = league.captains.length + 1
 
+    const defaultColor = DEFAULT_COLORS[(nextPosition - 1) % DEFAULT_COLORS.length]
+
     if (captainMode === 'select') {
       if (!selectedPlayerId) return
       const player = league.players.find((p) => p.id === selectedPlayerId)
@@ -328,6 +330,7 @@ export function CaptainList({ league }: CaptainListProps) {
           is_participant: true,
           draft_position: nextPosition,
           player_id: selectedPlayerId,
+          team_color: defaultColor,
         })
         setSelectedPlayerId('')
       } catch {
@@ -343,6 +346,7 @@ export function CaptainList({ league }: CaptainListProps) {
           is_participant: false,
           draft_position: nextPosition,
           player_id: null,
+          team_color: defaultColor,
         })
         setNewCaptainName('')
       } catch {

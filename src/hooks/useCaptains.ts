@@ -6,12 +6,15 @@ import type { CaptainPublic, PlayerPublic } from '@/lib/types'
 const CAPTAIN_COLUMNS =
   'id, league_id, name, is_participant, draft_position, player_id, auto_pick_enabled, team_color, team_name, team_photo_url, created_at'
 
+const DEFAULT_CAPTAIN_COLORS = ['#3B82F6', '#EF4444', '#22C55E', '#A855F7']
+
 interface CreateCaptainInput {
   league_id: string
   name: string
   is_participant?: boolean
   draft_position: number
   player_id?: string | null
+  team_color?: string
 }
 
 export function useCreateCaptain() {
@@ -27,6 +30,7 @@ export function useCreateCaptain() {
           is_participant: data.is_participant ?? true,
           draft_position: data.draft_position,
           player_id: data.player_id ?? null,
+          ...(data.team_color ? { team_color: data.team_color } : {}),
         })
         .select(CAPTAIN_COLUMNS)
         .single()
@@ -296,6 +300,7 @@ export function useAssignRandomCaptains() {
           is_participant: true,
           draft_position: index + 1,
           player_id: playerId,
+          team_color: DEFAULT_CAPTAIN_COLORS[index % DEFAULT_CAPTAIN_COLORS.length],
         }
       })
 
