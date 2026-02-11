@@ -126,13 +126,17 @@ export function useImportPlayers({ leagueId }: UseImportPlayersOptions) {
         })
       })
 
+      const errors: string[] = []
+
       if (customFieldsToInsert.length > 0) {
         const { error: customFieldsError } = await supabase
           .from('player_custom_fields')
           .insert(customFieldsToInsert)
 
         if (customFieldsError) {
-          // Don't fail the whole import for custom fields — they can be added manually
+          // Don't fail the whole import — players were created successfully.
+          // Surface the error so the user knows custom fields need manual attention.
+          errors.push(`Custom fields failed to import: ${customFieldsError.message}`)
         }
       }
 
@@ -140,7 +144,7 @@ export function useImportPlayers({ leagueId }: UseImportPlayersOptions) {
         success: true,
         playersCreated: createdPlayers.length,
         playersSkipped: skippedCount,
-        errors: [],
+        errors,
       }
     },
     onSuccess: () => {

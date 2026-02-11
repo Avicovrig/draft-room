@@ -108,6 +108,11 @@ export function SpreadsheetImportModal({
         }`,
         'success'
       )
+      if (result.errors.length > 0) {
+        for (const error of result.errors) {
+          addToast(error, 'error')
+        }
+      }
       onImportComplete(result.playersCreated)
       onClose()
     } catch (error) {

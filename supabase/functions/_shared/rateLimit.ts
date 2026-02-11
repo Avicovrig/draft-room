@@ -27,8 +27,17 @@ function cleanup() {
 }
 
 /**
- * In-memory per-isolate rate limiter.
- * Note: State does not persist across isolate restarts or share between regions.
+ * Best-effort in-memory per-isolate rate limiter. NOT a security boundary.
+ *
+ * Limitations:
+ * - State resets on isolate cold starts and redeployments
+ * - Each isolate counts independently (requests across isolates are not shared)
+ * - An attacker can bypass by timing requests to hit different isolates
+ *
+ * This provides basic protection against accidental rapid-fire requests (e.g., double-clicks,
+ * buggy retry loops) but should not be relied upon to prevent determined abuse. For
+ * security-critical rate limiting, use a shared store (e.g., Upstash Redis, database-backed).
+ *
  * Returns a 429 Response if the limit is exceeded, or null to continue.
  */
 export function rateLimit(
@@ -45,17 +54,14 @@ export function rateLimit(
     const updated = { ...entry, count: entry.count + 1 }
     store.set(ip, updated)
     if (updated.count > maxRequests) {
-      return new Response(
-        JSON.stringify({ error: 'Too many requests' }),
-        {
-          status: 429,
-          headers: {
-            ...getCorsHeaders(req),
-            'Content-Type': 'application/json',
-            'Retry-After': String(Math.ceil((entry.resetAt - now) / 1000)),
-          },
-        }
-      )
+      return new Response(JSON.stringify({ error: 'Too many requests' }), {
+        status: 429,
+        headers: {
+          ...getCorsHeaders(req),
+          'Content-Type': 'application/json',
+          'Retry-After': String(Math.ceil((entry.resetAt - now) / 1000)),
+        },
+      })
     }
   } else {
     store.set(ip, { count: 1, resetAt: now + windowMs })

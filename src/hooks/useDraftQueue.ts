@@ -138,7 +138,15 @@ export function useMoveInQueue() {
         )
       )
       const finalError = finalResults.find((r) => r.error)
-      if (finalError?.error) throw finalError.error
+      if (finalError?.error) {
+        // Rollback: restore original positions from the queue fetched earlier
+        await Promise.all(
+          queue.map((entry, i) =>
+            supabase.from('captain_draft_queues').update({ position: i }).eq('id', entry.id)
+          )
+        )
+        throw finalError.error
+      }
     },
     onMutate: async ({ captainId, queueEntryId, newPosition }) => {
       // Cancel outgoing refetches so they don't overwrite our optimistic update

@@ -110,13 +110,35 @@ export function useReorderFieldSchemas() {
 
   return useMutation({
     mutationFn: async ({ leagueId, schemaIds }: { leagueId: string; schemaIds: string[] }) => {
-      const updates = schemaIds.map((id, index) =>
-        supabase.from('league_field_schemas').update({ field_order: index }).eq('id', id)
+      // Two-phase update to avoid unique constraint violations on field_order
+      // Phase 1: Set all positions to negative temporary values
+      const tempResults = await Promise.all(
+        schemaIds.map((id, index) =>
+          supabase
+            .from('league_field_schemas')
+            .update({ field_order: -(index + 1) })
+            .eq('id', id)
+        )
       )
+      const tempErrors = tempResults.filter((r) => r.error)
+      if (tempErrors.length > 0) throw tempErrors[0].error
 
-      const results = await Promise.all(updates)
-      const errors = results.filter((r) => r.error)
-      if (errors.length > 0) throw errors[0].error
+      // Phase 2: Set final positive positions
+      const finalResults = await Promise.all(
+        schemaIds.map((id, index) =>
+          supabase.from('league_field_schemas').update({ field_order: index }).eq('id', id)
+        )
+      )
+      const finalErrors = finalResults.filter((r) => r.error)
+      if (finalErrors.length > 0) {
+        // Rollback: restore original order (0-based, matching schemaIds order before reorder)
+        await Promise.all(
+          schemaIds.map((id, index) =>
+            supabase.from('league_field_schemas').update({ field_order: index }).eq('id', id)
+          )
+        )
+        throw finalErrors[0].error
+      }
 
       return { leagueId }
     },

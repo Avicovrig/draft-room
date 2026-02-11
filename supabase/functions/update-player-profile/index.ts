@@ -1,6 +1,14 @@
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse, validateUrl, requirePost, requireJson, isValidJpeg } from '../_shared/validation.ts'
+import {
+  UUID_RE,
+  errorResponse,
+  validateUrl,
+  requirePost,
+  requireJson,
+  isValidJpeg,
+  timingSafeEqual,
+} from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import type { UpdatePlayerProfileRequest } from '../_shared/types.ts'
@@ -9,6 +17,8 @@ const MAX_BIO_LENGTH = 5000
 const MAX_PROFILE_PICTURE_URL_LENGTH = 4096
 const MAX_FIELD_NAME_LENGTH = 200
 const MAX_FIELD_VALUE_LENGTH = 1000
+const MAX_CUSTOM_FIELDS = 50
+const MAX_DELETED_FIELD_IDS = 50
 const DANGEROUS_PATTERN = /<[^>]*>|javascript:|data:/i
 
 Deno.serve(async (req) => {
@@ -61,13 +71,29 @@ Deno.serve(async (req) => {
       return errorResponse('Invalid profile picture URL', 400, req)
     }
 
+    if (customFields && customFields.length > MAX_CUSTOM_FIELDS) {
+      return errorResponse(`Too many custom fields (max ${MAX_CUSTOM_FIELDS})`, 400, req)
+    }
+
+    if (deletedCustomFieldIds && deletedCustomFieldIds.length > MAX_DELETED_FIELD_IDS) {
+      return errorResponse(`Too many deleted field IDs (max ${MAX_DELETED_FIELD_IDS})`, 400, req)
+    }
+
     if (customFields) {
       for (const field of customFields) {
         if (field.field_name && field.field_name.length > MAX_FIELD_NAME_LENGTH) {
-          return errorResponse(`Field name exceeds maximum length of ${MAX_FIELD_NAME_LENGTH} characters`, 400, req)
+          return errorResponse(
+            `Field name exceeds maximum length of ${MAX_FIELD_NAME_LENGTH} characters`,
+            400,
+            req
+          )
         }
         if (field.field_value && field.field_value.length > MAX_FIELD_VALUE_LENGTH) {
-          return errorResponse(`Field value exceeds maximum length of ${MAX_FIELD_VALUE_LENGTH} characters`, 400, req)
+          return errorResponse(
+            `Field value exceeds maximum length of ${MAX_FIELD_VALUE_LENGTH} characters`,
+            400,
+            req
+          )
         }
         if (field.field_name && DANGEROUS_PATTERN.test(field.field_name)) {
           return errorResponse('Field name contains invalid characters', 400, req)
@@ -86,15 +112,19 @@ Deno.serve(async (req) => {
 
     const supabaseAdmin = createAdminClient()
 
-    // Verify edit token
+    // Verify edit token — fetch player first, then use timing-safe comparison
+    // to prevent timing attacks on token values (consistent with other edge functions)
     const { data: player, error: playerError } = await supabaseAdmin
       .from('players')
-      .select('id, league_id')
+      .select('id, league_id, edit_token')
       .eq('id', playerId)
-      .eq('edit_token', editToken)
       .single()
 
     if (playerError || !player) {
+      return errorResponse('Invalid player or token', 403, req)
+    }
+
+    if (!timingSafeEqual(player.edit_token, editToken)) {
       return errorResponse('Invalid player or token', 403, req)
     }
 
@@ -106,7 +136,7 @@ Deno.serve(async (req) => {
       }
       let binaryData: Uint8Array
       try {
-        binaryData = Uint8Array.from(atob(profilePictureBlob), c => c.charCodeAt(0))
+        binaryData = Uint8Array.from(atob(profilePictureBlob), (c) => c.charCodeAt(0))
       } catch {
         return errorResponse('Invalid base64 encoding', 400, req)
       }
@@ -163,7 +193,8 @@ Deno.serve(async (req) => {
     // Update player profile
     const updateData: Record<string, unknown> = {}
     if (bio !== undefined) updateData.bio = bio
-    if (resolvedProfilePictureUrl !== undefined) updateData.profile_picture_url = resolvedProfilePictureUrl
+    if (resolvedProfilePictureUrl !== undefined)
+      updateData.profile_picture_url = resolvedProfilePictureUrl
 
     if (Object.keys(updateData).length > 0) {
       const { error: updateError } = await supabaseAdmin
@@ -213,15 +244,13 @@ Deno.serve(async (req) => {
           }
         } else {
           // Insert new
-          const { error } = await supabaseAdmin
-            .from('player_custom_fields')
-            .insert({
-              player_id: playerId,
-              field_name: field.field_name,
-              field_value: field.field_value || null,
-              field_order: field.field_order,
-              schema_id: field.schema_id || null,
-            })
+          const { error } = await supabaseAdmin.from('player_custom_fields').insert({
+            player_id: playerId,
+            field_name: field.field_name,
+            field_value: field.field_value || null,
+            field_order: field.field_order,
+            schema_id: field.schema_id || null,
+          })
 
           if (error) {
             console.error('Failed to insert custom field:', error)
@@ -243,10 +272,10 @@ Deno.serve(async (req) => {
       ipAddress: getClientIp(req),
     })
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
-    )
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+    })
   } catch (error) {
     console.error('Update player profile error:', error)
     return errorResponse('Internal server error', 500, req)

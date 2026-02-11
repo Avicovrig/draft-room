@@ -111,7 +111,18 @@ export function useReorderCaptains() {
 
       const finalResults = await Promise.all(finalUpdates)
       const finalErrors = finalResults.filter((r) => r.error)
-      if (finalErrors.length > 0) throw finalErrors[0].error
+      if (finalErrors.length > 0) {
+        // Rollback: restore original positions (1-based, matching captainIds order before reorder)
+        await Promise.all(
+          captainIds.map((id, index) =>
+            supabase
+              .from('captains')
+              .update({ draft_position: index + 1 })
+              .eq('id', id)
+          )
+        )
+        throw finalErrors[0].error
+      }
 
       return { leagueId }
     },

@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Confetti } from '@/components/ui/Confetti'
-import { useDraft } from '@/hooks/useDraft'
+import { useDraft, useSpectatorAccess, useCaptainByToken } from '@/hooks/useDraft'
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber'
+import { useSecureToken } from '@/hooks/useSecureToken'
 import { useAuth } from '@/context/AuthContext'
 import { playSound, resumeAudioContext } from '@/lib/sounds'
 import { exportDraftResults } from '@/lib/exportDraftResults'
@@ -38,7 +39,22 @@ export function Summary() {
   const { user } = useAuth()
   const [copied, setCopied] = useState(false)
 
+  // Accept tokens from URL params or from sessionStorage (set by captain/spectator views).
+  // When a user is redirected from CaptainView or SpectatorView on draft completion,
+  // their token is already stored in sessionStorage under the respective prefix.
+  const urlToken = useSecureToken('summary', id)
+  const token =
+    urlToken ||
+    (id ? sessionStorage.getItem(`spectator-token-${id}`) : null) ||
+    (id ? sessionStorage.getItem(`captain-token-${id}`) : null)
+
   const { league, isLoading, error } = useDraft(id)
+  const { data: hasSpectatorAccess, isLoading: spectatorLoading } = useSpectatorAccess(id, token)
+  const { data: captainData, isLoading: captainLoading } = useCaptainByToken(id, token)
+
+  const isManager = league?.manager_id === user?.id
+  const hasAccess = isManager || !!hasSpectatorAccess || !!captainData
+  const accessLoading = spectatorLoading || captainLoading
 
   const showConfetti = league?.status === 'completed'
 
@@ -65,7 +81,7 @@ export function Summary() {
     }
   }
 
-  if (isLoading) {
+  if (isLoading || accessLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -89,7 +105,18 @@ export function Summary() {
     )
   }
 
-  const isManager = league.manager_id === user?.id
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center text-destructive">
+            You do not have access to this draft summary. Please use a valid link with a token.
+          </div>
+        </main>
+      </div>
+    )
+  }
   const sortedCaptains = [...league.captains].sort((a, b) => a.draft_position - b.draft_position)
 
   function getPlayersForCaptain(captainId: string): PlayerPublic[] {

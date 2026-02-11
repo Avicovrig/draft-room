@@ -176,23 +176,30 @@ interface FieldSchemaListProps {
   league: LeagueFullPublic
 }
 
-export function FieldSchemaList({ league }: FieldSchemaListProps) {
-  // Add form state
-  const [newFieldName, setNewFieldName] = useState('')
-  const [newFieldType, setNewFieldType] = useState<FieldType>('text')
-  const [newFieldRequired, setNewFieldRequired] = useState(false)
-  const [newUnit, setNewUnit] = useState('')
-  const [newIncludeTime, setNewIncludeTime] = useState(false)
-  const [newDropdownOptions, setNewDropdownOptions] = useState<string[]>([''])
+interface FieldFormState {
+  name: string
+  type: FieldType
+  required: boolean
+  unit: string
+  includeTime: boolean
+  dropdownOptions: string[]
+}
 
-  // Edit state
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editType, setEditType] = useState<FieldType>('text')
-  const [editRequired, setEditRequired] = useState(false)
-  const [editUnit, setEditUnit] = useState('')
-  const [editIncludeTime, setEditIncludeTime] = useState(false)
-  const [editDropdownOptions, setEditDropdownOptions] = useState<string[]>([''])
+const DEFAULT_FORM_STATE: FieldFormState = {
+  name: '',
+  type: 'text',
+  required: false,
+  unit: '',
+  includeTime: false,
+  dropdownOptions: [''],
+}
+
+export function FieldSchemaList({ league }: FieldSchemaListProps) {
+  // Add form state (consolidated)
+  const [addForm, setAddForm] = useState<FieldFormState>(DEFAULT_FORM_STATE)
+
+  // Edit state (consolidated: null means not editing)
+  const [editState, setEditState] = useState<{ id: string; form: FieldFormState } | null>(null)
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
@@ -205,21 +212,12 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
 
   const isEditable = league.status === 'not_started'
 
-  function resetAddForm() {
-    setNewFieldName('')
-    setNewFieldType('text')
-    setNewFieldRequired(false)
-    setNewUnit('')
-    setNewIncludeTime(false)
-    setNewDropdownOptions([''])
-  }
-
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
-    if (!newFieldName.trim()) return
+    if (!addForm.name.trim()) return
 
-    if (newFieldType === 'dropdown') {
-      const validOptions = newDropdownOptions.map((o) => o.trim()).filter(Boolean)
+    if (addForm.type === 'dropdown') {
+      const validOptions = addForm.dropdownOptions.map((o) => o.trim()).filter(Boolean)
       if (validOptions.length === 0) {
         addToast('Dropdown fields need at least one option', 'error')
         return
@@ -229,13 +227,18 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
     try {
       await createSchema.mutateAsync({
         league_id: league.id,
-        field_name: newFieldName.trim(),
-        field_type: newFieldType,
-        is_required: newFieldType === 'checkbox' ? false : newFieldRequired,
+        field_name: addForm.name.trim(),
+        field_type: addForm.type,
+        is_required: addForm.type === 'checkbox' ? false : addForm.required,
         field_order: schemas.length,
-        field_options: buildFieldOptions(newFieldType, newUnit, newIncludeTime, newDropdownOptions),
+        field_options: buildFieldOptions(
+          addForm.type,
+          addForm.unit,
+          addForm.includeTime,
+          addForm.dropdownOptions
+        ),
       })
-      resetAddForm()
+      setAddForm(DEFAULT_FORM_STATE)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to add field'
       if (message.includes('duplicate') || message.includes('unique')) {
@@ -257,20 +260,26 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
 
   function startEditing(schema: LeagueFieldSchema) {
     const opts = initOptionsFromSchema(schema)
-    setEditingId(schema.id)
-    setEditName(schema.field_name)
-    setEditType(schema.field_type as FieldType)
-    setEditRequired(schema.is_required)
-    setEditUnit(opts.unit)
-    setEditIncludeTime(opts.includeTime)
-    setEditDropdownOptions(opts.dropdownOptions)
+    setEditState({
+      id: schema.id,
+      form: {
+        name: schema.field_name,
+        type: schema.field_type as FieldType,
+        required: schema.is_required,
+        unit: opts.unit,
+        includeTime: opts.includeTime,
+        dropdownOptions: opts.dropdownOptions,
+      },
+    })
   }
 
   async function handleSaveEdit(id: string) {
-    if (!editName.trim()) return
+    if (!editState) return
+    const { form } = editState
+    if (!form.name.trim()) return
 
-    if (editType === 'dropdown') {
-      const validOptions = editDropdownOptions.map((o) => o.trim()).filter(Boolean)
+    if (form.type === 'dropdown') {
+      const validOptions = form.dropdownOptions.map((o) => o.trim()).filter(Boolean)
       if (validOptions.length === 0) {
         addToast('Dropdown fields need at least one option', 'error')
         return
@@ -281,12 +290,17 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
       await updateSchema.mutateAsync({
         id,
         leagueId: league.id,
-        field_name: editName.trim(),
-        field_type: editType,
-        is_required: editType === 'checkbox' ? false : editRequired,
-        field_options: buildFieldOptions(editType, editUnit, editIncludeTime, editDropdownOptions),
+        field_name: form.name.trim(),
+        field_type: form.type,
+        is_required: form.type === 'checkbox' ? false : form.required,
+        field_options: buildFieldOptions(
+          form.type,
+          form.unit,
+          form.includeTime,
+          form.dropdownOptions
+        ),
       })
-      setEditingId(null)
+      setEditState(null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update field'
       if (message.includes('duplicate') || message.includes('unique')) {
@@ -343,8 +357,8 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                   <Input
                     id="new-field-name"
                     placeholder="e.g. Position, Height"
-                    value={newFieldName}
-                    onChange={(e) => setNewFieldName(e.target.value)}
+                    value={addForm.name}
+                    onChange={(e) => setAddForm((prev) => ({ ...prev, name: e.target.value }))}
                   />
                 </div>
                 <div className="w-36">
@@ -353,8 +367,10 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                   </Label>
                   <Select
                     id="new-field-type"
-                    value={newFieldType}
-                    onChange={(e) => setNewFieldType(e.target.value as FieldType)}
+                    value={addForm.type}
+                    onChange={(e) =>
+                      setAddForm((prev) => ({ ...prev, type: e.target.value as FieldType }))
+                    }
                   >
                     {FIELD_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>
@@ -363,12 +379,14 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                     ))}
                   </Select>
                 </div>
-                {newFieldType !== 'checkbox' && (
+                {addForm.type !== 'checkbox' && (
                   <label className="flex shrink-0 items-center gap-1.5 pb-1 text-sm">
                     <input
                       type="checkbox"
-                      checked={newFieldRequired}
-                      onChange={(e) => setNewFieldRequired(e.target.checked)}
+                      checked={addForm.required}
+                      onChange={(e) =>
+                        setAddForm((prev) => ({ ...prev, required: e.target.checked }))
+                      }
                       className="h-4 w-4 rounded border-border"
                     />
                     Required
@@ -376,7 +394,7 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                 )}
                 <Button
                   type="submit"
-                  disabled={createSchema.isPending || !newFieldName.trim()}
+                  disabled={createSchema.isPending || !addForm.name.trim()}
                   loading={createSchema.isPending}
                 >
                   <Plus className="mr-2 h-4 w-4" />
@@ -385,13 +403,15 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
               </div>
 
               <FieldOptionsEditor
-                type={newFieldType}
-                unit={newUnit}
-                onUnitChange={setNewUnit}
-                includeTime={newIncludeTime}
-                onIncludeTimeChange={setNewIncludeTime}
-                dropdownOptions={newDropdownOptions}
-                onDropdownOptionsChange={setNewDropdownOptions}
+                type={addForm.type}
+                unit={addForm.unit}
+                onUnitChange={(v) => setAddForm((prev) => ({ ...prev, unit: v }))}
+                includeTime={addForm.includeTime}
+                onIncludeTimeChange={(v) => setAddForm((prev) => ({ ...prev, includeTime: v }))}
+                dropdownOptions={addForm.dropdownOptions}
+                onDropdownOptionsChange={(v) =>
+                  setAddForm((prev) => ({ ...prev, dropdownOptions: v }))
+                }
               />
             </form>
           </CardContent>
@@ -417,26 +437,41 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
             <ul className="space-y-2">
               {schemas.map((schema, index) => (
                 <li key={schema.id} className="rounded-lg border border-border p-3">
-                  {editingId === schema.id ? (
+                  {editState?.id === schema.id ? (
                     /* Expanded Edit Panel */
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-end gap-2">
                         <div className="min-w-0 flex-1">
                           <Label className="mb-1 text-xs text-muted-foreground">Field name</Label>
                           <Input
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
+                            value={editState.form.name}
+                            onChange={(e) =>
+                              setEditState((prev) =>
+                                prev
+                                  ? { ...prev, form: { ...prev.form, name: e.target.value } }
+                                  : null
+                              )
+                            }
                             autoFocus
                             onKeyDown={(e) => {
-                              if (e.key === 'Escape') setEditingId(null)
+                              if (e.key === 'Escape') setEditState(null)
                             }}
                           />
                         </div>
                         <div className="w-36">
                           <Label className="mb-1 text-xs text-muted-foreground">Type</Label>
                           <Select
-                            value={editType}
-                            onChange={(e) => setEditType(e.target.value as FieldType)}
+                            value={editState.form.type}
+                            onChange={(e) =>
+                              setEditState((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      form: { ...prev.form, type: e.target.value as FieldType },
+                                    }
+                                  : null
+                              )
+                            }
                           >
                             {FIELD_TYPES.map((t) => (
                               <option key={t.value} value={t.value}>
@@ -445,12 +480,21 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                             ))}
                           </Select>
                         </div>
-                        {editType !== 'checkbox' && (
+                        {editState.form.type !== 'checkbox' && (
                           <label className="flex shrink-0 items-center gap-1.5 pb-1 text-sm">
                             <input
                               type="checkbox"
-                              checked={editRequired}
-                              onChange={(e) => setEditRequired(e.target.checked)}
+                              checked={editState.form.required}
+                              onChange={(e) =>
+                                setEditState((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        form: { ...prev.form, required: e.target.checked },
+                                      }
+                                    : null
+                                )
+                              }
                               className="h-4 w-4 rounded border-border"
                             />
                             Required
@@ -459,25 +503,37 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                       </div>
 
                       <FieldOptionsEditor
-                        type={editType}
-                        unit={editUnit}
-                        onUnitChange={setEditUnit}
-                        includeTime={editIncludeTime}
-                        onIncludeTimeChange={setEditIncludeTime}
-                        dropdownOptions={editDropdownOptions}
-                        onDropdownOptionsChange={setEditDropdownOptions}
+                        type={editState.form.type}
+                        unit={editState.form.unit}
+                        onUnitChange={(v) =>
+                          setEditState((prev) =>
+                            prev ? { ...prev, form: { ...prev.form, unit: v } } : null
+                          )
+                        }
+                        includeTime={editState.form.includeTime}
+                        onIncludeTimeChange={(v) =>
+                          setEditState((prev) =>
+                            prev ? { ...prev, form: { ...prev.form, includeTime: v } } : null
+                          )
+                        }
+                        dropdownOptions={editState.form.dropdownOptions}
+                        onDropdownOptionsChange={(v) =>
+                          setEditState((prev) =>
+                            prev ? { ...prev, form: { ...prev.form, dropdownOptions: v } } : null
+                          )
+                        }
                       />
 
                       <div className="flex gap-2">
                         <Button
                           size="sm"
                           onClick={() => handleSaveEdit(schema.id)}
-                          disabled={updateSchema.isPending || !editName.trim()}
+                          disabled={updateSchema.isPending || !editState.form.name.trim()}
                           loading={updateSchema.isPending}
                         >
                           Save
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => setEditingId(null)}>
+                        <Button variant="outline" size="sm" onClick={() => setEditState(null)}>
                           Cancel
                         </Button>
                       </div>

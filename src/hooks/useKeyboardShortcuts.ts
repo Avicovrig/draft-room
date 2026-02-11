@@ -1,6 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 export function useKeyboardShortcuts(shortcuts: Record<string, () => void>) {
+  const shortcutsRef = useRef(shortcuts)
+  useEffect(() => {
+    shortcutsRef.current = shortcuts
+  })
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       // Ignore when typing in inputs
@@ -8,7 +13,7 @@ export function useKeyboardShortcuts(shortcuts: Record<string, () => void>) {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if ((e.target as HTMLElement).isContentEditable) return
 
-      const handler = shortcuts[e.key]
+      const handler = shortcutsRef.current[e.key]
       if (handler) {
         e.preventDefault()
         handler()
@@ -17,5 +22,5 @@ export function useKeyboardShortcuts(shortcuts: Record<string, () => void>) {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [shortcuts])
+  }, [])
 }
