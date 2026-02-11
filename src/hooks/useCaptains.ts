@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { blobToBase64 } from '@/lib/utils'
-import type { CaptainPublic, PlayerPublic } from '@/lib/types'
+import type { CaptainPublic, LeagueFullPublic, PlayerPublic } from '@/lib/types'
 
 const CAPTAIN_COLUMNS =
   'id, league_id, name, is_participant, draft_position, player_id, auto_pick_enabled, team_color, team_name, team_photo_url, created_at'
@@ -105,8 +105,35 @@ export function useReorderCaptains() {
 
       return { leagueId }
     },
-    onSuccess: ({ leagueId }) => {
-      queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
+    onMutate: async ({ leagueId, captainIds }) => {
+      // Cancel outgoing refetches so they don't overwrite optimistic update
+      await queryClient.cancelQueries({ queryKey: ['league', leagueId] })
+
+      const previous = queryClient.getQueryData(['league', leagueId])
+
+      // Optimistically update captain draft_position in the cache
+      queryClient.setQueryData(['league', leagueId], (old: LeagueFullPublic | undefined) => {
+        if (!old) return old
+        const positionMap = new Map(captainIds.map((id, i) => [id, i + 1]))
+        return {
+          ...old,
+          captains: old.captains.map((c) => {
+            const newPos = positionMap.get(c.id)
+            return newPos !== undefined ? { ...c, draft_position: newPos } : c
+          }),
+        }
+      })
+
+      return { previous, leagueId }
+    },
+    onError: (_err, _vars, context) => {
+      // Rollback optimistic update on error
+      if (context?.previous) {
+        queryClient.setQueryData(['league', context.leagueId], context.previous)
+      }
+    },
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['league', variables.leagueId] })
     },
   })
 }

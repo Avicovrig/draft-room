@@ -101,7 +101,7 @@ export function DraftBoard({
   const { user } = useAuth()
 
   // Draft notes (localStorage-backed, private per captain/manager)
-  const notesOwnerId = viewingAsCaptain?.id ?? user?.id
+  const notesOwnerId = viewingAsCaptain?.id ?? (isManager ? user?.id : undefined)
   const { notes, setNote } = useDraftNotes(league.id, notesOwnerId)
 
   // Draft queue hooks (only for captain view)
