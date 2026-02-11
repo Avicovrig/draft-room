@@ -189,6 +189,16 @@ Deno.serve(async (req) => {
       console.error('Queue cleanup error:', cleanupError)
     }
 
+    // Reset consecutive timeout counter on manual pick
+    const { error: resetError } = await supabaseAdmin
+      .from('captains')
+      .update({ consecutive_timeout_picks: 0 })
+      .eq('id', captainId)
+
+    if (resetError) {
+      console.error('[make-pick] Failed to reset timeout counter:', resetError)
+    }
+
     // Check completion and advance
     const remainingCount = await countRemainingPlayers(supabaseAdmin, leagueId, league.captains)
     const isComplete = remainingCount <= 0

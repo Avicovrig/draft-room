@@ -55,10 +55,12 @@ export function PlayerProfileForm({
     const map: Record<string, { id?: string; value: string }> = {}
     for (const schema of fieldSchemas) {
       const existing = customFields.find((f) => f.schema_id === schema.id)
-      const defaultValue = schema.field_type === 'checkbox' ? 'false' : ''
+      // Use existing value, then schema default, then checkbox fallback
+      const schemaDefault = (schema.field_options?.defaultValue as string) || ''
+      const fallback = schema.field_type === 'checkbox' ? 'false' : ''
       map[schema.id] = {
         id: existing?.id,
-        value: existing?.field_value || defaultValue,
+        value: existing?.field_value || schemaDefault || fallback,
       }
     }
     return map
@@ -134,10 +136,15 @@ export function PlayerProfileForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    // Validate required schema fields
+    // Validate required schema fields (skip if schema has a default value)
     const errors: Record<string, boolean> = {}
     for (const schema of fieldSchemas) {
-      if (schema.is_required && !schemaFieldValues[schema.id]?.value?.trim()) {
+      const schemaDefault = (schema.field_options?.defaultValue as string) || ''
+      if (
+        schema.is_required &&
+        !schemaFieldValues[schema.id]?.value?.trim() &&
+        !schemaDefault.trim()
+      ) {
         errors[schema.id] = true
       }
     }

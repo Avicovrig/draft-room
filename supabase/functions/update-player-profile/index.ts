@@ -162,9 +162,10 @@ Deno.serve(async (req) => {
     }
 
     // Validate required schema fields (always check, even if customFields is empty/missing)
+    // Fetch all required schemas with field_options to check for defaults
     const { data: requiredSchemas } = await supabaseAdmin
       .from('league_field_schemas')
-      .select('id, field_name, field_type')
+      .select('id, field_name, field_type, field_options')
       .eq('league_id', player.league_id)
       .eq('is_required', true)
 
@@ -181,7 +182,13 @@ Deno.serve(async (req) => {
       const missingFields: string[] = []
       for (const schema of requiredSchemas) {
         const value = submittedBySchemaId.get(schema.id)
+        const schemaDefault = (schema.field_options as Record<string, unknown> | null)
+          ?.defaultValue as string | undefined
         if (!value || !value.trim()) {
+          // If there's a schema default, accept it instead of rejecting
+          if (schemaDefault && schemaDefault.trim()) {
+            continue
+          }
           missingFields.push(schema.field_name)
         }
       }

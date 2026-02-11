@@ -1,6 +1,12 @@
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse, requirePost, requireJson, timingSafeEqual } from '../_shared/validation.ts'
+import {
+  UUID_RE,
+  errorResponse,
+  requirePost,
+  requireJson,
+  timingSafeEqual,
+} from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import { authenticateManager } from '../_shared/auth.ts'
@@ -58,10 +64,15 @@ Deno.serve(async (req) => {
       if (authResult instanceof Response) return authResult
     }
 
-    // Update the captain's auto_pick_enabled setting
+    // Update the captain's auto_pick_enabled setting.
+    // When disabling, also reset the timeout counter so the captain gets a fresh start.
+    const updateData: Record<string, unknown> = { auto_pick_enabled: enabled }
+    if (!enabled) {
+      updateData.consecutive_timeout_picks = 0
+    }
     const { error: updateError } = await supabaseAdmin
       .from('captains')
-      .update({ auto_pick_enabled: enabled })
+      .update(updateData)
       .eq('id', captainId)
 
     if (updateError) {

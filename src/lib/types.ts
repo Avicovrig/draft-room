@@ -61,6 +61,7 @@ export interface Database {
           draft_position: number
           player_id: string | null
           auto_pick_enabled: boolean
+          consecutive_timeout_picks: number
           team_color: string | null
           team_name: string | null
           team_photo_url: string | null
@@ -75,6 +76,7 @@ export interface Database {
           draft_position: number
           player_id?: string | null
           auto_pick_enabled?: boolean
+          consecutive_timeout_picks?: number
           team_color?: string | null
           team_name?: string | null
           team_photo_url?: string | null
@@ -89,6 +91,7 @@ export interface Database {
           draft_position?: number
           player_id?: string | null
           auto_pick_enabled?: boolean
+          consecutive_timeout_picks?: number
           team_color?: string | null
           team_name?: string | null
           team_photo_url?: string | null

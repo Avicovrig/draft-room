@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Crown, User } from 'lucide-react'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber'
+import { useToggleAutoPick } from '@/hooks/useDraftQueue'
 import { cn, getInitials } from '@/lib/utils'
 import type { CaptainPublic, PlayerPublic, PlayerCustomField } from '@/lib/types'
 
@@ -20,6 +21,8 @@ interface TeamRosterProps {
   currentCaptainId?: string
   highlightCaptainId?: string
   customFieldsMap?: Record<string, PlayerCustomField[]>
+  isManager?: boolean
+  leagueId?: string
 }
 
 export function TeamRoster({
@@ -28,8 +31,11 @@ export function TeamRoster({
   currentCaptainId,
   highlightCaptainId,
   customFieldsMap = {},
+  isManager = false,
+  leagueId,
 }: TeamRosterProps) {
   const [viewingPlayer, setViewingPlayer] = useState<PlayerPublic | null>(null)
+  const toggleAutoPick = useToggleAutoPick()
   const knownPlayerIdsRef = useRef<Set<string>>(new Set())
   const [newPlayerIds, setNewPlayerIds] = useState<Set<string>>(new Set())
   const sortedCaptains = [...captains].sort((a, b) => a.draft_position - b.draft_position)
@@ -119,6 +125,37 @@ export function TeamRoster({
               <div className="mb-3 rounded bg-primary/10 px-2 py-1 text-center text-xs font-medium text-primary">
                 Now Picking
               </div>
+            )}
+
+            {isManager && leagueId && (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={captain.auto_pick_enabled}
+                onClick={() =>
+                  toggleAutoPick.mutate({
+                    captainId: captain.id,
+                    enabled: !captain.auto_pick_enabled,
+                    leagueId,
+                  })
+                }
+                className="mb-3 flex items-center gap-2"
+              >
+                <div
+                  className={cn(
+                    'relative h-5 w-9 rounded-full transition-colors',
+                    captain.auto_pick_enabled ? 'bg-primary' : 'bg-muted'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
+                      captain.auto_pick_enabled ? 'translate-x-4' : 'translate-x-0.5'
+                    )}
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground">Auto-pick</span>
+              </button>
             )}
 
             <ul className="space-y-1">

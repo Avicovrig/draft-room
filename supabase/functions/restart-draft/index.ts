@@ -80,22 +80,29 @@ Deno.serve(async (req) => {
       return errorResponse('Failed to reset players', 500, req)
     }
 
-    // Step 2.5: Clear all captain draft queues for this league's captains
+    // Step 2.5: Clear all captain draft queues and reset timeout counters
     const { data: captainsForCleanup } = await supabaseAdmin
       .from('captains')
       .select('id')
       .eq('league_id', leagueId)
     if (captainsForCleanup && captainsForCleanup.length > 0) {
+      const captainIds = captainsForCleanup.map((c: { id: string }) => c.id)
       const { error: queueCleanupError } = await supabaseAdmin
         .from('captain_draft_queues')
         .delete()
-        .in(
-          'captain_id',
-          captainsForCleanup.map((c: { id: string }) => c.id)
-        )
+        .in('captain_id', captainIds)
       if (queueCleanupError) {
         console.error('Failed to clear draft queues during restart:', queueCleanupError)
       }
+    }
+
+    // Reset consecutive timeout counters and auto-pick for all captains
+    const { error: resetCaptainsError } = await supabaseAdmin
+      .from('captains')
+      .update({ consecutive_timeout_picks: 0, auto_pick_enabled: false })
+      .eq('league_id', leagueId)
+    if (resetCaptainsError) {
+      console.error('Failed to reset captain timeout counters during restart:', resetCaptainsError)
     }
 
     // Step 3: Reset league status

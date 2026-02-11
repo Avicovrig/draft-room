@@ -460,6 +460,8 @@ export function DraftBoard({
             currentCaptainId={currentCaptain?.id}
             highlightCaptainId={viewingAsCaptain?.id}
             customFieldsMap={customFieldsMap}
+            isManager={isManager}
+            leagueId={league.id}
           />
         </CardContent>
       </Card>

@@ -52,6 +52,8 @@ interface FieldOptionsEditorProps {
   onIncludeTimeChange: (v: boolean) => void
   dropdownOptions: string[]
   onDropdownOptionsChange: (v: string[]) => void
+  defaultValue: string
+  onDefaultValueChange: (v: string) => void
 }
 
 function FieldOptionsEditor({
@@ -62,11 +64,11 @@ function FieldOptionsEditor({
   onIncludeTimeChange,
   dropdownOptions,
   onDropdownOptionsChange,
+  defaultValue,
+  onDefaultValueChange,
 }: FieldOptionsEditorProps) {
-  if (type === 'text') return null
-
   return (
-    <div className="rounded-md border border-border bg-muted/30 p-3">
+    <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
       {type === 'number' && (
         <div className="flex items-center gap-2">
           <Label htmlFor="field-unit" className="shrink-0 text-sm">
@@ -139,6 +141,65 @@ function FieldOptionsEditor({
           Players will see a checkbox labeled with the field name.
         </p>
       )}
+
+      {/* Default Value */}
+      <div className="flex items-center gap-2">
+        <Label className="shrink-0 text-sm">Default (optional)</Label>
+        {type === 'text' && (
+          <Input
+            placeholder="Default value"
+            value={defaultValue}
+            onChange={(e) => onDefaultValueChange(e.target.value)}
+            className="h-8 max-w-64"
+          />
+        )}
+        {type === 'number' && (
+          <Input
+            type="number"
+            step="any"
+            placeholder="Default value"
+            value={defaultValue}
+            onChange={(e) => onDefaultValueChange(e.target.value)}
+            className="h-8 max-w-48"
+          />
+        )}
+        {type === 'date' && (
+          <input
+            type={includeTime ? 'datetime-local' : 'date'}
+            value={defaultValue}
+            onChange={(e) => onDefaultValueChange(e.target.value)}
+            className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+          />
+        )}
+        {type === 'dropdown' && (
+          <Select
+            value={defaultValue}
+            onChange={(e) => onDefaultValueChange(e.target.value)}
+            className="h-8 max-w-48"
+          >
+            <option value="">No default</option>
+            {dropdownOptions
+              .map((o) => o.trim())
+              .filter(Boolean)
+              .map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+          </Select>
+        )}
+        {type === 'checkbox' && (
+          <Select
+            value={defaultValue}
+            onChange={(e) => onDefaultValueChange(e.target.value)}
+            className="h-8 max-w-48"
+          >
+            <option value="">No default</option>
+            <option value="true">Checked</option>
+            <option value="false">Unchecked</option>
+          </Select>
+        )}
+      </div>
     </div>
   )
 }
@@ -147,18 +208,17 @@ function buildFieldOptions(
   type: FieldType,
   unit: string,
   includeTime: boolean,
-  dropdownOptions: string[]
+  dropdownOptions: string[],
+  defaultValue: string
 ): Record<string, unknown> | null {
-  switch (type) {
-    case 'number':
-      return unit.trim() ? { unit: unit.trim() } : null
-    case 'date':
-      return includeTime ? { includeTime: true } : null
-    case 'dropdown':
-      return { options: dropdownOptions.map((o) => o.trim()).filter(Boolean) }
-    default:
-      return null
-  }
+  const opts: Record<string, unknown> = {}
+
+  if (type === 'number' && unit.trim()) opts.unit = unit.trim()
+  if (type === 'date' && includeTime) opts.includeTime = true
+  if (type === 'dropdown') opts.options = dropdownOptions.map((o) => o.trim()).filter(Boolean)
+  if (defaultValue.trim()) opts.defaultValue = defaultValue.trim()
+
+  return Object.keys(opts).length > 0 ? opts : null
 }
 
 function initOptionsFromSchema(schema: LeagueFieldSchema) {
@@ -169,6 +229,7 @@ function initOptionsFromSchema(schema: LeagueFieldSchema) {
     dropdownOptions: (opts?.options as string[] | undefined)?.length
       ? (opts!.options as string[])
       : [''],
+    defaultValue: (opts?.defaultValue as string) || '',
   }
 }
 
@@ -183,6 +244,7 @@ interface FieldFormState {
   unit: string
   includeTime: boolean
   dropdownOptions: string[]
+  defaultValue: string
 }
 
 const DEFAULT_FORM_STATE: FieldFormState = {
@@ -192,6 +254,7 @@ const DEFAULT_FORM_STATE: FieldFormState = {
   unit: '',
   includeTime: false,
   dropdownOptions: [''],
+  defaultValue: '',
 }
 
 export function FieldSchemaList({ league }: FieldSchemaListProps) {
@@ -235,7 +298,8 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
           addForm.type,
           addForm.unit,
           addForm.includeTime,
-          addForm.dropdownOptions
+          addForm.dropdownOptions,
+          addForm.defaultValue
         ),
       })
       setAddForm(DEFAULT_FORM_STATE)
@@ -269,6 +333,7 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
         unit: opts.unit,
         includeTime: opts.includeTime,
         dropdownOptions: opts.dropdownOptions,
+        defaultValue: opts.defaultValue,
       },
     })
   }
@@ -297,7 +362,8 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
           form.type,
           form.unit,
           form.includeTime,
-          form.dropdownOptions
+          form.dropdownOptions,
+          form.defaultValue
         ),
       })
       setEditState(null)
@@ -412,6 +478,8 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                 onDropdownOptionsChange={(v) =>
                   setAddForm((prev) => ({ ...prev, dropdownOptions: v }))
                 }
+                defaultValue={addForm.defaultValue}
+                onDefaultValueChange={(v) => setAddForm((prev) => ({ ...prev, defaultValue: v }))}
               />
             </form>
           </CardContent>
@@ -522,6 +590,12 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                             prev ? { ...prev, form: { ...prev.form, dropdownOptions: v } } : null
                           )
                         }
+                        defaultValue={editState.form.defaultValue}
+                        onDefaultValueChange={(v) =>
+                          setEditState((prev) =>
+                            prev ? { ...prev, form: { ...prev.form, defaultValue: v } } : null
+                          )
+                        }
                       />
 
                       <div className="flex gap-2">
@@ -586,6 +660,11 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                           ) : (
                             <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                               Optional
+                            </span>
+                          )}
+                          {!!schema.field_options?.defaultValue && (
+                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                              Default: {String(schema.field_options.defaultValue)}
                             </span>
                           )}
                         </div>

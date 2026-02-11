@@ -396,11 +396,59 @@ export function PlayerList({ league, customFieldsMap = {}, tokens }: PlayerListP
                 .map((player) => {
                   const captain = league.captains.find((c) => c.id === player.drafted_by_captain_id)
                   return (
-                    <li key={player.id} className="flex items-center justify-between py-2">
-                      <span>{player.name}</span>
-                      <span className="text-sm text-muted-foreground">
-                        Pick #{player.draft_pick_number} • {captain?.name}
-                      </span>
+                    <li key={player.id} className="flex items-center gap-3 py-3">
+                      {/* Profile Picture */}
+                      {player.profile_picture_url ? (
+                        <img
+                          src={player.profile_picture_url}
+                          alt={player.name}
+                          loading="lazy"
+                          className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground flex-shrink-0">
+                          {getInitials(player.name)}
+                        </div>
+                      )}
+
+                      {/* Player Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{player.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Pick #{player.draft_pick_number} · {captain?.name}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingPlayer(player)}
+                          title="Edit profile"
+                          aria-label="Edit profile"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleCopyPlayerUrl(player)}
+                          title="Copy profile link"
+                          aria-label="Copy profile link"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenPlayerUrl(player)}
+                          title="Open profile link in new tab"
+                          aria-label="Open profile link in new tab"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </li>
                   )
                 })}

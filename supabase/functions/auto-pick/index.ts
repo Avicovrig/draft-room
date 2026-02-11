@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     const { data: league, error: leagueError } = await supabaseAdmin
       .from('leagues')
       .select(
-        'id, status, draft_type, current_pick_index, current_pick_started_at, time_limit_seconds, captains(id, name, draft_position, player_id, access_token, auto_pick_enabled), players(id, name, drafted_by_captain_id)'
+        'id, status, draft_type, current_pick_index, current_pick_started_at, time_limit_seconds, captains(id, name, draft_position, player_id, access_token, auto_pick_enabled, consecutive_timeout_picks), players(id, name, drafted_by_captain_id)'
       )
       .eq('id', leagueId)
       .single()
@@ -156,6 +156,10 @@ Deno.serve(async (req) => {
       league.draft_type as 'snake' | 'round_robin'
     )
     const currentCaptain = league.captains.find((c: Captain) => c.id === currentCaptainId)
+
+    // Track whether auto-pick was already enabled before this call.
+    // Timer-expiry calls (captain didn't have auto-pick on) increment the timeout counter.
+    const captainHadAutoPickEnabled = currentCaptain?.auto_pick_enabled ?? false
 
     // Auth: captain token OR manager JWT required
     if (captainToken) {
@@ -248,6 +252,24 @@ Deno.serve(async (req) => {
       return raceConditionResponse(req, { error: 'Draft state changed concurrently' })
     }
 
+    // Track consecutive timeouts: if captain didn't have auto-pick enabled,
+    // this was a timer-expiry pick. Increment counter; at threshold, auto-enable auto-pick.
+    const CONSECUTIVE_TIMEOUT_THRESHOLD = 2
+    if (!captainHadAutoPickEnabled && currentCaptainId) {
+      const newCount = (currentCaptain?.consecutive_timeout_picks ?? 0) + 1
+      const updates: Record<string, unknown> = { consecutive_timeout_picks: newCount }
+      if (newCount >= CONSECUTIVE_TIMEOUT_THRESHOLD) {
+        updates.auto_pick_enabled = true
+      }
+      const { error: timeoutUpdateError } = await supabaseAdmin
+        .from('captains')
+        .update(updates)
+        .eq('id', currentCaptainId)
+      if (timeoutUpdateError) {
+        console.error('[auto-pick] Failed to update timeout counter:', timeoutUpdateError)
+      }
+    }
+
     logAudit(supabaseAdmin, {
       action: 'auto_pick_made',
       leagueId,
@@ -260,6 +282,7 @@ Deno.serve(async (req) => {
         captainName: currentCaptain?.name,
         isComplete,
         fromQueue: selectedFromQueue,
+        timerExpiry: !captainHadAutoPickEnabled,
       },
       ipAddress: getClientIp(req),
     })

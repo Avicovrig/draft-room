@@ -27,6 +27,7 @@ function makeCaptain(
     is_participant: false,
     player_id: null,
     auto_pick_enabled: false,
+    consecutive_timeout_picks: 0,
     team_color: null,
     team_name: null,
     team_photo_url: null,

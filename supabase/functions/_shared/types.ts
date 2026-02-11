@@ -9,6 +9,7 @@ export interface Captain {
   player_id: string | null
   access_token: string
   auto_pick_enabled: boolean
+  consecutive_timeout_picks: number
   team_color: string | null
   team_name: string | null
   team_photo_url: string | null

@@ -171,12 +171,10 @@ function SortableCaptainItem({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="truncate font-medium">{captain.name}</span>
-            {captain.player_id ? (
+            {captain.player_id || captain.is_participant ? (
               <span className="whitespace-nowrap text-xs text-green-600 dark:text-green-400">
                 (Player)
               </span>
-            ) : captain.is_participant ? (
-              <span className="whitespace-nowrap text-xs text-muted-foreground">(Playing)</span>
             ) : (
               <span className="whitespace-nowrap text-xs text-muted-foreground">(Non-player)</span>
             )}
