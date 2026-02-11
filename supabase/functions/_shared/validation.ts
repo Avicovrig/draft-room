@@ -54,7 +54,7 @@ export function isValidHexColor(color: string): boolean {
 
 /**
  * Constant-time string comparison to prevent timing attacks on token validation.
- * Uses crypto.subtle.timingSafeEqual to avoid leaking token characters via response timing.
+ * Uses XOR accumulator so every byte is always compared regardless of mismatch position.
  * Pads shorter buffer to match longer one to prevent length information leakage.
  */
 export function timingSafeEqual(a: string, b: string): boolean {
@@ -67,6 +67,9 @@ export function timingSafeEqual(a: string, b: string): boolean {
   const paddedB = new Uint8Array(maxLen)
   paddedA.set(bufA)
   paddedB.set(bufB)
-  const equal = crypto.subtle.timingSafeEqual(paddedA, paddedB)
-  return equal && bufA.byteLength === bufB.byteLength
+  let result = 0
+  for (let i = 0; i < maxLen; i++) {
+    result |= paddedA[i] ^ paddedB[i]
+  }
+  return result === 0 && bufA.byteLength === bufB.byteLength
 }
