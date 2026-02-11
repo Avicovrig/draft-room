@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { CaptainDraftQueue, PlayerPublic } from '@/lib/types'
+import type { CaptainDraftQueue, LeagueFullPublic, PlayerPublic } from '@/lib/types'
 
 export interface QueuedPlayer extends CaptainDraftQueue {
   player: PlayerPublic
@@ -216,7 +216,27 @@ export function useToggleAutoPick() {
 
       return response.data
     },
-    onSuccess: (_, variables) => {
+    onMutate: async ({ captainId, enabled, leagueId }) => {
+      await queryClient.cancelQueries({ queryKey: ['league', leagueId] })
+      const previous = queryClient.getQueryData<LeagueFullPublic>(['league', leagueId])
+
+      if (previous) {
+        queryClient.setQueryData<LeagueFullPublic>(['league', leagueId], {
+          ...previous,
+          captains: previous.captains.map((c) =>
+            c.id === captainId ? { ...c, auto_pick_enabled: enabled } : c
+          ),
+        })
+      }
+
+      return { previous }
+    },
+    onError: (_err, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['league', variables.leagueId], context.previous)
+      }
+    },
+    onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['league', variables.leagueId] })
     },
   })
