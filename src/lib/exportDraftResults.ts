@@ -53,7 +53,9 @@ export async function exportDraftResults(league: LeagueFullPublic): Promise<void
 
   // --- Sheet 2: Pick History ---
   const historySheet = workbook.addWorksheet('Pick History')
-  const historyRows: (string | number)[][] = [['Pick', 'Round', 'Captain', 'Player', 'Type', 'Time']]
+  const historyRows: (string | number)[][] = [
+    ['Pick', 'Round', 'Captain', 'Player', 'Type', 'Time'],
+  ]
 
   for (const pick of sortedPicks) {
     const round = Math.floor((pick.pick_number - 1) / captainCount) + 1
@@ -95,7 +97,10 @@ export async function exportDraftResults(league: LeagueFullPublic): Promise<void
   if (sortedPicks.length > 1) {
     const deltas: number[] = []
     for (let i = 1; i < sortedPicks.length; i++) {
-      const delta = (new Date(sortedPicks[i].picked_at).getTime() - new Date(sortedPicks[i - 1].picked_at).getTime()) / 1000
+      const delta =
+        (new Date(sortedPicks[i].picked_at).getTime() -
+          new Date(sortedPicks[i - 1].picked_at).getTime()) /
+        1000
       if (delta > 0 && delta < league.time_limit_seconds * 2) {
         deltas.push(delta)
       }
@@ -121,7 +126,10 @@ export async function exportDraftResults(league: LeagueFullPublic): Promise<void
   summarySheet.getColumn(2).width = 25
 
   // Download
-  const safeName = league.name.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '-')
+  const safeName = league.name
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
   const buffer = await workbook.xlsx.writeBuffer()
   saveAs(new Blob([buffer]), `${safeName}-draft-results.xlsx`)
 }

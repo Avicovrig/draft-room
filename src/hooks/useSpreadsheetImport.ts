@@ -43,9 +43,7 @@ export function parseFile(file: File): Promise<SpreadsheetData> {
 
         // First row as headers, rest as data rows
         const headers = jsonData[0].map((h) => String(h).trim())
-        const rows = jsonData.slice(1).map((row) =>
-          row.map((cell) => String(cell ?? '').trim())
-        )
+        const rows = jsonData.slice(1).map((row) => row.map((cell) => String(cell ?? '').trim()))
 
         resolve({
           headers,

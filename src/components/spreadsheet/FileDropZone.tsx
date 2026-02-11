@@ -89,9 +89,7 @@ export function FileDropZone({
           <p className="mt-4 text-center text-sm font-medium">
             {isDragging ? 'Drop file here' : 'Drag and drop a file here'}
           </p>
-          <p className="mt-1 text-center text-xs text-muted-foreground">
-            or click to browse
-          </p>
+          <p className="mt-1 text-center text-xs text-muted-foreground">or click to browse</p>
           <p className="mt-2 text-center text-xs text-muted-foreground">
             Supports CSV and Excel files (.csv, .xlsx)
           </p>

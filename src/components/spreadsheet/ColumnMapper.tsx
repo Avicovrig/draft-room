@@ -22,7 +22,11 @@ function getMappingValue(mapping: PlayerFieldMapping): string {
   return `custom:${mapping.fieldName}`
 }
 
-function parseMappingValue(value: string, columnName: string, fieldSchemas?: LeagueFieldSchema[]): PlayerFieldMapping {
+function parseMappingValue(
+  value: string,
+  columnName: string,
+  fieldSchemas?: LeagueFieldSchema[]
+): PlayerFieldMapping {
   if (value === 'skip') return { type: 'skip' }
   if (value.startsWith('standard:')) {
     const field = value.replace('standard:', '') as StandardPlayerField

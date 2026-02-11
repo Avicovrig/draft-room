@@ -14,7 +14,11 @@ const BASE_SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'name-desc', label: 'Name Z-A' },
 ]
 
-function compareFieldValues(aVal: string | undefined, bVal: string | undefined, fieldType: string): number {
+function compareFieldValues(
+  aVal: string | undefined,
+  bVal: string | undefined,
+  fieldType: string
+): number {
   const aEmpty = !aVal || !aVal.trim()
   const bEmpty = !bVal || !bVal.trim()
   if (aEmpty && bEmpty) return 0
@@ -72,14 +76,35 @@ interface PlayerPoolProps {
   onClearFilters?: () => void
 }
 
-export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isPicking, showExpandedDetails = false, onAddToQueue, queuedPlayerIds = new Set(), isAddingToQueue = false, search: controlledSearch, onSearchChange, sortBy: controlledSortBy, onSortChange, searchInputRef: externalSearchRef, notes = {}, onNoteChange, fieldSchemas = [], filters = {}, onFilterChange, onClearFilters }: PlayerPoolProps) {
+export function PlayerPool({
+  players,
+  customFieldsMap = {},
+  canPick,
+  onPick,
+  isPicking,
+  showExpandedDetails = false,
+  onAddToQueue,
+  queuedPlayerIds = new Set(),
+  isAddingToQueue = false,
+  search: controlledSearch,
+  onSearchChange,
+  sortBy: controlledSortBy,
+  onSortChange,
+  searchInputRef: externalSearchRef,
+  notes = {},
+  onNoteChange,
+  fieldSchemas = [],
+  filters = {},
+  onFilterChange,
+  onClearFilters,
+}: PlayerPoolProps) {
   const [localSearch, setLocalSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewingPlayer, setViewingPlayer] = useState<PlayerPublic | null>(null)
   const [localSortBy, setLocalSortBy] = useState<SortOption>('default')
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
-  const activeFilterCount = Object.values(filters).filter(v => v.trim()).length
+  const activeFilterCount = Object.values(filters).filter((v) => v.trim()).length
 
   const searchRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -105,43 +130,47 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
     }
   }, [selectedId, players])
 
-  const filteredPlayers = useMemo(() => players
-    .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
-    .filter((p) => {
-      if (activeFilterCount === 0) return true
-      const playerFields = customFieldsMap[p.id] || []
-      return Object.entries(filters).every(([schemaId, filterText]) => {
-        if (!filterText.trim()) return true
-        const field = playerFields.find(f => f.schema_id === schemaId)
-        return field?.field_value?.toLowerCase().includes(filterText.toLowerCase())
-      })
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'name-asc':
-          return a.name.localeCompare(b.name)
-        case 'name-desc':
-          return b.name.localeCompare(a.name)
-        case 'default': {
-          // Default: profile picture first, then name
-          const aHasPic = a.profile_picture_url ? 1 : 0
-          const bHasPic = b.profile_picture_url ? 1 : 0
-          if (bHasPic !== aHasPic) return bHasPic - aHasPic
-          return a.name.localeCompare(b.name)
-        }
-        default: {
-          // field:${schemaId} pattern
-          const schemaId = sortBy.slice(6)
-          const schema = fieldSchemas.find(s => s.id === schemaId)
-          const aFields = customFieldsMap[a.id] || []
-          const bFields = customFieldsMap[b.id] || []
-          const aVal = aFields.find(f => f.schema_id === schemaId)?.field_value ?? undefined
-          const bVal = bFields.find(f => f.schema_id === schemaId)?.field_value ?? undefined
-          const cmp = compareFieldValues(aVal, bVal, schema?.field_type || 'text')
-          return cmp !== 0 ? cmp : a.name.localeCompare(b.name)
-        }
-      }
-    }), [players, search, sortBy, filters, activeFilterCount, customFieldsMap, fieldSchemas])
+  const filteredPlayers = useMemo(
+    () =>
+      players
+        .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+        .filter((p) => {
+          if (activeFilterCount === 0) return true
+          const playerFields = customFieldsMap[p.id] || []
+          return Object.entries(filters).every(([schemaId, filterText]) => {
+            if (!filterText.trim()) return true
+            const field = playerFields.find((f) => f.schema_id === schemaId)
+            return field?.field_value?.toLowerCase().includes(filterText.toLowerCase())
+          })
+        })
+        .sort((a, b) => {
+          switch (sortBy) {
+            case 'name-asc':
+              return a.name.localeCompare(b.name)
+            case 'name-desc':
+              return b.name.localeCompare(a.name)
+            case 'default': {
+              // Default: profile picture first, then name
+              const aHasPic = a.profile_picture_url ? 1 : 0
+              const bHasPic = b.profile_picture_url ? 1 : 0
+              if (bHasPic !== aHasPic) return bHasPic - aHasPic
+              return a.name.localeCompare(b.name)
+            }
+            default: {
+              // field:${schemaId} pattern
+              const schemaId = sortBy.slice(6)
+              const schema = fieldSchemas.find((s) => s.id === schemaId)
+              const aFields = customFieldsMap[a.id] || []
+              const bFields = customFieldsMap[b.id] || []
+              const aVal = aFields.find((f) => f.schema_id === schemaId)?.field_value ?? undefined
+              const bVal = bFields.find((f) => f.schema_id === schemaId)?.field_value ?? undefined
+              const cmp = compareFieldValues(aVal, bVal, schema?.field_type || 'text')
+              return cmp !== 0 ? cmp : a.name.localeCompare(b.name)
+            }
+          }
+        }),
+    [players, search, sortBy, filters, activeFilterCount, customFieldsMap, fieldSchemas]
+  )
 
   function handlePick() {
     if (selectedId && canPick) {
@@ -169,9 +198,7 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
   function handleListKeyDown(e: React.KeyboardEvent) {
     if (!canPick || isPicking || filteredPlayers.length === 0) return
 
-    const currentIndex = selectedId
-      ? filteredPlayers.findIndex((p) => p.id === selectedId)
-      : -1
+    const currentIndex = selectedId ? filteredPlayers.findIndex((p) => p.id === selectedId) : -1
 
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -199,8 +226,9 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             ref={(el) => {
-              (searchRef as React.MutableRefObject<HTMLInputElement | null>).current = el
-              if (externalSearchRef) (externalSearchRef as React.MutableRefObject<HTMLInputElement | null>).current = el
+              ;(searchRef as React.MutableRefObject<HTMLInputElement | null>).current = el
+              if (externalSearchRef)
+                (externalSearchRef as React.MutableRefObject<HTMLInputElement | null>).current = el
             }}
             placeholder="Search players..."
             value={search}
@@ -216,21 +244,28 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
             className="h-10 appearance-none rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             title="Sort players"
           >
-            {Array.isArray(sortOptions)
-              ? sortOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))
-              : <>
-                  {sortOptions.base.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+            {Array.isArray(sortOptions) ? (
+              sortOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))
+            ) : (
+              <>
+                {sortOptions.base.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+                <optgroup label="Sort by field">
+                  {sortOptions.fields.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
                   ))}
-                  <optgroup label="Sort by field">
-                    {sortOptions.fields.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </optgroup>
-                </>
-            }
+                </optgroup>
+              </>
+            )}
           </select>
           <ArrowUpDown className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         </div>
@@ -240,10 +275,14 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
             onClick={() => setShowFilters(!showFilters)}
             className={cn(
               'relative flex-shrink-0 h-10 rounded-md border border-input px-2.5 text-sm hover:bg-accent',
-              showFilters && 'bg-accent',
+              showFilters && 'bg-accent'
             )}
             title="Filter by fields"
-            aria-label={activeFilterCount > 0 ? `Filter by fields (${activeFilterCount} active)` : 'Filter by fields'}
+            aria-label={
+              activeFilterCount > 0
+                ? `Filter by fields (${activeFilterCount} active)`
+                : 'Filter by fields'
+            }
           >
             <Filter className="h-4 w-4" />
             {activeFilterCount > 0 && (
@@ -275,7 +314,10 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
               .sort((a, b) => a.field_order - b.field_order)
               .map((schema) => (
                 <div key={schema.id} className="flex items-center gap-2">
-                  <label className="w-24 shrink-0 truncate text-xs text-muted-foreground" title={schema.field_name}>
+                  <label
+                    className="w-24 shrink-0 truncate text-xs text-muted-foreground"
+                    title={schema.field_name}
+                  >
                     {schema.field_name}
                   </label>
                   {schema.field_type === 'dropdown' ? (
@@ -286,7 +328,9 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                     >
                       <option value="">All</option>
                       {((schema.field_options?.options as string[]) || []).map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
                       ))}
                     </select>
                   ) : schema.field_type === 'checkbox' ? (
@@ -336,9 +380,19 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
       >
         {filteredPlayers.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-1 p-8 text-sm text-muted-foreground">
-            <p>{activeFilterCount > 0 ? 'No players match your filters' : search ? 'No players match your search' : 'No players available'}</p>
+            <p>
+              {activeFilterCount > 0
+                ? 'No players match your filters'
+                : search
+                  ? 'No players match your search'
+                  : 'No players available'}
+            </p>
             {activeFilterCount > 0 && onClearFilters && (
-              <button type="button" onClick={onClearFilters} className="text-primary hover:underline">
+              <button
+                type="button"
+                onClick={onClearFilters}
+                className="text-primary hover:underline"
+              >
                 Clear filters
               </button>
             )}
@@ -362,7 +416,8 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                       canPick && !isPicking && 'cursor-pointer hover:bg-accent',
                       !canPick && 'cursor-default',
                       isPicking && 'opacity-50',
-                      selectedId === player.id && 'bg-primary/10 hover:bg-primary/20 ring-2 ring-primary ring-inset'
+                      selectedId === player.id &&
+                        'bg-primary/10 hover:bg-primary/20 ring-2 ring-primary ring-inset'
                     )}
                     onClick={() => canPick && !isPicking && setSelectedId(player.id)}
                   >
@@ -499,7 +554,8 @@ export function PlayerPool({ players, customFieldsMap = {}, canPick, onPick, isP
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                           {customFields.map((field) => (
                             <span key={field.id}>
-                              <span className="text-muted-foreground">{field.field_name}:</span> {field.field_value || '-'}
+                              <span className="text-muted-foreground">{field.field_name}:</span>{' '}
+                              {field.field_value || '-'}
                             </span>
                           ))}
                         </div>

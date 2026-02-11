@@ -47,7 +47,13 @@ export function useToast() {
   return context
 }
 
-function ToastContainer({ toasts, removeToast }: { toasts: Toast[]; removeToast: (id: string) => void }) {
+function ToastContainer({
+  toasts,
+  removeToast,
+}: {
+  toasts: Toast[]
+  removeToast: (id: string) => void
+}) {
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
       {toasts.map((toast) => (
@@ -74,7 +80,8 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
     <div
       className={cn(
         'flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg animate-in slide-in-from-right',
-        toast.type === 'success' && 'border-green-500/50 bg-green-500/10 text-green-600 dark:text-green-400',
+        toast.type === 'success' &&
+          'border-green-500/50 bg-green-500/10 text-green-600 dark:text-green-400',
         toast.type === 'error' && 'border-destructive/50 bg-destructive/10 text-destructive',
         toast.type === 'info' && 'border-border bg-card text-foreground'
       )}

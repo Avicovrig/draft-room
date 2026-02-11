@@ -74,11 +74,13 @@ export function DraftView() {
       <Header />
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <Breadcrumb items={[
-            { label: 'Dashboard', href: '/dashboard' },
-            { label: league.name, href: `/league/${id}/manage` },
-            { label: 'Draft' },
-          ]} />
+          <Breadcrumb
+            items={[
+              { label: 'Dashboard', href: '/dashboard' },
+              { label: league.name, href: `/league/${id}/manage` },
+              { label: 'Draft' },
+            ]}
+          />
           <h1 className="text-3xl font-bold">{league.name}</h1>
           <p className="text-muted-foreground">Draft Control Panel</p>
         </div>

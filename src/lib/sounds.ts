@@ -10,7 +10,10 @@ let soundEnabled = true
 function getAudioContext(): AudioContext | null {
   if (!audioContext) {
     try {
-      audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+      audioContext = new (
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      )()
     } catch {
       console.warn('Web Audio API not supported')
       return null
@@ -34,7 +37,12 @@ export function setSoundEnabled(enabled: boolean): void {
 }
 
 // Play a simple tone
-function playTone(frequency: number, duration: number, type: OscillatorType = 'sine', volume = 0.3): void {
+function playTone(
+  frequency: number,
+  duration: number,
+  type: OscillatorType = 'sine',
+  volume = 0.3
+): void {
   const ctx = getAudioContext()
   if (!ctx || !isSoundEnabled()) return
 
@@ -85,11 +93,11 @@ export function playSound(name: SoundName): void {
 
     case 'draftComplete':
       // Celebratory fanfare chord progression
-      playChord([261.63, 329.63, 392.00], 0.3) // C major
-      setTimeout(() => playChord([293.66, 369.99, 440.00], 0.3), 250) // D major
-      setTimeout(() => playChord([329.63, 415.30, 493.88], 0.3), 500) // E major
-      setTimeout(() => playChord([349.23, 440.00, 523.25], 0.5), 750) // F major
-      setTimeout(() => playChord([392.00, 493.88, 587.33], 0.8), 1000) // G major (sustained)
+      playChord([261.63, 329.63, 392.0], 0.3) // C major
+      setTimeout(() => playChord([293.66, 369.99, 440.0], 0.3), 250) // D major
+      setTimeout(() => playChord([329.63, 415.3, 493.88], 0.3), 500) // E major
+      setTimeout(() => playChord([349.23, 440.0, 523.25], 0.5), 750) // F major
+      setTimeout(() => playChord([392.0, 493.88, 587.33], 0.8), 1000) // G major (sustained)
       break
   }
 }

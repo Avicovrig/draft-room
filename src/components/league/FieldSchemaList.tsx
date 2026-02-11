@@ -166,7 +166,9 @@ function initOptionsFromSchema(schema: LeagueFieldSchema) {
   return {
     unit: (opts?.unit as string) || '',
     includeTime: (opts?.includeTime as boolean) || false,
-    dropdownOptions: (opts?.options as string[] | undefined)?.length ? (opts!.options as string[]) : [''],
+    dropdownOptions: (opts?.options as string[] | undefined)?.length
+      ? (opts!.options as string[])
+      : [''],
   }
 }
 
@@ -231,12 +233,7 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
         field_type: newFieldType,
         is_required: newFieldType === 'checkbox' ? false : newFieldRequired,
         field_order: schemas.length,
-        field_options: buildFieldOptions(
-          newFieldType,
-          newUnit,
-          newIncludeTime,
-          newDropdownOptions
-        ),
+        field_options: buildFieldOptions(newFieldType, newUnit, newIncludeTime, newDropdownOptions),
       })
       resetAddForm()
     } catch (err) {
@@ -287,12 +284,7 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
         field_name: editName.trim(),
         field_type: editType,
         is_required: editType === 'checkbox' ? false : editRequired,
-        field_options: buildFieldOptions(
-          editType,
-          editUnit,
-          editIncludeTime,
-          editDropdownOptions
-        ),
+        field_options: buildFieldOptions(editType, editUnit, editIncludeTime, editDropdownOptions),
       })
       setEditingId(null)
     } catch (err) {
@@ -337,7 +329,8 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
           <CardHeader>
             <CardTitle>Custom Fields</CardTitle>
             <CardDescription>
-              Define fields that players fill out in their profiles. Required fields must be completed before saving.
+              Define fields that players fill out in their profiles. Required fields must be
+              completed before saving.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -418,25 +411,18 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
         <CardContent>
           {schemas.length === 0 ? (
             <div className="py-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                No custom fields defined yet.
-              </p>
+              <p className="text-sm text-muted-foreground">No custom fields defined yet.</p>
             </div>
           ) : (
             <ul className="space-y-2">
               {schemas.map((schema, index) => (
-                <li
-                  key={schema.id}
-                  className="rounded-lg border border-border p-3"
-                >
+                <li key={schema.id} className="rounded-lg border border-border p-3">
                   {editingId === schema.id ? (
                     /* Expanded Edit Panel */
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-end gap-2">
                         <div className="min-w-0 flex-1">
-                          <Label className="mb-1 text-xs text-muted-foreground">
-                            Field name
-                          </Label>
+                          <Label className="mb-1 text-xs text-muted-foreground">Field name</Label>
                           <Input
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
@@ -447,9 +433,7 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                           />
                         </div>
                         <div className="w-36">
-                          <Label className="mb-1 text-xs text-muted-foreground">
-                            Type
-                          </Label>
+                          <Label className="mb-1 text-xs text-muted-foreground">Type</Label>
                           <Select
                             value={editType}
                             onChange={(e) => setEditType(e.target.value as FieldType)}
@@ -493,11 +477,7 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                         >
                           Save
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditingId(null)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => setEditingId(null)}>
                           Cancel
                         </Button>
                       </div>

@@ -20,7 +20,6 @@ const settingsSchema = z.object({
   allow_player_custom_fields: z.boolean(),
 })
 
-
 interface LeagueSettingsProps {
   league: LeagueFullPublic
 }
@@ -90,15 +89,8 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="name">League Name</Label>
-            <Input
-              id="name"
-              {...register('name')}
-              error={!!errors.name}
-              disabled={!isEditable}
-            />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
-            )}
+            <Input id="name" {...register('name')} error={!!errors.name} disabled={!isEditable} />
+            {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -154,8 +146,8 @@ export function LeagueSettings({ league }: LeagueSettingsProps) {
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              Set a time to let participants know when the draft will begin.
-              You will still need to manually start the draft.
+              Set a time to let participants know when the draft will begin. You will still need to
+              manually start the draft.
             </p>
           </div>
 

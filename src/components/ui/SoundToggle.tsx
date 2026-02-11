@@ -19,11 +19,7 @@ export function SoundToggle() {
       onClick={toggle}
       title={enabled ? 'Mute sounds' : 'Unmute sounds'}
     >
-      {enabled ? (
-        <Volume2 className="h-5 w-5" />
-      ) : (
-        <VolumeX className="h-5 w-5" />
-      )}
+      {enabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
       <span className="sr-only">{enabled ? 'Mute sounds' : 'Unmute sounds'}</span>
     </Button>
   )

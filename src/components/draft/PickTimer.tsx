@@ -61,9 +61,11 @@ export function PickTimer({
       role="status"
       aria-live="polite"
       aria-label={
-        isExpired ? 'Time expired, auto-picking' :
-        isActive ? `${formatTime(shakeKey)} remaining` :
-        'Waiting to start'
+        isExpired
+          ? 'Time expired, auto-picking'
+          : isActive
+            ? `${formatTime(shakeKey)} remaining`
+            : 'Waiting to start'
       }
     >
       <div
@@ -79,10 +81,12 @@ export function PickTimer({
       </div>
 
       {/* Progress bar */}
-      <div className={cn(
-        'mt-4 h-2 w-full overflow-hidden rounded-full bg-muted',
-        isCritical && !isExpired && 'animate-glow'
-      )}>
+      <div
+        className={cn(
+          'mt-4 h-2 w-full overflow-hidden rounded-full bg-muted',
+          isCritical && !isExpired && 'animate-glow'
+        )}
+      >
         <div
           className={cn(
             'h-full transition-all duration-100',
@@ -99,8 +103,8 @@ export function PickTimer({
         {isExpired
           ? 'Time expired - auto-picking...'
           : isActive
-          ? 'Time remaining to pick'
-          : 'Waiting to start'}
+            ? 'Time remaining to pick'
+            : 'Waiting to start'}
       </p>
     </div>
   )

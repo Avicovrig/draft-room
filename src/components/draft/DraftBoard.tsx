@@ -18,7 +18,12 @@ import { playSound, resumeAudioContext } from '@/lib/sounds'
 import { useDraftQueue, useAddToQueue } from '@/hooks/useDraftQueue'
 import { useDraftNotes } from '@/hooks/useDraftNotes'
 import { useAuth } from '@/context/AuthContext'
-import type { LeagueFullPublic, CaptainPublic, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
+import type {
+  LeagueFullPublic,
+  CaptainPublic,
+  PlayerCustomField,
+  LeagueFieldSchema,
+} from '@/lib/types'
 
 interface DraftBoardProps {
   league: LeagueFullPublic
@@ -65,7 +70,7 @@ export function DraftBoard({
   const [poolSortBy, setPoolSortBy] = useState<SortOption>('default')
   const [poolFilters, setPoolFilters] = useState<Record<string, string>>({})
   const handleFilterChange = useCallback((schemaId: string, value: string) => {
-    setPoolFilters(prev => {
+    setPoolFilters((prev) => {
       if (value) {
         return { ...prev, [schemaId]: value }
       }
@@ -78,8 +83,8 @@ export function DraftBoard({
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [showRefreshHint, setShowRefreshHint] = useState(false)
   const [notificationDismissed, setNotificationDismissed] = useState(false)
-  const [notificationPermission, setNotificationPermission] = useState(
-    () => typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+  const [notificationPermission, setNotificationPermission] = useState(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
   )
   const searchInputRef = useRef<HTMLInputElement>(null)
   const isAutoPickingRef = useRef(false)
@@ -102,10 +107,7 @@ export function DraftBoard({
   const addToQueue = useAddToQueue()
 
   // Set of player IDs in the captain's queue
-  const queuedPlayerIds = useMemo(
-    () => new Set(queueData.map((q) => q.player_id)),
-    [queueData]
-  )
+  const queuedPlayerIds = useMemo(() => new Set(queueData.map((q) => q.player_id)), [queueData])
 
   function handleAddToQueue(playerId: string) {
     if (!viewingAsCaptain) return
@@ -144,14 +146,18 @@ export function DraftBoard({
   )
 
   // Keyboard shortcuts
-  const shortcutHandlers = useMemo(() => ({
-    '?': () => setShowShortcuts(true),
-    '/': () => searchInputRef.current?.focus(),
-  }), [])
+  const shortcutHandlers = useMemo(
+    () => ({
+      '?': () => setShowShortcuts(true),
+      '/': () => searchInputRef.current?.focus(),
+    }),
+    []
+  )
   useKeyboardShortcuts(shortcutHandlers)
 
   const totalPickSlots = availablePlayers.length + league.draft_picks.length
-  const progressPercent = totalPickSlots > 0 ? (league.draft_picks.length / totalPickSlots) * 100 : 0
+  const progressPercent =
+    totalPickSlots > 0 ? (league.draft_picks.length / totalPickSlots) * 100 : 0
 
   const canStartDraft =
     league.status === 'not_started' &&
@@ -174,7 +180,7 @@ export function DraftBoard({
     const nextIndex = league.current_pick_index + 1
     if (nextIndex >= pickOrder.length) return undefined
     const nextId = pickOrder[nextIndex]
-    return league.captains.find(c => c.id === nextId)
+    return league.captains.find((c) => c.id === nextId)
   }, [isActive, league.current_pick_index, pickOrder, league.captains])
 
   const prevPickIndexRef = useRef(league.current_pick_index)
@@ -196,16 +202,19 @@ export function DraftBoard({
       playSound('yourTurn')
 
       // Send browser notification if permitted
-      if (viewingAsCaptain && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      if (
+        viewingAsCaptain &&
+        typeof Notification !== 'undefined' &&
+        Notification.permission === 'granted'
+      ) {
         new Notification(league.name, { body: "It's your turn to pick!", icon: '/favicon.ico' })
       }
     }
     prevIsMyTurnRef.current = isMyTurn
   }, [isMyTurn, league.status, league.name, viewingAsCaptain])
 
-  const showNotificationBanner = !!viewingAsCaptain
-    && notificationPermission === 'default'
-    && !notificationDismissed
+  const showNotificationBanner =
+    !!viewingAsCaptain && notificationPermission === 'default' && !notificationDismissed
 
   async function handleEnableNotifications() {
     const permission = await Notification.requestPermission()
@@ -220,7 +229,8 @@ export function DraftBoard({
       await onMakePick(playerId, currentCaptain.id, captainToken)
       playSound('pickMade')
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to make pick. Please try again.'
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to make pick. Please try again.'
       addToast(errorMessage, 'error')
     } finally {
       setIsPicking(false)
@@ -255,7 +265,12 @@ export function DraftBoard({
         }
       } else if (response.data?.error) {
         // Don't show toast for expected race condition errors
-        const expectedErrors = ['Pick already made', 'Timer has not expired yet', 'Draft is not in progress', 'Draft state changed concurrently']
+        const expectedErrors = [
+          'Pick already made',
+          'Timer has not expired yet',
+          'Draft is not in progress',
+          'Draft state changed concurrently',
+        ]
         if (!expectedErrors.includes(response.data.error)) {
           addToast(`Auto-pick failed: ${response.data.error}`, 'error')
         }
@@ -309,7 +324,16 @@ export function DraftBoard({
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [isManager, viewingAsCaptain, league.status, league.current_pick_index, currentCaptain?.id, currentCaptain?.auto_pick_enabled, availablePlayers.length, handleTimerExpire])
+  }, [
+    isManager,
+    viewingAsCaptain,
+    league.status,
+    league.current_pick_index,
+    currentCaptain?.id,
+    currentCaptain?.auto_pick_enabled,
+    availablePlayers.length,
+    handleTimerExpire,
+  ])
 
   return (
     <div className="space-y-6">
@@ -320,8 +344,8 @@ export function DraftBoard({
             {league.status === 'completed'
               ? 'Draft Complete'
               : league.status === 'not_started'
-              ? 'Ready to Draft'
-              : `Round ${currentRound} of ${totalRounds}`}
+                ? 'Ready to Draft'
+                : `Round ${currentRound} of ${totalRounds}`}
           </h2>
           {isActive && currentCaptain && (
             <p className="text-muted-foreground">
@@ -329,10 +353,17 @@ export function DraftBoard({
                 <span className="font-medium text-primary">Your turn to pick!</span>
               ) : (
                 <>
-                  <span className="font-medium">{currentCaptain.team_name || currentCaptain.name}</span> is picking...
+                  <span className="font-medium">
+                    {currentCaptain.team_name || currentCaptain.name}
+                  </span>{' '}
+                  is picking...
                   {picksUntilMyTurn !== null && (
                     <span className="ml-2 text-sm">
-                      ({picksUntilMyTurn === 1 ? 'You pick next' : `${picksUntilMyTurn} picks until your turn`})
+                      (
+                      {picksUntilMyTurn === 1
+                        ? 'You pick next'
+                        : `${picksUntilMyTurn} picks until your turn`}
+                      )
                     </span>
                   )}
                 </>
@@ -341,7 +372,8 @@ export function DraftBoard({
           )}
           {isActive && onDeckCaptain && (
             <p className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-sm text-muted-foreground">
-              On deck: <span className="font-medium">{onDeckCaptain.team_name || onDeckCaptain.name}</span>
+              On deck:{' '}
+              <span className="font-medium">{onDeckCaptain.team_name || onDeckCaptain.name}</span>
               {viewingAsCaptain?.id === onDeckCaptain.id && (
                 <span className="font-medium text-primary">(you)</span>
               )}
@@ -435,9 +467,7 @@ export function DraftBoard({
 
         <Card className={viewingAsCaptain ? 'lg:col-span-2' : 'lg:col-span-2'}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>
-              {canPick ? 'Select a Player' : 'Available Players'}
-            </CardTitle>
+            <CardTitle>{canPick ? 'Select a Player' : 'Available Players'}</CardTitle>
             <button
               type="button"
               onClick={() => setIsPlayerPoolExpanded(true)}
@@ -531,18 +561,14 @@ export function DraftBoard({
       </Card>
 
       {/* Keyboard Shortcuts Modal */}
-      {showShortcuts && (
-        <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />
-      )}
+      {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
       {/* Expanded Player Pool Modal */}
       {isPlayerPoolExpanded && (
         <ExpandedPoolModal onClose={() => setIsPlayerPoolExpanded(false)}>
           <Card className="flex h-[90vh] w-full max-w-4xl flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 flex-shrink-0">
-              <CardTitle>
-                {canPick ? 'Select a Player' : 'Available Players'}
-              </CardTitle>
+              <CardTitle>{canPick ? 'Select a Player' : 'Available Players'}</CardTitle>
               <button
                 type="button"
                 onClick={() => setIsPlayerPoolExpanded(false)}
@@ -586,7 +612,13 @@ export function DraftBoard({
   )
 }
 
-function ExpandedPoolModal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function ExpandedPoolModal({
+  children,
+  onClose,
+}: {
+  children: React.ReactNode
+  onClose: () => void
+}) {
   const { overlayProps } = useModalFocus({ onClose })
 
   return (

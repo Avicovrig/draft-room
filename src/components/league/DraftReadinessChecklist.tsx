@@ -30,7 +30,11 @@ const statusColor: Record<Status, string> = {
   warn: 'text-yellow-600 dark:text-yellow-400',
 }
 
-export function DraftReadinessChecklist({ league, fieldSchemas, customFieldsMap }: DraftReadinessChecklistProps) {
+export function DraftReadinessChecklist({
+  league,
+  fieldSchemas,
+  customFieldsMap,
+}: DraftReadinessChecklistProps) {
   const items = useMemo(() => {
     const result: ChecklistItem[] = []
 
@@ -40,9 +44,10 @@ export function DraftReadinessChecklist({ league, fieldSchemas, customFieldsMap 
       id: 'captains',
       label: 'Captains added',
       status: captainCount >= 2 ? 'pass' : 'fail',
-      detail: captainCount >= 2
-        ? `${captainCount} captains ready`
-        : `Need at least 2 captains (${captainCount} added)`,
+      detail:
+        captainCount >= 2
+          ? `${captainCount} captains ready`
+          : `Need at least 2 captains (${captainCount} added)`,
     })
 
     // 2. Enough available players (blocking) — excludes captain-linked players
@@ -52,19 +57,20 @@ export function DraftReadinessChecklist({ league, fieldSchemas, customFieldsMap 
       id: 'players',
       label: 'Enough players',
       status: availableCount >= captainCount ? 'pass' : 'fail',
-      detail: availableCount >= captainCount
-        ? `${availableCount} available players for ${captainCount} captains`
-        : `Need at least ${captainCount} available players (${availableCount} available)`,
+      detail:
+        availableCount >= captainCount
+          ? `${availableCount} available players for ${captainCount} captains`
+          : `Need at least ${captainCount} available players (${availableCount} available)`,
     })
 
     // 3. Player profiles complete (warning, only if required schemas exist)
-    const requiredSchemas = fieldSchemas.filter(s => s.is_required && s.field_type !== 'checkbox')
+    const requiredSchemas = fieldSchemas.filter((s) => s.is_required && s.field_type !== 'checkbox')
     if (requiredSchemas.length > 0 && customFieldsMap !== undefined) {
       let incompleteCount = 0
       for (const player of league.players) {
         const playerFields = customFieldsMap[player.id] || []
-        const hasAll = requiredSchemas.every(schema => {
-          const field = playerFields.find(f => f.schema_id === schema.id)
+        const hasAll = requiredSchemas.every((schema) => {
+          const field = playerFields.find((f) => f.schema_id === schema.id)
           return field && field.field_value && field.field_value.trim() !== ''
         })
         if (!hasAll) incompleteCount++
@@ -74,9 +80,10 @@ export function DraftReadinessChecklist({ league, fieldSchemas, customFieldsMap 
         id: 'profiles',
         label: 'Player profiles complete',
         status: incompleteCount === 0 ? 'pass' : 'warn',
-        detail: incompleteCount === 0
-          ? 'All profiles complete'
-          : `${incompleteCount} player${incompleteCount === 1 ? '' : 's'} missing required fields`,
+        detail:
+          incompleteCount === 0
+            ? 'All profiles complete'
+            : `${incompleteCount} player${incompleteCount === 1 ? '' : 's'} missing required fields`,
       })
     }
 
@@ -93,14 +100,16 @@ export function DraftReadinessChecklist({ league, fieldSchemas, customFieldsMap 
     return result
   }, [league, fieldSchemas, customFieldsMap])
 
-  const allBlockingPass = items.every(i => i.status !== 'fail')
+  const allBlockingPass = items.every((i) => i.status !== 'fail')
 
   return (
-    <div className={`mt-4 rounded-lg border p-4 ${
-      allBlockingPass
-        ? 'border-green-200 bg-green-50/50 dark:border-green-900/50 dark:bg-green-950/20'
-        : 'border-border bg-card'
-    }`}>
+    <div
+      className={`mt-4 rounded-lg border p-4 ${
+        allBlockingPass
+          ? 'border-green-200 bg-green-50/50 dark:border-green-900/50 dark:bg-green-950/20'
+          : 'border-border bg-card'
+      }`}
+    >
       <div className="mb-2 flex items-center gap-2">
         <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium">Draft Readiness</span>
@@ -111,7 +120,7 @@ export function DraftReadinessChecklist({ league, fieldSchemas, customFieldsMap 
         )}
       </div>
       <div className="space-y-1.5">
-        {items.map(item => {
+        {items.map((item) => {
           const Icon = statusIcon[item.status]
           return (
             <div key={item.id} className="flex items-center gap-2 text-sm">

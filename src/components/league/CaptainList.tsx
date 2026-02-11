@@ -41,7 +41,10 @@ export function CaptainList({ league }: CaptainListProps) {
   const uploadTeamPhoto = useUploadTeamPhoto()
   const { addToast } = useToast()
   const closePhotoModal = useCallback(() => setEditingTeamPhotoId(null), [])
-  const { overlayProps: photoModalOverlayProps } = useModalFocus({ onClose: closePhotoModal, enabled: !!editingTeamPhotoId })
+  const { overlayProps: photoModalOverlayProps } = useModalFocus({
+    onClose: closePhotoModal,
+    enabled: !!editingTeamPhotoId,
+  })
 
   const defaultColors = ['#3B82F6', '#EF4444', '#22C55E', '#A855F7']
 
@@ -203,7 +206,9 @@ export function CaptainList({ league }: CaptainListProps) {
                     value={selectedPlayerId}
                     onChange={(e) => setSelectedPlayerId(e.target.value)}
                     className="flex-1"
-                    disabled={league.captains.length >= 4 || availablePlayersForCaptain.length === 0}
+                    disabled={
+                      league.captains.length >= 4 || availablePlayersForCaptain.length === 0
+                    }
                   >
                     <option value="">Select a player...</option>
                     {availablePlayersForCaptain.map((player) => (
@@ -215,9 +220,7 @@ export function CaptainList({ league }: CaptainListProps) {
                   <Button
                     type="submit"
                     disabled={
-                      createCaptain.isPending ||
-                      !selectedPlayerId ||
-                      league.captains.length >= 4
+                      createCaptain.isPending || !selectedPlayerId || league.captains.length >= 4
                     }
                   >
                     <Plus className="mr-2 h-4 w-4" />
@@ -260,25 +263,22 @@ export function CaptainList({ league }: CaptainListProps) {
             </form>
 
             {league.captains.length >= 4 && (
-              <p className="text-sm text-muted-foreground">
-                Maximum of 4 captains reached.
-              </p>
+              <p className="text-sm text-muted-foreground">Maximum of 4 captains reached.</p>
             )}
-            {captainMode === 'select' && availablePlayersForCaptain.length === 0 && league.captains.length < 4 && (
-              <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                All players are already captains. Add more players or create a non-player captain.
-              </p>
-            )}
+            {captainMode === 'select' &&
+              availablePlayersForCaptain.length === 0 &&
+              league.captains.length < 4 && (
+                <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                  All players are already captains. Add more players or create a non-player captain.
+                </p>
+              )}
 
             <div className="border-t border-border pt-4">
               {showRandomAssign ? (
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Number of Captains</Label>
-                    <Select
-                      value={randomCount}
-                      onChange={(e) => setRandomCount(e.target.value)}
-                    >
+                    <Select value={randomCount} onChange={(e) => setRandomCount(e.target.value)}>
                       <option value="2">2 Captains</option>
                       <option value="3">3 Captains</option>
                       <option value="4">4 Captains</option>
@@ -290,7 +290,9 @@ export function CaptainList({ league }: CaptainListProps) {
                   <div className="flex gap-2">
                     <Button
                       onClick={handleRandomAssign}
-                      disabled={assignRandom.isPending || league.players.length < parseInt(randomCount)}
+                      disabled={
+                        assignRandom.isPending || league.players.length < parseInt(randomCount)
+                      }
                     >
                       {assignRandom.isPending ? 'Assigning...' : 'Assign Random Captains'}
                     </Button>
@@ -328,7 +330,10 @@ export function CaptainList({ league }: CaptainListProps) {
             )}
           </div>
           <CardDescription>
-            Captains will pick in this order. {league.draft_type === 'snake' ? 'Order reverses each round.' : 'Same order every round.'}
+            Captains will pick in this order.{' '}
+            {league.draft_type === 'snake'
+              ? 'Order reverses each round.'
+              : 'Same order every round.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -361,7 +366,9 @@ export function CaptainList({ league }: CaptainListProps) {
                         <button
                           type="button"
                           onClick={() => handleMoveDown(index)}
-                          disabled={index === sortedCaptains.length - 1 || reorderCaptains.isPending}
+                          disabled={
+                            index === sortedCaptains.length - 1 || reorderCaptains.isPending
+                          }
                           className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
                           aria-label="Move down"
                         >
@@ -394,7 +401,11 @@ export function CaptainList({ league }: CaptainListProps) {
                       />
                     )}
                     {captain.team_photo_url ? (
-                      <img src={captain.team_photo_url} alt="" className="h-8 w-8 rounded object-cover flex-shrink-0" />
+                      <img
+                        src={captain.team_photo_url}
+                        alt=""
+                        className="h-8 w-8 rounded object-cover flex-shrink-0"
+                      />
                     ) : null}
                     {isEditable && (
                       <button
@@ -471,7 +482,10 @@ export function CaptainList({ league }: CaptainListProps) {
       </Card>
 
       {editingTeamPhotoId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" {...photoModalOverlayProps}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          {...photoModalOverlayProps}
+        >
           <div className="mx-4 w-full max-w-md rounded-lg bg-background p-4">
             <ImageCropper
               onCropComplete={(blob) => {
@@ -483,7 +497,11 @@ export function CaptainList({ league }: CaptainListProps) {
                   },
                   {
                     onSuccess: () => addToast('Team photo updated', 'success'),
-                    onError: (err) => addToast(err instanceof Error ? err.message : 'Failed to upload photo', 'error'),
+                    onError: (err) =>
+                      addToast(
+                        err instanceof Error ? err.message : 'Failed to upload photo',
+                        'error'
+                      ),
                   }
                 )
                 setEditingTeamPhotoId(null)

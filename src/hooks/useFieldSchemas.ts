@@ -93,10 +93,7 @@ export function useDeleteFieldSchema() {
 
   return useMutation({
     mutationFn: async ({ id, leagueId }: { id: string; leagueId: string }) => {
-      const { error } = await supabase
-        .from('league_field_schemas')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from('league_field_schemas').delete().eq('id', id)
 
       if (error) throw error
       return { leagueId }
@@ -114,10 +111,7 @@ export function useReorderFieldSchemas() {
   return useMutation({
     mutationFn: async ({ leagueId, schemaIds }: { leagueId: string; schemaIds: string[] }) => {
       const updates = schemaIds.map((id, index) =>
-        supabase
-          .from('league_field_schemas')
-          .update({ field_order: index })
-          .eq('id', id)
+        supabase.from('league_field_schemas').update({ field_order: index }).eq('id', id)
       )
 
       const results = await Promise.all(updates)

@@ -14,10 +14,12 @@ export function useDraftQueue(captainId: string | undefined) {
 
       const { data, error } = await supabase
         .from('captain_draft_queues')
-        .select(`
+        .select(
+          `
           *,
           player:players(id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at)
-        `)
+        `
+        )
         .eq('captain_id', captainId)
         .order('position', { ascending: true })
 
@@ -77,10 +79,7 @@ export function useRemoveFromQueue() {
 
   return useMutation({
     mutationFn: async ({ queueEntryId }: RemoveFromQueueInput) => {
-      const { error } = await supabase
-        .from('captain_draft_queues')
-        .delete()
-        .eq('id', queueEntryId)
+      const { error } = await supabase.from('captain_draft_queues').delete().eq('id', queueEntryId)
 
       if (error) throw error
     },
@@ -123,7 +122,10 @@ export function useMoveInQueue() {
       // Phase 1: Set all positions to negative temporary values (parallel)
       const tempResults = await Promise.all(
         reordered.map((entry, i) =>
-          supabase.from('captain_draft_queues').update({ position: -(i + 1) }).eq('id', entry.id)
+          supabase
+            .from('captain_draft_queues')
+            .update({ position: -(i + 1) })
+            .eq('id', entry.id)
         )
       )
       const tempError = tempResults.find((r) => r.error)
@@ -153,7 +155,9 @@ export function useMoveInQueue() {
           const [item] = updated.splice(currentIndex, 1)
           updated.splice(newPosition, 0, item)
           // Update position values to match new order (immutable — don't mutate cached objects)
-          for (let i = 0; i < updated.length; i++) { updated[i] = { ...updated[i], position: i } }
+          for (let i = 0; i < updated.length; i++) {
+            updated[i] = { ...updated[i], position: i }
+          }
           queryClient.setQueryData(['draft-queue', captainId], updated)
         }
       }

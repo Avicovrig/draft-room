@@ -46,16 +46,12 @@ export function Login() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Log In</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Sign in to manage your leagues
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">Sign in to manage your leagues</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
+            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}
 
           <div className="space-y-2">
@@ -67,9 +63,7 @@ export function Login() {
               error={!!errors.email}
               {...register('email')}
             />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
+            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -92,7 +86,10 @@ export function Login() {
 
         <p className="text-center text-sm text-muted-foreground">
           Don't have an account?{' '}
-          <Link to="/auth/signup" className="text-primary underline underline-offset-4 hover:text-primary/80">
+          <Link
+            to="/auth/signup"
+            className="text-primary underline underline-offset-4 hover:text-primary/80"
+          >
             Sign up
           </Link>
         </p>

@@ -32,16 +32,18 @@ function formatFieldValue(field: PlayerCustomField, schema?: LeagueFieldSchema):
     case 'date': {
       const date = new Date(value)
       if (isNaN(date.getTime())) return value
-      return schema.field_options?.includeTime
-        ? date.toLocaleString()
-        : date.toLocaleDateString()
+      return schema.field_options?.includeTime ? date.toLocaleString() : date.toLocaleDateString()
     }
     default:
       return value
   }
 }
 
-export function PlayerProfileView({ player, customFields = [], fieldSchemas = [] }: PlayerProfileViewProps) {
+export function PlayerProfileView({
+  player,
+  customFields = [],
+  fieldSchemas = [],
+}: PlayerProfileViewProps) {
   const sortedCustomFields = [...customFields].sort((a, b) => a.field_order - b.field_order)
   const schemaMap = new Map(fieldSchemas.map((s) => [s.id, s]))
 
@@ -81,7 +83,10 @@ export function PlayerProfileView({ player, customFields = [], fieldSchemas = []
             {sortedCustomFields.map((field) => {
               const schema = field.schema_id ? schemaMap.get(field.schema_id) : undefined
               return (
-                <div key={field.id} className="flex justify-between rounded-lg border border-border bg-muted/50 px-3 py-2">
+                <div
+                  key={field.id}
+                  className="flex justify-between rounded-lg border border-border bg-muted/50 px-3 py-2"
+                >
                   <dt className="text-muted-foreground">{field.field_name}</dt>
                   <dd className="font-medium">{formatFieldValue(field, schema)}</dd>
                 </div>

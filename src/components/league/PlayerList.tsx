@@ -22,7 +22,13 @@ interface PlayerListProps {
   tokens?: LeagueTokens | null
 }
 
-function EditProfileModal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function EditProfileModal({
+  children,
+  onClose,
+}: {
+  children: React.ReactNode
+  onClose: () => void
+}) {
   const { overlayProps } = useModalFocus({ onClose })
 
   return (
@@ -178,7 +184,15 @@ export function PlayerList({ league, customFieldsMap = {}, tokens }: PlayerListP
               {league.players.length > 0 && (
                 <Button
                   variant="outline"
-                  onClick={() => exportPlayersToSpreadsheet(league.name, league.players, league.captains, customFieldsMap, fieldSchemas)}
+                  onClick={() =>
+                    exportPlayersToSpreadsheet(
+                      league.name,
+                      league.players,
+                      league.captains,
+                      customFieldsMap,
+                      fieldSchemas
+                    )
+                  }
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Export Spreadsheet
@@ -217,12 +231,8 @@ export function PlayerList({ league, customFieldsMap = {}, tokens }: PlayerListP
       {/* Player List */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            Available Players ({availablePlayers.length})
-          </CardTitle>
-          <CardDescription>
-            Players available to be drafted.
-          </CardDescription>
+          <CardTitle>Available Players ({availablePlayers.length})</CardTitle>
+          <CardDescription>Players available to be drafted.</CardDescription>
         </CardHeader>
         <CardContent>
           {availablePlayers.length === 0 ? (
@@ -384,9 +394,7 @@ export function PlayerList({ league, customFieldsMap = {}, tokens }: PlayerListP
               {draftedPlayers
                 .sort((a, b) => (a.draft_pick_number ?? 0) - (b.draft_pick_number ?? 0))
                 .map((player) => {
-                  const captain = league.captains.find(
-                    (c) => c.id === player.drafted_by_captain_id
-                  )
+                  const captain = league.captains.find((c) => c.id === player.drafted_by_captain_id)
                   return (
                     <li key={player.id} className="flex items-center justify-between py-2">
                       <span>{player.name}</span>

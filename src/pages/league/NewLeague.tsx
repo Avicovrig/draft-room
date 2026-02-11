@@ -17,7 +17,6 @@ const createLeagueSchema = z.object({
   time_limit_seconds: z.coerce.number().min(15).max(1800),
 })
 
-
 export function NewLeague() {
   const navigate = useNavigate()
   const createLeague = useCreateLeague()
@@ -36,7 +35,11 @@ export function NewLeague() {
     },
   })
 
-  async function onSubmit(data: { name: string; draft_type: 'snake' | 'round_robin'; time_limit_seconds: number }) {
+  async function onSubmit(data: {
+    name: string
+    draft_type: 'snake' | 'round_robin'
+    time_limit_seconds: number
+  }) {
     setError(null)
     try {
       const league = await createLeague.mutateAsync(data)
@@ -81,9 +84,7 @@ export function NewLeague() {
                   error={!!errors.name}
                   {...register('name')}
                 />
-                {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name.message}</p>
-                )}
+                {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
               </div>
 
               <div className="space-y-2">
@@ -112,8 +113,8 @@ export function NewLeague() {
                   <option value="1800">30 minutes</option>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  If a captain doesn't pick in time, a random player will be selected.
-                  For example, 4 captains drafting 20 players at 2 min/pick ≈ 40 minutes.
+                  If a captain doesn't pick in time, a random player will be selected. For example,
+                  4 captains drafting 20 players at 2 min/pick ≈ 40 minutes.
                 </p>
               </div>
 
@@ -121,11 +122,7 @@ export function NewLeague() {
                 <Button type="submit" loading={isSubmitting}>
                   Create League
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/dashboard')}
-                >
+                <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>
                   Cancel
                 </Button>
               </div>

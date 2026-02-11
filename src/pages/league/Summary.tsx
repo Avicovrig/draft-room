@@ -90,9 +90,7 @@ export function Summary() {
   }
 
   const isManager = league.manager_id === user?.id
-  const sortedCaptains = [...league.captains].sort(
-    (a, b) => a.draft_position - b.draft_position
-  )
+  const sortedCaptains = [...league.captains].sort((a, b) => a.draft_position - b.draft_position)
 
   function getPlayersForCaptain(captainId: string): PlayerPublic[] {
     return league!.players
@@ -124,15 +122,32 @@ export function Summary() {
   const sortedPicks = [...league.draft_picks].sort((a, b) => a.pick_number - b.pick_number)
   const pickDeltas: { seconds: number; captainId: string; pickNumber: number }[] = []
   for (let i = 1; i < sortedPicks.length; i++) {
-    const delta = (new Date(sortedPicks[i].picked_at).getTime() - new Date(sortedPicks[i - 1].picked_at).getTime()) / 1000
+    const delta =
+      (new Date(sortedPicks[i].picked_at).getTime() -
+        new Date(sortedPicks[i - 1].picked_at).getTime()) /
+      1000
     if (delta > 0 && delta < league.time_limit_seconds * 2) {
-      pickDeltas.push({ seconds: delta, captainId: sortedPicks[i].captain_id, pickNumber: sortedPicks[i].pick_number })
+      pickDeltas.push({
+        seconds: delta,
+        captainId: sortedPicks[i].captain_id,
+        pickNumber: sortedPicks[i].pick_number,
+      })
     }
   }
-  const avgPickTime = pickDeltas.length > 0 ? pickDeltas.reduce((sum, d) => sum + d.seconds, 0) / pickDeltas.length : 0
-  const fastestPick = pickDeltas.length > 0 ? pickDeltas.reduce((min, d) => d.seconds < min.seconds ? d : min) : null
-  const slowestPick = pickDeltas.length > 0 ? pickDeltas.reduce((max, d) => d.seconds > max.seconds ? d : max) : null
-  const autoPickRate = league.draft_picks.length > 0 ? (totalAutoPicks / league.draft_picks.length) * 100 : 0
+  const avgPickTime =
+    pickDeltas.length > 0
+      ? pickDeltas.reduce((sum, d) => sum + d.seconds, 0) / pickDeltas.length
+      : 0
+  const fastestPick =
+    pickDeltas.length > 0
+      ? pickDeltas.reduce((min, d) => (d.seconds < min.seconds ? d : min))
+      : null
+  const slowestPick =
+    pickDeltas.length > 0
+      ? pickDeltas.reduce((max, d) => (d.seconds > max.seconds ? d : max))
+      : null
+  const autoPickRate =
+    league.draft_picks.length > 0 ? (totalAutoPicks / league.draft_picks.length) * 100 : 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -141,11 +156,17 @@ export function Summary() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <Breadcrumb items={
-            isManager
-              ? [{ label: 'Dashboard', href: '/dashboard' }, { label: league.name }, { label: 'Summary' }]
-              : [{ label: league.name }, { label: 'Summary' }]
-          } />
+          <Breadcrumb
+            items={
+              isManager
+                ? [
+                    { label: 'Dashboard', href: '/dashboard' },
+                    { label: league.name },
+                    { label: 'Summary' },
+                  ]
+                : [{ label: league.name }, { label: 'Summary' }]
+            }
+          />
 
           {/* Hero Header for Completed Draft */}
           {league.status === 'completed' ? (
@@ -176,8 +197,8 @@ export function Summary() {
               {league.status === 'not_started'
                 ? 'The draft has not started yet.'
                 : league.status === 'paused'
-                ? 'The draft is currently paused.'
-                : `Pick ${league.current_pick_index + 1} is in progress.`}
+                  ? 'The draft is currently paused.'
+                  : `Pick ${league.current_pick_index + 1} is in progress.`}
             </p>
           </div>
         )}
@@ -191,7 +212,9 @@ export function Summary() {
                   <Zap className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <div className="text-3xl font-bold"><AnimatedStat value={league.draft_picks.length} delay={0.1} /></div>
+                  <div className="text-3xl font-bold">
+                    <AnimatedStat value={league.draft_picks.length} delay={0.1} />
+                  </div>
                   <div className="text-sm text-muted-foreground">Total Picks</div>
                 </div>
               </div>
@@ -204,7 +227,9 @@ export function Summary() {
                   <Users className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <div className="text-3xl font-bold"><AnimatedStat value={league.captains.length} delay={0.2} /></div>
+                  <div className="text-3xl font-bold">
+                    <AnimatedStat value={league.captains.length} delay={0.2} />
+                  </div>
                   <div className="text-sm text-muted-foreground">Teams</div>
                 </div>
               </div>
@@ -217,7 +242,9 @@ export function Summary() {
                   <Clock className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <div className="text-3xl font-bold"><AnimatedStat value={totalRounds} delay={0.3} /></div>
+                  <div className="text-3xl font-bold">
+                    <AnimatedStat value={totalRounds} delay={0.3} />
+                  </div>
                   <div className="text-sm text-muted-foreground">Rounds</div>
                 </div>
               </div>
@@ -230,7 +257,9 @@ export function Summary() {
                   <Zap className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
                 <div>
-                  <div className="text-3xl font-bold"><AnimatedStat value={totalAutoPicks} delay={0.4} /></div>
+                  <div className="text-3xl font-bold">
+                    <AnimatedStat value={totalAutoPicks} delay={0.4} />
+                  </div>
                   <div className="text-sm text-muted-foreground">Auto Picks</div>
                 </div>
               </div>
@@ -290,9 +319,12 @@ export function Summary() {
                       <Zap className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <div className="text-lg font-semibold">{formatPickTime(fastestPick.seconds)}</div>
+                      <div className="text-lg font-semibold">
+                        {formatPickTime(fastestPick.seconds)}
+                      </div>
                       <div className="text-sm text-muted-foreground">
-                        Fastest (Pick #{fastestPick.pickNumber} — {getCaptainDisplayName(fastestPick.captainId)})
+                        Fastest (Pick #{fastestPick.pickNumber} —{' '}
+                        {getCaptainDisplayName(fastestPick.captainId)})
                       </div>
                     </div>
                   </div>
@@ -304,9 +336,12 @@ export function Summary() {
                       <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                     </div>
                     <div>
-                      <div className="text-lg font-semibold">{formatPickTime(slowestPick.seconds)}</div>
+                      <div className="text-lg font-semibold">
+                        {formatPickTime(slowestPick.seconds)}
+                      </div>
                       <div className="text-sm text-muted-foreground">
-                        Slowest (Pick #{slowestPick.pickNumber} — {getCaptainDisplayName(slowestPick.captainId)})
+                        Slowest (Pick #{slowestPick.pickNumber} —{' '}
+                        {getCaptainDisplayName(slowestPick.captainId)})
                       </div>
                     </div>
                   </div>
@@ -343,7 +378,13 @@ export function Summary() {
               >
                 <CardHeader
                   className="bg-gradient-to-r from-primary/10 to-transparent"
-                  style={captain.team_color ? { background: `linear-gradient(to right, ${captain.team_color}20, transparent)` } : undefined}
+                  style={
+                    captain.team_color
+                      ? {
+                          background: `linear-gradient(to right, ${captain.team_color}20, transparent)`,
+                        }
+                      : undefined
+                  }
                 >
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -356,7 +397,9 @@ export function Summary() {
                       ) : (
                         <div
                           className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground flex-shrink-0"
-                          style={captain.team_color ? { backgroundColor: captain.team_color } : undefined}
+                          style={
+                            captain.team_color ? { backgroundColor: captain.team_color } : undefined
+                          }
                         >
                           {captain.draft_position}
                         </div>
@@ -364,7 +407,9 @@ export function Summary() {
                       <div>
                         <span>{captain.team_name || captain.name}</span>
                         {captain.team_name && (
-                          <span className="block text-sm font-normal text-muted-foreground">{captain.name}</span>
+                          <span className="block text-sm font-normal text-muted-foreground">
+                            {captain.name}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -473,12 +518,16 @@ function PickHistory({
                   const captain = captains.find((c) => c.id === pick.captain_id)
                   const player = players.find((p) => p.id === pick.player_id)
                   const round = Math.floor((pick.pick_number - 1) / captainCount) + 1
-                  const prevRound = i > 0 ? Math.floor((historyPicks[i - 1].pick_number - 1) / captainCount) + 1 : 0
+                  const prevRound =
+                    i > 0 ? Math.floor((historyPicks[i - 1].pick_number - 1) / captainCount) + 1 : 0
                   const showRoundHeader = round !== prevRound
 
                   let timeDelta = ''
                   if (i > 0) {
-                    const delta = (new Date(pick.picked_at).getTime() - new Date(historyPicks[i - 1].picked_at).getTime()) / 1000
+                    const delta =
+                      (new Date(pick.picked_at).getTime() -
+                        new Date(historyPicks[i - 1].picked_at).getTime()) /
+                      1000
                     if (delta > 0 && delta < timeLimitSeconds * 2) {
                       timeDelta = formatPickTime(delta)
                     }
@@ -488,7 +537,10 @@ function PickHistory({
                     <Fragment key={pick.id}>
                       {showRoundHeader && (
                         <tr>
-                          <td colSpan={5} className="bg-muted/50 px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+                          <td
+                            colSpan={5}
+                            className="bg-muted/50 px-3 py-1.5 text-xs font-semibold text-muted-foreground"
+                          >
                             Round {round}
                           </td>
                         </tr>

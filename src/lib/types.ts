@@ -328,4 +328,3 @@ export interface ValidatedPlayerProfile extends PlayerPublicWithCustomFields {
   linked_captain_access_token: string | null
   league_spectator_token: string | null
 }
-

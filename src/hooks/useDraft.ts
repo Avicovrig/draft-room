@@ -30,7 +30,12 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
 
   // Use polling as fallback when subscription isn't connected or draft is active
   // Poll every 2 seconds during active draft for reliability
-  const { data: league, isLoading, error, dataUpdatedAt } = useLeague(leagueId, {
+  const {
+    data: league,
+    isLoading,
+    error,
+    dataUpdatedAt,
+  } = useLeague(leagueId, {
     refetchInterval: isSubscribed ? false : 2000,
   })
 
@@ -230,7 +235,10 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
       const { data, error, response: rawResponse } = response
 
       if (error) {
-        const message = await parseEdgeFunctionError(rawResponse, 'Failed to make pick. Please try again.')
+        const message = await parseEdgeFunctionError(
+          rawResponse,
+          'Failed to make pick. Please try again.'
+        )
         throw new Error(message)
       }
 

@@ -72,7 +72,8 @@ export function DraftControls({
   if (status === 'not_started') {
     const reasons: string[] = []
     if (captainCount < 2) reasons.push(`Need at least 2 captains (have ${captainCount})`)
-    if (playerCount < captainCount) reasons.push(`Need at least ${captainCount} available players (have ${playerCount})`)
+    if (playerCount < captainCount)
+      reasons.push(`Need at least ${captainCount} available players (have ${playerCount})`)
 
     return (
       <div className="space-y-2">
@@ -88,7 +89,9 @@ export function DraftControls({
         </Button>
         {!canStart && reasons.length > 0 && (
           <div className="rounded-md bg-yellow-500/10 p-3 text-sm text-yellow-600 dark:text-yellow-400">
-            {reasons.map((r, i) => <div key={i}>{r}</div>)}
+            {reasons.map((r, i) => (
+              <div key={i}>{r}</div>
+            ))}
           </div>
         )}
       </div>
@@ -103,11 +106,7 @@ export function DraftControls({
         </div>
 
         <div className="flex gap-2">
-          <Button
-            onClick={() => handleAction(onResume)}
-            loading={isLoading}
-            className="flex-1"
-          >
+          <Button onClick={() => handleAction(onResume)} loading={isLoading} className="flex-1">
             <Play className="mr-2 h-4 w-4" />
             Resume Draft
           </Button>
@@ -197,15 +196,10 @@ export function DraftControls({
         <Pause className="mr-2 h-5 w-5" />
         Pause Draft
       </Button>
-      {hasPicks && (
-        showUndoConfirm ? (
+      {hasPicks &&
+        (showUndoConfirm ? (
           <div className="flex gap-2">
-            <Button
-              variant="destructive"
-              size="lg"
-              onClick={handleUndo}
-              loading={isLoading}
-            >
+            <Button variant="destructive" size="lg" onClick={handleUndo} loading={isLoading}>
               Confirm Undo
             </Button>
             <Button
@@ -228,8 +222,7 @@ export function DraftControls({
             <Undo2 className="mr-2 h-4 w-4" />
             Undo Pick
           </Button>
-        )
-      )}
+        ))}
     </div>
   )
 }

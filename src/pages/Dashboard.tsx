@@ -24,7 +24,7 @@ export function Dashboard() {
   const filteredLeagues = leagues
     ? statusFilter === 'all'
       ? leagues
-      : leagues.filter(l => l.status === statusFilter)
+      : leagues.filter((l) => l.status === statusFilter)
     : []
 
   return (
@@ -34,9 +34,7 @@ export function Dashboard() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Your Leagues</h1>
-            <p className="mt-1 text-muted-foreground">
-              Logged in as {user?.email}
-            </p>
+            <p className="mt-1 text-muted-foreground">Logged in as {user?.email}</p>
           </div>
           <Link
             to="/league/new"
@@ -75,7 +73,10 @@ export function Dashboard() {
               ))}
             </div>
           ) : error ? (
-            <ErrorAlert message="Failed to load leagues. Please try again." onRetry={() => refetch()} />
+            <ErrorAlert
+              message="Failed to load leagues. Please try again."
+              onRetry={() => refetch()}
+            />
           ) : leagues && leagues.length > 0 ? (
             filteredLeagues.length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

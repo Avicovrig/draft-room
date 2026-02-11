@@ -1,12 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
-import type { LeaguePublic, LeagueFullPublic, LeagueTokens, DraftType, LeagueStatus } from '@/lib/types'
+import type {
+  LeaguePublic,
+  LeagueFullPublic,
+  LeagueTokens,
+  DraftType,
+  LeagueStatus,
+} from '@/lib/types'
 
 // Explicit column lists excluding token columns (revoked from anon/authenticated roles)
-const LEAGUE_COLUMNS = 'id, manager_id, name, draft_type, time_limit_seconds, status, current_pick_index, current_pick_started_at, scheduled_start_at, allow_player_custom_fields, created_at, updated_at'
-const CAPTAIN_COLUMNS = 'id, league_id, name, is_participant, draft_position, player_id, auto_pick_enabled, team_color, team_name, team_photo_url, created_at'
-const PLAYER_COLUMNS = 'id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at'
+const LEAGUE_COLUMNS =
+  'id, manager_id, name, draft_type, time_limit_seconds, status, current_pick_index, current_pick_started_at, scheduled_start_at, allow_player_custom_fields, created_at, updated_at'
+const CAPTAIN_COLUMNS =
+  'id, league_id, name, is_participant, draft_position, player_id, auto_pick_enabled, team_color, team_name, team_photo_url, created_at'
+const PLAYER_COLUMNS =
+  'id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at'
 
 export function useLeagues() {
   const { user } = useAuth()
@@ -41,12 +50,14 @@ export function useLeague(id: string | undefined, options?: UseLeagueOptions) {
 
       const { data, error } = await supabase
         .from('leagues')
-        .select(`
+        .select(
+          `
           ${LEAGUE_COLUMNS},
           captains (${CAPTAIN_COLUMNS}),
           players (${PLAYER_COLUMNS}),
           draft_picks (id, captain_id, player_id, pick_number, is_auto_pick)
-        `)
+        `
+        )
         .eq('id', id)
         .single()
 
@@ -151,10 +162,7 @@ export function useDeleteLeague() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('leagues')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from('leagues').delete().eq('id', id)
 
       if (error) throw error
     },

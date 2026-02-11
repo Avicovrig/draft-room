@@ -21,10 +21,7 @@ export function NotFound() {
             Dashboard
           </Link>
         )}
-        <Link
-          to="/"
-          className="text-primary underline underline-offset-4 hover:text-primary/80"
-        >
+        <Link to="/" className="text-primary underline underline-offset-4 hover:text-primary/80">
           Home
         </Link>
       </div>

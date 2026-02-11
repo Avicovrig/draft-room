@@ -38,19 +38,9 @@ export function ScheduledCountdown({ scheduledTime, className = '' }: ScheduledC
     <div className={`flex items-center gap-2 text-muted-foreground ${className}`}>
       <Clock className="h-4 w-4" />
       <div>
-        <span className="text-foreground font-medium">
-          {formatScheduledTime(scheduledTime)}
-        </span>
-        {!isPast && (
-          <span className="ml-2 text-sm">
-            (in {countdown})
-          </span>
-        )}
-        {isPast && (
-          <span className="ml-2 text-sm text-primary font-medium">
-            Ready to start!
-          </span>
-        )}
+        <span className="text-foreground font-medium">{formatScheduledTime(scheduledTime)}</span>
+        {!isPast && <span className="ml-2 text-sm">(in {countdown})</span>}
+        {isPast && <span className="ml-2 text-sm text-primary font-medium">Ready to start!</span>}
       </div>
     </div>
   )

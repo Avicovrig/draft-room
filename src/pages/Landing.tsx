@@ -67,8 +67,8 @@ export function Landing() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-xl text-muted-foreground">
-            Run live fantasy drafts with your friends. Real-time picks,
-            automatic timers, and spectator links for everyone.
+            Run live fantasy drafts with your friends. Real-time picks, automatic timers, and
+            spectator links for everyone.
           </p>
 
           <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
@@ -121,9 +121,7 @@ export function Landing() {
                   <feature.icon className="h-6 w-6" />
                 </div>
                 <h3 className="mb-2 font-semibold">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {feature.description}
-                </p>
+                <p className="text-sm text-muted-foreground">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -133,9 +131,7 @@ export function Landing() {
       {/* How It Works Section */}
       <section className="px-4 py-16">
         <div className="container mx-auto max-w-4xl">
-          <h2 className="mb-12 text-center text-3xl font-bold">
-            Get drafting in minutes
-          </h2>
+          <h2 className="mb-12 text-center text-3xl font-bold">Get drafting in minutes</h2>
 
           <div className="grid gap-8 md:grid-cols-3">
             {steps.map((step, index) => (
@@ -149,9 +145,7 @@ export function Landing() {
                   {step.number}
                 </div>
                 <h3 className="mb-2 font-semibold">{step.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {step.description}
-                </p>
+                <p className="text-sm text-muted-foreground">{step.description}</p>
               </div>
             ))}
           </div>
@@ -170,9 +164,7 @@ export function Landing() {
       {/* Footer */}
       <footer className="border-t border-border px-4 py-8">
         <div className="container mx-auto max-w-4xl text-center">
-          <p className="text-sm text-muted-foreground">
-            Built for draft day
-          </p>
+          <p className="text-sm text-muted-foreground">Built for draft day</p>
         </div>
       </footer>
     </div>

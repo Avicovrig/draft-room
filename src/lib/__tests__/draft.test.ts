@@ -18,7 +18,9 @@ import {
 
 // --- Helpers ---
 
-function makeCaptain(overrides: Partial<CaptainPublic> & { id: string; draft_position: number }): CaptainPublic {
+function makeCaptain(
+  overrides: Partial<CaptainPublic> & { id: string; draft_position: number }
+): CaptainPublic {
   return {
     league_id: 'league-1',
     name: `Captain ${overrides.draft_position}`,
@@ -69,17 +71,20 @@ describe('getPickOrder', () => {
     })
 
     it('reverses for round 2', () => {
-      expect(getPickOrder(captains, 6, 'snake')).toEqual([
-        'c1', 'c2', 'c3',
-        'c3', 'c2', 'c1',
-      ])
+      expect(getPickOrder(captains, 6, 'snake')).toEqual(['c1', 'c2', 'c3', 'c3', 'c2', 'c1'])
     })
 
     it('alternates forward/reverse across multiple rounds', () => {
       expect(getPickOrder(captains, 9, 'snake')).toEqual([
-        'c1', 'c2', 'c3',
-        'c3', 'c2', 'c1',
-        'c1', 'c2', 'c3',
+        'c1',
+        'c2',
+        'c3',
+        'c3',
+        'c2',
+        'c1',
+        'c1',
+        'c2',
+        'c3',
       ])
     })
 
@@ -92,16 +97,11 @@ describe('getPickOrder', () => {
 
   describe('round robin draft', () => {
     it('repeats same order every round', () => {
-      expect(getPickOrder(captains, 6, 'round_robin')).toEqual([
-        'c1', 'c2', 'c3',
-        'c1', 'c2', 'c3',
-      ])
+      expect(getPickOrder(captains, 6, 'round_robin')).toEqual(['c1', 'c2', 'c3', 'c1', 'c2', 'c3'])
     })
 
     it('truncates to exact totalPicks', () => {
-      expect(getPickOrder(captains, 4, 'round_robin')).toEqual([
-        'c1', 'c2', 'c3', 'c1',
-      ])
+      expect(getPickOrder(captains, 4, 'round_robin')).toEqual(['c1', 'c2', 'c3', 'c1'])
     })
   })
 
@@ -412,14 +412,8 @@ describe('fromDatetimeLocal', () => {
 
 describe('getAvailablePlayers', () => {
   it('returns all players when none are drafted or captain-linked', () => {
-    const players = [
-      makePlayer({ id: 'p1' }),
-      makePlayer({ id: 'p2' }),
-      makePlayer({ id: 'p3' }),
-    ]
-    const captains = [
-      makeCaptain({ id: 'c1', draft_position: 1 }),
-    ]
+    const players = [makePlayer({ id: 'p1' }), makePlayer({ id: 'p2' }), makePlayer({ id: 'p3' })]
+    const captains = [makeCaptain({ id: 'c1', draft_position: 1 })]
     expect(getAvailablePlayers(players, captains)).toHaveLength(3)
   })
 
@@ -435,13 +429,8 @@ describe('getAvailablePlayers', () => {
   })
 
   it('excludes captain-linked players', () => {
-    const players = [
-      makePlayer({ id: 'p1' }),
-      makePlayer({ id: 'p2' }),
-    ]
-    const captains = [
-      makeCaptain({ id: 'c1', draft_position: 1, player_id: 'p1' }),
-    ]
+    const players = [makePlayer({ id: 'p1' }), makePlayer({ id: 'p2' })]
+    const captains = [makeCaptain({ id: 'c1', draft_position: 1, player_id: 'p1' })]
     const available = getAvailablePlayers(players, captains)
     expect(available).toHaveLength(1)
     expect(available[0].id).toBe('p2')
@@ -463,9 +452,7 @@ describe('getAvailablePlayers', () => {
   })
 
   it('returns empty array when all players are drafted', () => {
-    const players = [
-      makePlayer({ id: 'p1', drafted_by_captain_id: 'c1' }),
-    ]
+    const players = [makePlayer({ id: 'p1', drafted_by_captain_id: 'c1' })]
     const captains = [makeCaptain({ id: 'c1', draft_position: 1 })]
     expect(getAvailablePlayers(players, captains)).toHaveLength(0)
   })
@@ -476,9 +463,7 @@ describe('getAvailablePlayers', () => {
 
   it('handles captains with null player_id', () => {
     const players = [makePlayer({ id: 'p1' })]
-    const captains = [
-      makeCaptain({ id: 'c1', draft_position: 1, player_id: null }),
-    ]
+    const captains = [makeCaptain({ id: 'c1', draft_position: 1, player_id: null })]
     expect(getAvailablePlayers(players, captains)).toHaveLength(1)
   })
 })

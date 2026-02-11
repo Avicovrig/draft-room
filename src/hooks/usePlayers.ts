@@ -2,7 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { PlayerPublic } from '@/lib/types'
 
-const PLAYER_COLUMNS = 'id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at'
+const PLAYER_COLUMNS =
+  'id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at'
 
 interface CreatePlayerInput {
   league_id: string
@@ -41,7 +42,7 @@ export function useCreatePlayers() {
 
       const { data: players, error } = await supabase
         .from('players')
-        .insert(data.map(p => ({ league_id: p.league_id, name: p.name })))
+        .insert(data.map((p) => ({ league_id: p.league_id, name: p.name })))
         .select(PLAYER_COLUMNS)
 
       if (error) throw error
@@ -88,10 +89,7 @@ export function useDeletePlayer() {
 
   return useMutation({
     mutationFn: async ({ id, leagueId }: { id: string; leagueId: string }) => {
-      const { error } = await supabase
-        .from('players')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from('players').delete().eq('id', id)
 
       if (error) throw error
       return { leagueId }

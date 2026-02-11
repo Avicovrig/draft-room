@@ -17,11 +17,7 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       title={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      {resolvedTheme === 'dark' ? (
-        <Moon className="h-5 w-5" />
-      ) : (
-        <Sun className="h-5 w-5" />
-      )}
+      {resolvedTheme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
       <span className="sr-only">Toggle theme</span>
     </Button>
   )

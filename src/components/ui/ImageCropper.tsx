@@ -13,11 +13,7 @@ interface ImageCropperProps {
   onFileTooLarge?: () => void
 }
 
-function centerAspectCrop(
-  mediaWidth: number,
-  mediaHeight: number,
-  aspect: number
-): Crop {
+function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number): Crop {
   return centerCrop(
     makeAspectCrop(
       {
@@ -55,9 +51,7 @@ export function ImageCropper({
         return
       }
       const reader = new FileReader()
-      reader.addEventListener('load', () =>
-        setImgSrc(reader.result?.toString() || '')
-      )
+      reader.addEventListener('load', () => setImgSrc(reader.result?.toString() || ''))
       reader.readAsDataURL(file)
     }
   }
@@ -103,11 +97,7 @@ export function ImageCropper({
     )
 
     return new Promise((resolve) => {
-      canvas.toBlob(
-        (blob) => resolve(blob),
-        'image/jpeg',
-        0.75
-      )
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.75)
     })
   }, [completedCrop])
 
@@ -165,20 +155,10 @@ export function ImageCropper({
           </div>
 
           <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              className="flex-1"
-            >
+            <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
               Cancel
             </Button>
-            <Button
-              type="button"
-              onClick={handleSave}
-              disabled={!completedCrop}
-              className="flex-1"
-            >
+            <Button type="button" onClick={handleSave} disabled={!completedCrop} className="flex-1">
               Save
             </Button>
           </div>

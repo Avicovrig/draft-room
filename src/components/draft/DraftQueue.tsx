@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react'
 import { ChevronUp, ChevronDown, X, ListOrdered, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
-import { useDraftQueue, useRemoveFromQueue, useMoveInQueue, useToggleAutoPick } from '@/hooks/useDraftQueue'
+import {
+  useDraftQueue,
+  useRemoveFromQueue,
+  useMoveInQueue,
+  useToggleAutoPick,
+} from '@/hooks/useDraftQueue'
 import type { CaptainPublic, PlayerPublic } from '@/lib/types'
 import { getInitials } from '@/lib/utils'
 
@@ -131,9 +136,7 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
               }`}
             />
           </div>
-          <span className="text-sm font-medium">
-            Auto-pick
-          </span>
+          <span className="text-sm font-medium">Auto-pick</span>
         </button>
         <p className="mt-1 text-xs text-muted-foreground">
           {isAutoPickEnabled

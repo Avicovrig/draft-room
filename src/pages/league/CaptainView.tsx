@@ -106,15 +106,16 @@ export function CaptainView() {
       <Header />
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <Breadcrumb items={[
-            { label: league.name },
-            { label: `Captain: ${captain.name}` },
-          ]} />
+          <Breadcrumb items={[{ label: league.name }, { label: `Captain: ${captain.name}` }]} />
           <h1 className="text-3xl font-bold">{league.name}</h1>
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">Drafting as</span>
             {captain.team_photo_url ? (
-              <img src={captain.team_photo_url} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0" />
+              <img
+                src={captain.team_photo_url}
+                alt=""
+                className="h-6 w-6 rounded object-cover flex-shrink-0"
+              />
             ) : captain.team_color ? (
               <span
                 className="h-4 w-4 rounded-full flex-shrink-0"
@@ -195,7 +196,11 @@ export function CaptainView() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Team photo</span>
                   {captain.team_photo_url && (
-                    <img src={captain.team_photo_url} alt="Team" className="h-8 w-8 rounded object-cover" />
+                    <img
+                      src={captain.team_photo_url}
+                      alt="Team"
+                      className="h-8 w-8 rounded object-cover"
+                    />
                   )}
                   <Button
                     variant="outline"
@@ -213,7 +218,9 @@ export function CaptainView() {
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      navigate(`/player/${captain.player_id}/edit?token=${captain.linked_player_edit_token}`)
+                      navigate(
+                        `/player/${captain.player_id}/edit?token=${captain.linked_player_edit_token}`
+                      )
                     }
                   >
                     <Pencil className="mr-2 h-4 w-4" />
@@ -237,7 +244,11 @@ export function CaptainView() {
                     },
                     {
                       onSuccess: () => addToast('Team photo updated', 'success'),
-                      onError: (err) => addToast(err instanceof Error ? err.message : 'Failed to upload photo', 'error'),
+                      onError: (err) =>
+                        addToast(
+                          err instanceof Error ? err.message : 'Failed to upload photo',
+                          'error'
+                        ),
                     }
                   )
                   setShowTeamPhotoCropper(false)

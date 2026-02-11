@@ -8,14 +8,16 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 
-const signupSchema = z.object({
-  email: z.string().email('Please enter a valid email'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
-})
+const signupSchema = z
+  .object({
+    email: z.string().email('Please enter a valid email'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  })
 
 type SignupForm = z.infer<typeof signupSchema>
 
@@ -64,16 +66,12 @@ export function Signup() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Sign Up</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Create an account to start drafting
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">Create an account to start drafting</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
+            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}
 
           <div className="space-y-2">
@@ -85,9 +83,7 @@ export function Signup() {
               error={!!errors.email}
               {...register('email')}
             />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
+            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -123,7 +119,10 @@ export function Signup() {
 
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{' '}
-          <Link to="/auth/login" className="text-primary underline underline-offset-4 hover:text-primary/80">
+          <Link
+            to="/auth/login"
+            className="text-primary underline underline-offset-4 hover:text-primary/80"
+          >
             Log in
           </Link>
         </p>

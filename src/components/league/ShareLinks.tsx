@@ -58,7 +58,8 @@ export function ShareLinks({ league, tokens }: ShareLinksProps) {
         <CardHeader>
           <CardTitle>Spectator Link</CardTitle>
           <CardDescription>
-            Share this link with anyone who wants to watch the draft live. Spectators can only view, not make picks.
+            Share this link with anyone who wants to watch the draft live. Spectators can only view,
+            not make picks.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -96,7 +97,8 @@ export function ShareLinks({ league, tokens }: ShareLinksProps) {
         <CardHeader>
           <CardTitle>Captain Links</CardTitle>
           <CardDescription>
-            Each captain has a unique link that lets them make picks during their turn. Share each link only with the respective captain.
+            Each captain has a unique link that lets them make picks during their turn. Share each
+            link only with the respective captain.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -122,11 +124,7 @@ export function ShareLinks({ league, tokens }: ShareLinksProps) {
                       </span>
                     </Label>
                     <div className="flex gap-2">
-                      <Input
-                        value={captainUrl}
-                        readOnly
-                        className="font-mono text-xs sm:text-sm"
-                      />
+                      <Input value={captainUrl} readOnly className="font-mono text-xs sm:text-sm" />
                       <Button
                         variant="outline"
                         size="icon"
@@ -163,13 +161,16 @@ export function ShareLinks({ league, tokens }: ShareLinksProps) {
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>
-            <strong className="text-foreground">Spectators</strong> can watch the draft in real-time but cannot make any picks.
+            <strong className="text-foreground">Spectators</strong> can watch the draft in real-time
+            but cannot make any picks.
           </p>
           <p>
-            <strong className="text-foreground">Captains</strong> can make picks only when it's their turn. The timer shows how long they have to pick.
+            <strong className="text-foreground">Captains</strong> can make picks only when it's
+            their turn. The timer shows how long they have to pick.
           </p>
           <p>
-            <strong className="text-foreground">You (the manager)</strong> can view and control the draft from the Draft view, including pause/resume.
+            <strong className="text-foreground">You (the manager)</strong> can view and control the
+            draft from the Draft view, including pause/resume.
           </p>
         </CardContent>
       </Card>

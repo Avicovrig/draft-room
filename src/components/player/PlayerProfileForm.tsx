@@ -22,7 +22,13 @@ interface PlayerProfileFormProps {
 export interface ProfileFormData {
   bio: string | null
   profilePictureBlob?: Blob | null
-  customFields: Array<{ id?: string; field_name: string; field_value: string; field_order: number; schema_id?: string | null }>
+  customFields: Array<{
+    id?: string
+    field_name: string
+    field_value: string
+    field_order: number
+    schema_id?: string | null
+  }>
   deletedCustomFieldIds: string[]
 }
 
@@ -43,7 +49,9 @@ export function PlayerProfileForm({
   const [schemaErrors, setSchemaErrors] = useState<Record<string, boolean>>({})
 
   // Schema-backed fields state (manager-defined)
-  const [schemaFieldValues, setSchemaFieldValues] = useState<Record<string, { id?: string; value: string }>>(() => {
+  const [schemaFieldValues, setSchemaFieldValues] = useState<
+    Record<string, { id?: string; value: string }>
+  >(() => {
     const map: Record<string, { id?: string; value: string }> = {}
     for (const schema of fieldSchemas) {
       const existing = customFields.find((f) => f.schema_id === schema.id)
@@ -58,7 +66,9 @@ export function PlayerProfileForm({
 
   // Freeform custom fields state (player-defined, schema_id is null)
   const freeformCustomFields = customFields.filter((f) => !f.schema_id)
-  const [fields, setFields] = useState<Array<{ id?: string; field_name: string; field_value: string; field_order: number }>>(
+  const [fields, setFields] = useState<
+    Array<{ id?: string; field_name: string; field_value: string; field_order: number }>
+  >(
     freeformCustomFields.map((f) => ({
       id: f.id,
       field_name: f.field_name,
@@ -230,9 +240,7 @@ export function PlayerProfileForm({
                 {schema.field_type !== 'checkbox' && (
                   <label className="text-sm font-medium">
                     {schema.field_name}
-                    {schema.is_required && (
-                      <span className="ml-1 text-destructive">*</span>
-                    )}
+                    {schema.is_required && <span className="ml-1 text-destructive">*</span>}
                   </label>
                 )}
 
@@ -292,22 +300,20 @@ export function PlayerProfileForm({
                     <input
                       type="checkbox"
                       checked={value === 'true'}
-                      onChange={(e) => updateSchemaField(schema.id, e.target.checked ? 'true' : 'false')}
+                      onChange={(e) =>
+                        updateSchemaField(schema.id, e.target.checked ? 'true' : 'false')
+                      }
                       className="h-4 w-4 rounded border-border"
                     />
                     <span className="text-sm font-medium">
                       {schema.field_name}
-                      {schema.is_required && (
-                        <span className="ml-1 text-destructive">*</span>
-                      )}
+                      {schema.is_required && <span className="ml-1 text-destructive">*</span>}
                     </span>
                   </label>
                 )}
 
                 {schemaErrors[schema.id] && (
-                  <p className="text-xs text-destructive">
-                    {schema.field_name} is required
-                  </p>
+                  <p className="text-xs text-destructive">{schema.field_name} is required</p>
                 )}
               </div>
             )
@@ -316,53 +322,50 @@ export function PlayerProfileForm({
       )}
 
       {/* Freeform Custom Fields */}
-      {allowFreeformFields && <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label>Additional Info</Label>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={addCustomField}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            Add Field
-          </Button>
-        </div>
-
-        {fields.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No additional fields yet. Add one to include extra info.
-          </p>
-        )}
-
-        {fields.map((field, index) => (
-          <div key={field.id || `new-${index}`} className="flex items-start gap-2">
-            <div className="flex-1 space-y-2">
-              <Input
-                placeholder="Field name"
-                value={field.field_name}
-                onChange={(e) => updateCustomField(index, 'field_name', e.target.value)}
-              />
-              <Input
-                placeholder="Value"
-                value={field.field_value}
-                onChange={(e) => updateCustomField(index, 'field_value', e.target.value)}
-              />
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => removeCustomField(index)}
-              className="mt-1 text-muted-foreground hover:text-destructive"
-              aria-label="Remove field"
-            >
-              <X className="h-4 w-4" />
+      {allowFreeformFields && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label>Additional Info</Label>
+            <Button type="button" variant="ghost" size="sm" onClick={addCustomField}>
+              <Plus className="mr-1 h-4 w-4" />
+              Add Field
             </Button>
           </div>
-        ))}
-      </div>}
+
+          {fields.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No additional fields yet. Add one to include extra info.
+            </p>
+          )}
+
+          {fields.map((field, index) => (
+            <div key={field.id || `new-${index}`} className="flex items-start gap-2">
+              <div className="flex-1 space-y-2">
+                <Input
+                  placeholder="Field name"
+                  value={field.field_name}
+                  onChange={(e) => updateCustomField(index, 'field_name', e.target.value)}
+                />
+                <Input
+                  placeholder="Value"
+                  value={field.field_value}
+                  onChange={(e) => updateCustomField(index, 'field_value', e.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeCustomField(index)}
+                className="mt-1 text-muted-foreground hover:text-destructive"
+                aria-label="Remove field"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex gap-2">

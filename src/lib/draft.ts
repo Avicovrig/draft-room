@@ -20,9 +20,7 @@ export function getPickOrder(
 
   for (let round = 0; order.length < totalPicks; round++) {
     const roundOrder =
-      draftType === 'snake' && round % 2 === 1
-        ? [...captainIds].reverse()
-        : captainIds
+      draftType === 'snake' && round % 2 === 1 ? [...captainIds].reverse() : captainIds
     order.push(...roundOrder)
   }
 
@@ -53,10 +51,7 @@ export function getCurrentRound(pickIndex: number, captainCount: number): number
 /**
  * Check if a draft status transition is valid
  */
-export function isValidTransition(
-  currentStatus: LeagueStatus,
-  newStatus: LeagueStatus
-): boolean {
+export function isValidTransition(currentStatus: LeagueStatus, newStatus: LeagueStatus): boolean {
   const validTransitions: Record<LeagueStatus, LeagueStatus[]> = {
     not_started: ['in_progress'],
     in_progress: ['paused', 'completed'],
@@ -188,9 +183,10 @@ export function fromDatetimeLocal(value: string): string | null {
  * NOTE: This logic is duplicated in edge functions (make-pick, auto-pick) for
  * server-side validation. Keep them in sync when modifying.
  */
-export function getAvailablePlayers(players: PlayerPublic[], captains: CaptainPublic[]): PlayerPublic[] {
-  const captainPlayerIds = new Set(
-    captains.filter((c) => c.player_id).map((c) => c.player_id)
-  )
+export function getAvailablePlayers(
+  players: PlayerPublic[],
+  captains: CaptainPublic[]
+): PlayerPublic[] {
+  const captainPlayerIds = new Set(captains.filter((c) => c.player_id).map((c) => c.player_id))
   return players.filter((p) => !p.drafted_by_captain_id && !captainPlayerIds.has(p.id))
 }

@@ -2,7 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { CaptainPublic, PlayerPublic } from '@/lib/types'
 
-const CAPTAIN_COLUMNS = 'id, league_id, name, is_participant, draft_position, player_id, auto_pick_enabled, team_color, team_name, team_photo_url, created_at'
+const CAPTAIN_COLUMNS =
+  'id, league_id, name, is_participant, draft_position, player_id, auto_pick_enabled, team_color, team_name, team_photo_url, created_at'
 
 interface CreateCaptainInput {
   league_id: string
@@ -71,10 +72,7 @@ export function useDeleteCaptain() {
 
   return useMutation({
     mutationFn: async ({ id, leagueId }: { id: string; leagueId: string }) => {
-      const { error } = await supabase
-        .from('captains')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from('captains').delete().eq('id', id)
 
       if (error) throw error
       return { leagueId }
@@ -127,15 +125,22 @@ export function useUpdateCaptainColor() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ captainId, color, teamName, leagueId }: { captainId: string; color?: string; teamName?: string | null; leagueId: string }) => {
+    mutationFn: async ({
+      captainId,
+      color,
+      teamName,
+      leagueId,
+    }: {
+      captainId: string
+      color?: string
+      teamName?: string | null
+      leagueId: string
+    }) => {
       const updateFields: Record<string, unknown> = {}
       if (color !== undefined) updateFields.team_color = color
       if (teamName !== undefined) updateFields.team_name = teamName
 
-      const { error } = await supabase
-        .from('captains')
-        .update(updateFields)
-        .eq('id', captainId)
+      const { error } = await supabase.from('captains').update(updateFields).eq('id', captainId)
 
       if (error) throw error
       return { leagueId }
@@ -192,7 +197,15 @@ export function useUploadTeamPhoto() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ captainId, leagueId, blob }: { captainId: string; leagueId: string; blob: Blob }) => {
+    mutationFn: async ({
+      captainId,
+      leagueId,
+      blob,
+    }: {
+      captainId: string
+      leagueId: string
+      blob: Blob
+    }) => {
       const filePath = `${leagueId}/team-${captainId}.jpg`
 
       const { error: uploadError } = await supabase.storage
@@ -201,9 +214,7 @@ export function useUploadTeamPhoto() {
 
       if (uploadError) throw uploadError
 
-      const { data: urlData } = supabase.storage
-        .from('profile-pictures')
-        .getPublicUrl(filePath)
+      const { data: urlData } = supabase.storage.from('profile-pictures').getPublicUrl(filePath)
 
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
 
@@ -274,14 +285,17 @@ export function useAssignRandomCaptains() {
       count: number
     }) => {
       // First, delete existing captains
-      const { error: deleteError } = await supabase.from('captains').delete().eq('league_id', leagueId)
+      const { error: deleteError } = await supabase
+        .from('captains')
+        .delete()
+        .eq('league_id', leagueId)
       if (deleteError) throw deleteError
 
       // Fisher-Yates shuffle for uniform randomness
       const shuffled = [...playerIds]
       for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
       }
       const selectedIds = shuffled.slice(0, count)
 

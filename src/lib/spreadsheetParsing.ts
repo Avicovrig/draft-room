@@ -20,7 +20,10 @@ const FIELD_PATTERNS: Record<StandardPlayerField, RegExp[]> = {
   bio: [/^bio$/i, /^about$/i, /^description$/i],
 }
 
-export function suggestMappings(headers: string[], fieldSchemas: LeagueFieldSchema[] = []): Record<string, PlayerFieldMapping> {
+export function suggestMappings(
+  headers: string[],
+  fieldSchemas: LeagueFieldSchema[] = []
+): Record<string, PlayerFieldMapping> {
   const mappings: Record<string, PlayerFieldMapping> = {}
   const usedFields = new Set<StandardPlayerField>()
   const usedSchemaIds = new Set<string>()
@@ -47,12 +50,19 @@ export function suggestMappings(headers: string[], fieldSchemas: LeagueFieldSche
 
     // Try to match against league field schemas (case-insensitive)
     if (!matched) {
-      const headerLower = header.toLowerCase().replace(/\s*\*\s*$/, '').trim()
+      const headerLower = header
+        .toLowerCase()
+        .replace(/\s*\*\s*$/, '')
+        .trim()
       const matchingSchema = fieldSchemas.find(
         (s) => !usedSchemaIds.has(s.id) && s.field_name.toLowerCase() === headerLower
       )
       if (matchingSchema) {
-        mappings[header] = { type: 'schema', schemaId: matchingSchema.id, fieldName: matchingSchema.field_name }
+        mappings[header] = {
+          type: 'schema',
+          schemaId: matchingSchema.id,
+          fieldName: matchingSchema.field_name,
+        }
         usedSchemaIds.add(matchingSchema.id)
         matched = true
       }
@@ -79,7 +89,10 @@ function normalizeImportValue(value: string, schema: LeagueFieldSchema): string 
       // Strip unit suffix if present
       const unit = schema.field_options?.unit as string | undefined
       if (unit) {
-        const stripped = value.replace(new RegExp(`\\s*${unit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'), '')
+        const stripped = value.replace(
+          new RegExp(`\\s*${unit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'),
+          ''
+        )
         if (stripped !== value && !isNaN(Number(stripped))) return stripped
       }
       return value

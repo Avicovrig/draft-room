@@ -11,7 +11,13 @@ interface PlayerProfileModalProps {
   onClose: () => void
 }
 
-export function PlayerProfileModal({ player, customFields = [], fieldSchemas, note, onClose }: PlayerProfileModalProps) {
+export function PlayerProfileModal({
+  player,
+  customFields = [],
+  fieldSchemas,
+  note,
+  onClose,
+}: PlayerProfileModalProps) {
   const { overlayProps } = useModalFocus({ onClose })
 
   return (
@@ -41,7 +47,11 @@ export function PlayerProfileModal({ player, customFields = [], fieldSchemas, no
               </div>
             </div>
           )}
-          <PlayerProfileView player={player} customFields={customFields} fieldSchemas={fieldSchemas} />
+          <PlayerProfileView
+            player={player}
+            customFields={customFields}
+            fieldSchemas={fieldSchemas}
+          />
         </div>
       </div>
     </div>

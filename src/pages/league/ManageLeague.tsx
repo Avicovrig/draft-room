@@ -13,11 +13,21 @@ import { DraftReadinessChecklist } from '@/components/league/DraftReadinessCheck
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getAvailablePlayers } from '@/lib/draft'
 
-const PlayerList = lazy(() => import('@/components/league/PlayerList').then(m => ({ default: m.PlayerList })))
-const CaptainList = lazy(() => import('@/components/league/CaptainList').then(m => ({ default: m.CaptainList })))
-const FieldSchemaList = lazy(() => import('@/components/league/FieldSchemaList').then(m => ({ default: m.FieldSchemaList })))
-const LeagueSettings = lazy(() => import('@/components/league/LeagueSettings').then(m => ({ default: m.LeagueSettings })))
-const ShareLinks = lazy(() => import('@/components/league/ShareLinks').then(m => ({ default: m.ShareLinks })))
+const PlayerList = lazy(() =>
+  import('@/components/league/PlayerList').then((m) => ({ default: m.PlayerList }))
+)
+const CaptainList = lazy(() =>
+  import('@/components/league/CaptainList').then((m) => ({ default: m.CaptainList }))
+)
+const FieldSchemaList = lazy(() =>
+  import('@/components/league/FieldSchemaList').then((m) => ({ default: m.FieldSchemaList }))
+)
+const LeagueSettings = lazy(() =>
+  import('@/components/league/LeagueSettings').then((m) => ({ default: m.LeagueSettings }))
+)
+const ShareLinks = lazy(() =>
+  import('@/components/league/ShareLinks').then((m) => ({ default: m.ShareLinks }))
+)
 
 type Tab = 'settings' | 'players' | 'captains' | 'fields' | 'share'
 
@@ -66,7 +76,8 @@ export function ManageLeague() {
   }
 
   const availablePlayers = getAvailablePlayers(league.players, league.captains)
-  const canStartDraft = league.status === 'not_started' &&
+  const canStartDraft =
+    league.status === 'not_started' &&
     league.captains.length >= 2 &&
     availablePlayers.length >= league.captains.length
 
@@ -84,24 +95,23 @@ export function ManageLeague() {
       <main className="container mx-auto px-4 py-6 sm:p-8">
         {/* Header */}
         <div className="mb-8">
-          <Breadcrumb items={[
-            { label: 'Dashboard', href: '/dashboard' },
-            { label: league.name },
-          ]} />
+          <Breadcrumb
+            items={[{ label: 'Dashboard', href: '/dashboard' }, { label: league.name }]}
+          />
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-3xl font-bold">{league.name}</h1>
               <p className="mt-1 text-muted-foreground">
                 {league.draft_type === 'snake' ? 'Snake Draft' : 'Round Robin'} •{' '}
-                {league.time_limit_seconds >= 60 && league.time_limit_seconds % 60 === 0 ? `${league.time_limit_seconds / 60}m` : `${league.time_limit_seconds}s`} per pick
+                {league.time_limit_seconds >= 60 && league.time_limit_seconds % 60 === 0
+                  ? `${league.time_limit_seconds / 60}m`
+                  : `${league.time_limit_seconds}s`}{' '}
+                per pick
               </p>
             </div>
             <div className="flex gap-2">
               {league.status === 'not_started' && (
-                <Button
-                  onClick={() => navigate(`/league/${id}/draft`)}
-                  disabled={!canStartDraft}
-                >
+                <Button onClick={() => navigate(`/league/${id}/draft`)} disabled={!canStartDraft}>
                   <Play className="mr-2 h-4 w-4" />
                   Start Draft
                 </Button>
@@ -139,9 +149,7 @@ export function ManageLeague() {
               <tab.icon className="h-4 w-4" />
               {tab.label}
               {tab.count !== undefined && (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
-                  {tab.count}
-                </span>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs">{tab.count}</span>
               )}
             </button>
           ))}
@@ -149,7 +157,9 @@ export function ManageLeague() {
 
         {/* Tab Content */}
         <Suspense fallback={<TabSkeleton />}>
-          {activeTab === 'players' && <PlayerList league={league} customFieldsMap={customFieldsMap} tokens={tokens} />}
+          {activeTab === 'players' && (
+            <PlayerList league={league} customFieldsMap={customFieldsMap} tokens={tokens} />
+          )}
           {activeTab === 'captains' && <CaptainList league={league} />}
           {activeTab === 'fields' && <FieldSchemaList league={league} />}
           {activeTab === 'settings' && <LeagueSettings league={league} />}

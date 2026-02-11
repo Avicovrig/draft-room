@@ -1,8 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import type { PlayerPublic, PlayerPublicWithCustomFields, ValidatedPlayerProfile } from '@/lib/types'
+import type {
+  PlayerPublic,
+  PlayerPublicWithCustomFields,
+  ValidatedPlayerProfile,
+} from '@/lib/types'
 
-const PLAYER_COLUMNS = 'id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at'
+const PLAYER_COLUMNS =
+  'id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at'
 
 export function usePlayerProfile(playerId: string | undefined) {
   return useQuery({
@@ -113,9 +118,7 @@ export function useUploadProfilePicture() {
       if (uploadError) throw uploadError
 
       // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('profile-pictures')
-        .getPublicUrl(filePath)
+      const { data: urlData } = supabase.storage.from('profile-pictures').getPublicUrl(filePath)
 
       // Add cache buster to URL
       const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`

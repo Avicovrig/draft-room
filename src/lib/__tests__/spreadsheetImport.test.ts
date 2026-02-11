@@ -3,7 +3,9 @@ import { suggestMappings, transformData } from '../spreadsheetParsing'
 import type { SpreadsheetData } from '../spreadsheetTypes'
 import type { LeagueFieldSchema } from '../types'
 
-function makeSchema(overrides: Partial<LeagueFieldSchema> & { id: string; field_name: string }): LeagueFieldSchema {
+function makeSchema(
+  overrides: Partial<LeagueFieldSchema> & { id: string; field_name: string }
+): LeagueFieldSchema {
   return {
     league_id: 'league-1',
     field_type: 'text',
@@ -32,7 +34,10 @@ describe('suggestMappings', () => {
   })
 
   it('maps "Description" and "About" to bio', () => {
-    expect(suggestMappings(['Description'])['Description']).toEqual({ type: 'standard', field: 'bio' })
+    expect(suggestMappings(['Description'])['Description']).toEqual({
+      type: 'standard',
+      field: 'bio',
+    })
     expect(suggestMappings(['About'])['About']).toEqual({ type: 'standard', field: 'bio' })
   })
 
@@ -62,7 +67,11 @@ describe('suggestMappings', () => {
   it('strips required marker (*) when matching schemas', () => {
     const schemas = [makeSchema({ id: 's1', field_name: 'Position', is_required: true })]
     const mappings = suggestMappings(['Position *'], schemas)
-    expect(mappings['Position *']).toEqual({ type: 'schema', schemaId: 's1', fieldName: 'Position' })
+    expect(mappings['Position *']).toEqual({
+      type: 'schema',
+      schemaId: 's1',
+      fieldName: 'Position',
+    })
   })
 
   it('does not reuse the same schema for multiple headers', () => {
@@ -85,9 +94,9 @@ describe('transformData', () => {
   }
 
   const baseMappings = {
-    'Name': { type: 'standard' as const, field: 'name' as const },
-    'Bio': { type: 'standard' as const, field: 'bio' as const },
-    'Skill': { type: 'custom' as const, fieldName: 'Skill' },
+    Name: { type: 'standard' as const, field: 'name' as const },
+    Bio: { type: 'standard' as const, field: 'bio' as const },
+    Skill: { type: 'custom' as const, fieldName: 'Skill' },
   }
 
   it('transforms rows into parsed players', () => {
@@ -130,9 +139,9 @@ describe('transformData', () => {
 
   it('skips columns mapped as skip', () => {
     const mappings = {
-      'Name': { type: 'standard' as const, field: 'name' as const },
-      'Bio': { type: 'skip' as const },
-      'Skill': { type: 'skip' as const },
+      Name: { type: 'standard' as const, field: 'name' as const },
+      Bio: { type: 'skip' as const },
+      Skill: { type: 'skip' as const },
     }
     const players = transformData(baseData, mappings, true)
     expect(players[0].bio).toBeUndefined()
@@ -150,9 +159,9 @@ describe('transformData', () => {
   it('maps schema fields with schema_id', () => {
     const schemas = [makeSchema({ id: 's1', field_name: 'Skill', field_type: 'text' })]
     const mappings = {
-      'Name': { type: 'standard' as const, field: 'name' as const },
-      'Bio': { type: 'skip' as const },
-      'Skill': { type: 'schema' as const, schemaId: 's1', fieldName: 'Skill' },
+      Name: { type: 'standard' as const, field: 'name' as const },
+      Bio: { type: 'skip' as const },
+      Skill: { type: 'schema' as const, schemaId: 's1', fieldName: 'Skill' },
     }
     const players = transformData(baseData, mappings, true, schemas)
     expect(players[0].customFields[0]).toEqual({
@@ -166,12 +175,16 @@ describe('transformData', () => {
     const schemas = [makeSchema({ id: 's1', field_name: 'Active', field_type: 'checkbox' })]
     const data: SpreadsheetData = {
       headers: ['Name', 'Active'],
-      rows: [['Alice', 'Yes'], ['Bob', 'No'], ['Charlie', 'true']],
+      rows: [
+        ['Alice', 'Yes'],
+        ['Bob', 'No'],
+        ['Charlie', 'true'],
+      ],
       fileName: 'test.xlsx',
     }
     const mappings = {
-      'Name': { type: 'standard' as const, field: 'name' as const },
-      'Active': { type: 'schema' as const, schemaId: 's1', fieldName: 'Active' },
+      Name: { type: 'standard' as const, field: 'name' as const },
+      Active: { type: 'schema' as const, schemaId: 's1', fieldName: 'Active' },
     }
     const players = transformData(data, mappings, true, schemas)
     expect(players[0].customFields[0].field_value).toBe('true')
@@ -180,15 +193,22 @@ describe('transformData', () => {
   })
 
   it('normalizes number values with units for schema fields', () => {
-    const schemas = [makeSchema({ id: 's1', field_name: 'Height', field_type: 'number', field_options: { unit: 'cm' } })]
+    const schemas = [
+      makeSchema({
+        id: 's1',
+        field_name: 'Height',
+        field_type: 'number',
+        field_options: { unit: 'cm' },
+      }),
+    ]
     const data: SpreadsheetData = {
       headers: ['Name', 'Height'],
       rows: [['Alice', '170 cm']],
       fileName: 'test.xlsx',
     }
     const mappings = {
-      'Name': { type: 'standard' as const, field: 'name' as const },
-      'Height': { type: 'schema' as const, schemaId: 's1', fieldName: 'Height' },
+      Name: { type: 'standard' as const, field: 'name' as const },
+      Height: { type: 'schema' as const, schemaId: 's1', fieldName: 'Height' },
     }
     const players = transformData(data, mappings, true, schemas)
     expect(players[0].customFields[0].field_value).toBe('170')
@@ -202,8 +222,8 @@ describe('transformData', () => {
       fileName: 'test.xlsx',
     }
     const mappings = {
-      'Name': { type: 'standard' as const, field: 'name' as const },
-      'Age': { type: 'schema' as const, schemaId: 's1', fieldName: 'Age' },
+      Name: { type: 'standard' as const, field: 'name' as const },
+      Age: { type: 'schema' as const, schemaId: 's1', fieldName: 'Age' },
     }
     const players = transformData(data, mappings, true, schemas)
     expect(players[0].customFields[0].field_value).toBe('25')
@@ -217,8 +237,8 @@ describe('transformData', () => {
       fileName: 'test.xlsx',
     }
     const mappings = {
-      'Name': { type: 'standard' as const, field: 'name' as const },
-      'Active': { type: 'schema' as const, schemaId: 's1', fieldName: 'Active' },
+      Name: { type: 'standard' as const, field: 'name' as const },
+      Active: { type: 'schema' as const, schemaId: 's1', fieldName: 'Active' },
     }
     const players = transformData(data, mappings, true, schemas)
     expect(players[0].customFields[0].field_value).toBe('maybe')
@@ -232,23 +252,30 @@ describe('transformData', () => {
       fileName: 'test.xlsx',
     }
     const mappings = {
-      'Name': { type: 'standard' as const, field: 'name' as const },
-      'DOB': { type: 'schema' as const, schemaId: 's1', fieldName: 'DOB' },
+      Name: { type: 'standard' as const, field: 'name' as const },
+      DOB: { type: 'schema' as const, schemaId: 's1', fieldName: 'DOB' },
     }
     const players = transformData(data, mappings, true, schemas)
     expect(players[0].customFields[0].field_value).toBe('2000-06-15')
   })
 
   it('normalizes date with includeTime option', () => {
-    const schemas = [makeSchema({ id: 's1', field_name: 'Event', field_type: 'date', field_options: { includeTime: true } })]
+    const schemas = [
+      makeSchema({
+        id: 's1',
+        field_name: 'Event',
+        field_type: 'date',
+        field_options: { includeTime: true },
+      }),
+    ]
     const data: SpreadsheetData = {
       headers: ['Name', 'Event'],
       rows: [['Alice', '2025-12-25T14:30:00.000Z']],
       fileName: 'test.xlsx',
     }
     const mappings = {
-      'Name': { type: 'standard' as const, field: 'name' as const },
-      'Event': { type: 'schema' as const, schemaId: 's1', fieldName: 'Event' },
+      Name: { type: 'standard' as const, field: 'name' as const },
+      Event: { type: 'schema' as const, schemaId: 's1', fieldName: 'Event' },
     }
     const players = transformData(data, mappings, true, schemas)
     expect(players[0].customFields[0].field_value).toBe('2025-12-25T14:30')
@@ -262,8 +289,8 @@ describe('transformData', () => {
       fileName: 'test.xlsx',
     }
     const mappings = {
-      'Name': { type: 'standard' as const, field: 'name' as const },
-      'DOB': { type: 'schema' as const, schemaId: 's1', fieldName: 'DOB' },
+      Name: { type: 'standard' as const, field: 'name' as const },
+      DOB: { type: 'schema' as const, schemaId: 's1', fieldName: 'DOB' },
     }
     const players = transformData(data, mappings, true, schemas)
     expect(players[0].customFields[0].field_value).toBe('not-a-date')
@@ -277,8 +304,8 @@ describe('transformData', () => {
       fileName: 'test.xlsx',
     }
     const mappings = {
-      'Name': { type: 'standard' as const, field: 'name' as const },
-      'Notes': { type: 'schema' as const, schemaId: 's1', fieldName: 'Notes' },
+      Name: { type: 'standard' as const, field: 'name' as const },
+      Notes: { type: 'schema' as const, schemaId: 's1', fieldName: 'Notes' },
     }
     const players = transformData(data, mappings, true, schemas)
     expect(players[0].customFields[0].field_value).toBe('Some notes here')

@@ -72,7 +72,8 @@ export function ImportPreview({ players, onToggleRow }: ImportPreviewProps) {
                 <td className="px-3 py-2">
                   {player.customFields.length > 0 ? (
                     <span className="text-muted-foreground">
-                      {player.customFields.length} field{player.customFields.length !== 1 ? 's' : ''}
+                      {player.customFields.length} field
+                      {player.customFields.length !== 1 ? 's' : ''}
                     </span>
                   ) : (
                     '-'

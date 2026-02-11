@@ -101,7 +101,11 @@ export function EditProfile() {
     if (player.linked_captain_access_token) {
       navigate(`/league/${player.league_id}/captain?token=${player.linked_captain_access_token}`)
     } else if (player.league_spectator_token) {
-      window.open(`/league/${player.league_id}/spectate?token=${player.league_spectator_token}`, '_blank', 'noopener,noreferrer')
+      window.open(
+        `/league/${player.league_id}/spectate?token=${player.league_spectator_token}`,
+        '_blank',
+        'noopener,noreferrer'
+      )
     }
   }
 
@@ -121,9 +125,7 @@ export function EditProfile() {
                     Your profile has been saved!
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Button onClick={() => setSaved(false)}>
-                      Edit Again
-                    </Button>
+                    <Button onClick={() => setSaved(false)}>Edit Again</Button>
                     {player.linked_captain_access_token ? (
                       <Button variant="outline" onClick={handleGoToDraft}>
                         Go to Draft Room

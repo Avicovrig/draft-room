@@ -136,7 +136,10 @@ export function SpreadsheetImportModal({
   if (!isOpen) return null
 
   return (
-    <div {...overlayProps} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div
+      {...overlayProps}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    >
       <Card className="flex max-h-[90vh] w-full max-w-4xl flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 flex-shrink-0">
           <CardTitle>Import Players from Spreadsheet</CardTitle>
@@ -184,7 +187,8 @@ export function SpreadsheetImportModal({
                   <div>
                     <div className="font-medium">First row contains column headers</div>
                     <div className="text-sm text-muted-foreground">
-                      If checked, the first row will be used as column names and won't be imported as a player
+                      If checked, the first row will be used as column names and won't be imported
+                      as a player
                     </div>
                   </div>
                 </label>

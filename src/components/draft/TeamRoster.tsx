@@ -35,9 +35,7 @@ export function TeamRoster({
   const sortedCaptains = [...captains].sort((a, b) => a.draft_position - b.draft_position)
 
   // Track new picks for animation
-  const allDraftedIds = new Set(
-    players.filter((p) => p.drafted_by_captain_id).map((p) => p.id)
-  )
+  const allDraftedIds = new Set(players.filter((p) => p.drafted_by_captain_id).map((p) => p.id))
 
   useEffect(() => {
     const newIds = new Set<string>()
@@ -108,7 +106,9 @@ export function TeamRoster({
                 <div className="min-w-0">
                   <h3 className="font-semibold truncate">{captain.team_name || captain.name}</h3>
                   {captain.team_name && (
-                    <span className="text-xs text-muted-foreground truncate block">{captain.name}</span>
+                    <span className="text-xs text-muted-foreground truncate block">
+                      {captain.name}
+                    </span>
                   )}
                 </div>
               </div>
@@ -164,9 +164,7 @@ export function TeamRoster({
                 </li>
               ))}
               {teamPlayers.length === 0 && !captain.is_participant && (
-                <li className="text-sm text-muted-foreground italic">
-                  No picks yet
-                </li>
+                <li className="text-sm text-muted-foreground italic">No picks yet</li>
               )}
             </ul>
           </div>

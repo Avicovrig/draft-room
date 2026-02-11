@@ -16,9 +16,7 @@ function loadNotes(key: string): Record<string, string> {
 export function useDraftNotes(leagueId: string | undefined, ownerId: string | undefined) {
   const key = leagueId && ownerId ? getStorageKey(leagueId, ownerId) : ''
 
-  const [notes, setNotes] = useState<Record<string, string>>(() =>
-    key ? loadNotes(key) : {}
-  )
+  const [notes, setNotes] = useState<Record<string, string>>(() => (key ? loadNotes(key) : {}))
 
   const setNote = useCallback(
     (playerId: string, text: string) => {

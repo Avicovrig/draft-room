@@ -101,10 +101,7 @@ export function useDeleteCustomField() {
 
   return useMutation({
     mutationFn: async ({ id, player_id }: { id: string; player_id: string }) => {
-      const { error } = await supabase
-        .from('player_custom_fields')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from('player_custom_fields').delete().eq('id', id)
 
       if (error) throw error
       return { player_id }
@@ -144,34 +141,38 @@ export function useUpsertCustomFields() {
       }
 
       // Batch upsert fields — separate updates from inserts
-      const updates = fields.filter(f => f.id)
-      const inserts = fields.filter(f => !f.id)
+      const updates = fields.filter((f) => f.id)
+      const inserts = fields.filter((f) => !f.id)
 
       if (updates.length > 0) {
-        await Promise.all(updates.map(field => {
-          return supabase
-            .from('player_custom_fields')
-            .update({
-              field_name: field.field_name,
-              field_value: field.field_value || null,
-              field_order: field.field_order,
-              schema_id: field.schema_id ?? null,
-            })
-            .eq('id', field.id!)
-            .then(({ error }) => { if (error) throw error })
-        }))
+        await Promise.all(
+          updates.map((field) => {
+            return supabase
+              .from('player_custom_fields')
+              .update({
+                field_name: field.field_name,
+                field_value: field.field_value || null,
+                field_order: field.field_order,
+                schema_id: field.schema_id ?? null,
+              })
+              .eq('id', field.id!)
+              .then(({ error }) => {
+                if (error) throw error
+              })
+          })
+        )
       }
 
       if (inserts.length > 0) {
-        const { error } = await supabase
-          .from('player_custom_fields')
-          .insert(inserts.map(field => ({
+        const { error } = await supabase.from('player_custom_fields').insert(
+          inserts.map((field) => ({
             player_id: playerId,
             field_name: field.field_name,
             field_value: field.field_value || null,
             field_order: field.field_order,
             schema_id: field.schema_id ?? null,
-          })))
+          }))
+        )
         if (error) throw error
       }
 

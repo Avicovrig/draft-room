@@ -12,9 +12,7 @@ function formatExportValue(value: string, schema: LeagueFieldSchema): string {
     case 'date': {
       const date = new Date(value)
       if (isNaN(date.getTime())) return value
-      return schema.field_options?.includeTime
-        ? date.toLocaleString()
-        : date.toLocaleDateString()
+      return schema.field_options?.includeTime ? date.toLocaleString() : date.toLocaleDateString()
     }
     default:
       return value
@@ -39,7 +37,9 @@ export async function exportPlayersToSpreadsheet(
 
   // Schema field columns first (always present, in field_order)
   const sortedSchemas = [...fieldSchemas].sort((a, b) => a.field_order - b.field_order)
-  const schemaFieldNames = sortedSchemas.map((s) => s.is_required ? `${s.field_name} *` : s.field_name)
+  const schemaFieldNames = sortedSchemas.map((s) =>
+    s.is_required ? `${s.field_name} *` : s.field_name
+  )
   // Collect freeform custom field names (non-schema, ordered by first appearance)
   const freeformFieldNames: string[] = []
   const seenFields = new Set<string>()
@@ -85,22 +85,16 @@ export async function exportPlayersToSpreadsheet(
       return field?.field_value || ''
     })
 
-    return [
-      player.name,
-      status,
-      player.bio || '',
-      ...schemaValues,
-      ...freeformValues,
-    ]
+    return [player.name, status, player.bio || '', ...schemaValues, ...freeformValues]
   })
 
   // Add data
   worksheet.addRows([headers, ...rows])
 
   // Set column widths
-  worksheet.getColumn(1).width = 20  // Name
-  worksheet.getColumn(2).width = 18  // Status
-  worksheet.getColumn(3).width = 40  // Bio
+  worksheet.getColumn(1).width = 20 // Name
+  worksheet.getColumn(2).width = 18 // Status
+  worksheet.getColumn(3).width = 40 // Bio
   for (let i = 0; i < schemaFieldNames.length + freeformFieldNames.length; i++) {
     worksheet.getColumn(4 + i).width = 15
   }
@@ -109,7 +103,10 @@ export async function exportPlayersToSpreadsheet(
   worksheet.getRow(1).font = { bold: true }
 
   // Download
-  const safeName = leagueName.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '-')
+  const safeName = leagueName
+    .replace(/[^a-zA-Z0-9 ]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
   const buffer = await workbook.xlsx.writeBuffer()
   saveAs(new Blob([buffer]), `${safeName}-players.xlsx`)
 }

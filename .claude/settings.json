@@ -1,1 +1,16 @@
-{}
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "tool == \"Edit\" && tool_input.file_path matches \"\\\\.(ts|tsx|js|jsx)$\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const{execSync}=require('child_process');const fs=require('fs');const path=require('path');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const i=JSON.parse(d);const p=i.tool_input?.file_path;if(p&&fs.existsSync(p)){let dir=path.dirname(p);while(dir!==path.dirname(dir)&&!fs.existsSync(path.join(dir,'node_modules/.bin/prettier'))){dir=path.dirname(dir)}const bin=path.join(dir,'node_modules/.bin/prettier');if(fs.existsSync(bin)){try{execSync(bin+' --write '+JSON.stringify(p),{stdio:'pipe',timeout:10000})}catch(e){console.error('[Hook] Prettier: '+(e.stderr?.toString()||'').slice(0,100))}}}console.log(d)})\""
+          }
+        ],
+        "description": "Auto-format with Prettier after editing JS/TS files"
+      }
+    ]
+  }
+}
