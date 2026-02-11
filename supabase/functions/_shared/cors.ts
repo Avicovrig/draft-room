@@ -5,7 +5,7 @@ function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_ORIGINS.includes(origin)) return true
   // Allow draft-room Vercel preview deploys only, pinned to our team slug to prevent
   // attacker-controlled origins like draft-room-evil.vercel.app
-  if (/^https:\/\/draft-room-[\w]+-avis-projects-58313b0f\.vercel\.app$/.test(origin)) return true
+  if (/^https:\/\/draft-room-[\w-]+-avis-projects-58313b0f\.vercel\.app$/.test(origin)) return true
   // Allow localhost for development
   if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return true
   return false
