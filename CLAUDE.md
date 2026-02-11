@@ -44,6 +44,7 @@ All draft-critical mutations go through Deno edge functions in `supabase/functio
 - **`update-captain-color`** - Updates a captain's team color, team name, and team photo. Requires captain token OR manager JWT.
 - **`restart-draft`** - Manager-only. Deletes all picks, resets players, sets league back to `not_started`. Requires manager JWT.
 - **`undo-pick`** - Manager-only. Removes last pick, resets that player, decrements pick index. Requires manager JWT.
+- **`copy-league`** - Manager-only. Duplicates a league with all captains, players, field schemas, custom fields, and draft queues. Creates fresh tokens, resets draft state. Rolls back on partial failure.
 
 All edge functions share utilities in `supabase/functions/_shared/`: CORS origin checking (`cors.ts`), rate limiting (`rateLimit.ts`), UUID/URL validation + Content-Type enforcement + JPEG validation + timing-safe comparison + HTTP method enforcement (`validation.ts`), manager JWT auth with optional client reuse (`auth.ts`), audit logging (`audit.ts`), admin client creation with fail-fast env validation (`supabase.ts`), draft order logic (`draftOrder.ts`), and shared type definitions (`types.ts`). All validate UUID format on ID parameters before hitting the database. All enforce `Content-Type: application/json` via `requireJson()`. Request body types and entity interfaces are defined in `_shared/types.ts` — use these instead of inline type annotations.
 
@@ -173,5 +174,5 @@ Edge functions use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (set automatic
 ## Supabase Setup
 
 1. Run migrations from `supabase/migrations/` in order (001-015)
-2. Deploy all 7 edge functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`
+2. Deploy all 8 edge functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`, `copy-league`
 3. Enable realtime on tables: `leagues`, `players`, `draft_picks`, `captains`

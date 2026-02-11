@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Settings, Users, Crown, Share2, Play, Trash2, ListChecks } from 'lucide-react'
+import { Settings, Users, Crown, Share2, Play, Trash2, ListChecks, Copy } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -10,6 +10,7 @@ import { useLeague, useDeleteLeague, useLeagueTokens } from '@/hooks/useLeagues'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { DraftReadinessChecklist } from '@/components/league/DraftReadinessChecklist'
+import { CopyLeagueModal } from '@/components/league/CopyLeagueModal'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getAvailablePlayers } from '@/lib/draft'
 
@@ -41,6 +42,7 @@ export function ManageLeague() {
   const deleteLeague = useDeleteLeague()
   const [activeTab, setActiveTab] = useState<Tab>('players')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showCopyModal, setShowCopyModal] = useState(false)
 
   async function handleDelete() {
     if (!id) return
@@ -173,6 +175,26 @@ export function ManageLeague() {
             {activeTab === 'settings' && (
               <>
                 <LeagueSettings league={league} />
+                <Card className="mt-8">
+                  <CardHeader>
+                    <CardTitle>Copy League</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="mb-4 text-sm text-muted-foreground">
+                      Create a duplicate of this league with all captains, players, and field
+                      schemas. The new league starts in Not Started status.
+                    </p>
+                    <Button variant="outline" onClick={() => setShowCopyModal(true)}>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy League
+                    </Button>
+                  </CardContent>
+                </Card>
+                <CopyLeagueModal
+                  league={league}
+                  isOpen={showCopyModal}
+                  onClose={() => setShowCopyModal(false)}
+                />
                 {league.status === 'not_started' && (
                   <Card className="mt-8 border-destructive/50">
                     <CardHeader>

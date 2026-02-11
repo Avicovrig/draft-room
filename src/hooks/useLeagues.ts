@@ -157,6 +157,34 @@ export function useUpdateLeague() {
   })
 }
 
+export function useCopyLeague() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      sourceLeagueId,
+      newLeagueName,
+    }: {
+      sourceLeagueId: string
+      newLeagueName: string
+    }) => {
+      const response = await supabase.functions.invoke('copy-league', {
+        body: { sourceLeagueId, newLeagueName },
+      })
+      if (response.error) throw new Error(response.error.message || 'Failed to copy league')
+      if (response.data?.error) throw new Error(response.data.error)
+      return response.data as {
+        success: boolean
+        leagueId: string
+        counts: { captains: number; players: number; fieldSchemas: number }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leagues'] })
+    },
+  })
+}
+
 export function useDeleteLeague() {
   const queryClient = useQueryClient()
 

@@ -99,3 +99,8 @@ export interface UpdatePlayerProfileRequest {
   }>
   deletedCustomFieldIds?: string[]
 }
+
+export interface CopyLeagueRequest {
+  sourceLeagueId: string
+  newLeagueName: string
+}
