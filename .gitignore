@@ -16,6 +16,9 @@ supabase/.temp/
 # Dev docs (local working files)
 dev/active/
 
+# Deploy markers (local state)
+.last-deploy-functions-*
+
 # Logs
 logs
 *.log

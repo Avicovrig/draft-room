@@ -20,7 +20,7 @@ Draft Room is a custom league draft application. League managers can create leag
 - `npm run test:coverage` - Run tests with coverage report
 - `npm test -- draft.test.ts` - Run a single test file by name
 - `npm test -- --grep "snake draft"` - Run tests matching a pattern
-- `supabase functions deploy <function-name>` - Deploy a single edge function
+- `./scripts/deploy-functions.sh [qa|prod]` - Deploy only changed edge functions (use `--all` to force all)
 - `./scripts/smoke-test.sh [qa|prod]` - Post-deployment verification
 
 ## Architecture
@@ -146,7 +146,7 @@ Dev docs are gitignored (`dev/active/`) — they're local working files, not com
 - **Edge function shared utilities** (`supabase/functions/_shared/`) use Deno-style `.ts` imports that Vitest can't resolve directly. Tests for these re-implement the logic under test. When modifying these files, update both the source and the corresponding test.
 - **Draft logic is duplicated** in `src/lib/draft.ts` and edge functions (`make-pick`, `auto-pick`). Shared helpers are in `supabase/functions/_shared/draftOrder.ts`. Tests cover both the frontend version and the shared helpers (via re-implementation). When modifying draft logic, update both locations and verify tests still pass.
 - **Coverage thresholds**: 80% for statements, branches, functions, and lines (enforced in `vitest.config.ts`). Applies to `src/lib/` files. Edge function shared files are excluded from v8 coverage metrics but tested via re-implementation.
-- **Pre-commit hook**: Husky runs `lint-staged` (ESLint with `--max-warnings 0` on staged `.ts`/`.tsx` files — any warning blocks the commit) and then the full Vitest suite before every commit.
+- **Pre-commit hook**: Husky runs `lint-staged` (ESLint with `--max-warnings 0` + Prettier on staged `.ts`/`.tsx` files — any warning blocks the commit). The full test suite runs in CI, not locally.
 - **Claude Code stop hook**: `.claude/hooks/build-check.sh` runs `tsc -b` when Claude finishes responding. If type errors exist, it exits with code 2 (shows errors to Claude, expects them to be fixed before stopping).
 - **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) on every push to `main` and on PRs. Three jobs: `lint-and-typecheck` (ESLint + `tsc -b`), `test` (coverage), then `build` (depends on both; uses dummy env vars since it only checks compilation).
 - **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability. For QA, pass `QA_FRONTEND_URL` env var since Vercel preview URLs change each deploy.
