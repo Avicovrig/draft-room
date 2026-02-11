@@ -136,7 +136,7 @@ supabase functions deploy <function-name> --no-verify-jwt
 supabase functions deploy <function-name> --project-ref goyzyylpthhqotjdsmjn --no-verify-jwt
 ```
 
-All 7 functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`
+All 8 functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`, `copy-league`
 
 ## Testing
 

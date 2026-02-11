@@ -87,7 +87,7 @@ Eight tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_p
 
 **Important**: `useLeague` selects explicit columns (not `*`) from related tables to minimize payload and because token columns are not accessible. When adding new columns to the schema, they must also be added to the select in `src/hooks/useLeagues.ts`.
 
-Migrations are in `supabase/migrations/` (001-015), applied sequentially.
+Migrations are in `supabase/migrations/` (001-018), applied sequentially.
 
 ### Draft State Machine
 
@@ -150,7 +150,7 @@ Dev docs are gitignored (`dev/active/`) — they're local working files, not com
 - **Pre-commit hook**: Husky runs `lint-staged` (ESLint with `--max-warnings 0` + Prettier on staged `.ts`/`.tsx` files — any warning blocks the commit). The full test suite runs in CI, not locally.
 - **Claude Code stop hook**: `.claude/hooks/build-check.sh` runs `tsc -b` when Claude finishes responding. If type errors exist, it exits with code 2 (shows errors to Claude, expects them to be fixed before stopping).
 - **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) on every push to `main` and on PRs. Three jobs: `lint-and-typecheck` (ESLint + `tsc -b`), `test` (coverage), then `build` (depends on both; uses dummy env vars since it only checks compilation).
-- **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability. For QA, pass `QA_FRONTEND_URL` env var since Vercel preview URLs change each deploy.
+- **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability. QA defaults to the stable Vercel branch alias URL.
 - **Keep CLAUDE.md updated**: When adding or modifying tests, implementing best practices, or changing conventions, update this file to reflect the changes.
 
 ## Environment Variables
@@ -173,6 +173,6 @@ Edge functions use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (set automatic
 
 ## Supabase Setup
 
-1. Run migrations from `supabase/migrations/` in order (001-015)
+1. Run migrations from `supabase/migrations/` in order (001-018)
 2. Deploy all 8 edge functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`, `copy-league`
 3. Enable realtime on tables: `leagues`, `players`, `draft_picks`, `captains`
