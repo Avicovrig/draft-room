@@ -147,38 +147,36 @@ export function DraftControls({
           </p>
         )}
 
-        {hasPicks && (
-          <div className="flex gap-2">
-            {showUndoConfirm ? (
-              <>
-                <Button
-                  variant="destructive"
-                  onClick={handleUndo}
-                  loading={isLoading}
-                  className="flex-1"
-                >
-                  Confirm Undo
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowUndoConfirm(false)}
-                  disabled={isLoading}
-                >
-                  Cancel
-                </Button>
-              </>
-            ) : (
+        <div className="flex gap-2">
+          {showUndoConfirm ? (
+            <>
+              <Button
+                variant="destructive"
+                onClick={handleUndo}
+                loading={isLoading}
+                className="flex-1"
+              >
+                Confirm Undo
+              </Button>
               <Button
                 variant="outline"
-                onClick={() => setShowUndoConfirm(true)}
+                onClick={() => setShowUndoConfirm(false)}
                 disabled={isLoading}
               >
-                <Undo2 className="mr-2 h-4 w-4" />
-                Undo Last Pick
+                Cancel
               </Button>
-            )}
-          </div>
-        )}
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => setShowUndoConfirm(true)}
+              disabled={isLoading || !hasPicks}
+            >
+              <Undo2 className="mr-2 h-4 w-4" />
+              Undo Last Pick
+            </Button>
+          )}
+        </div>
       </div>
     )
   }
@@ -196,33 +194,32 @@ export function DraftControls({
         <Pause className="mr-2 h-5 w-5" />
         Pause Draft
       </Button>
-      {hasPicks &&
-        (showUndoConfirm ? (
-          <div className="flex gap-2">
-            <Button variant="destructive" size="lg" onClick={handleUndo} loading={isLoading}>
-              Confirm Undo
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setShowUndoConfirm(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-          </div>
-        ) : (
+      {showUndoConfirm ? (
+        <div className="flex gap-2">
+          <Button variant="destructive" size="lg" onClick={handleUndo} loading={isLoading}>
+            Confirm Undo
+          </Button>
           <Button
-            onClick={() => setShowUndoConfirm(true)}
-            loading={isLoading}
             variant="outline"
             size="lg"
-            title="Undo last pick"
+            onClick={() => setShowUndoConfirm(false)}
+            disabled={isLoading}
           >
-            <Undo2 className="mr-2 h-4 w-4" />
-            Undo Pick
+            Cancel
           </Button>
-        ))}
+        </div>
+      ) : (
+        <Button
+          onClick={() => setShowUndoConfirm(true)}
+          disabled={isLoading || !hasPicks}
+          variant="outline"
+          size="lg"
+          title="Undo last pick"
+        >
+          <Undo2 className="mr-2 h-4 w-4" />
+          Undo Pick
+        </Button>
+      )}
     </div>
   )
 }
