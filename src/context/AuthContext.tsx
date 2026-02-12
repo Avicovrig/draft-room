@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { trackCount } from '@/lib/metrics'
 
 interface AuthContextType {
   user: User | null
@@ -44,11 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signUp(email: string, password: string) {
     const { error } = await supabase.auth.signUp({ email, password })
+    trackCount('auth.sign_up', { success: !error })
     return { error: error ? new Error(error.message) : null }
   }
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
+    trackCount('auth.sign_in', { success: !error })
     return { error: error ? new Error(error.message) : null }
   }
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
+import { trackCount, trackDistribution, startTimer } from '@/lib/metrics'
 import type {
   LeaguePublic,
   LeagueWithCounts,
@@ -118,7 +119,8 @@ export function useCreateLeague() {
       if (error) throw error
       return league as LeaguePublic
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      trackCount('league.created', { draft_type: variables.draft_type ?? 'snake' })
       queryClient.invalidateQueries({ queryKey: ['leagues'] })
     },
   })
@@ -169,11 +171,22 @@ export function useCopyLeague() {
       sourceLeagueId: string
       newLeagueName: string
     }) => {
+      const elapsed = startTimer()
       const response = await supabase.functions.invoke('copy-league', {
         body: { sourceLeagueId, newLeagueName },
       })
-      if (response.error) throw new Error(response.error.message || 'Failed to copy league')
-      if (response.data?.error) throw new Error(response.data.error)
+      if (response.error) {
+        trackCount('edge_function.error', { function_name: 'copy-league' })
+        throw new Error(response.error.message || 'Failed to copy league')
+      }
+      if (response.data?.error) {
+        trackCount('edge_function.error', { function_name: 'copy-league' })
+        throw new Error(response.data.error)
+      }
+      trackDistribution('edge_function.latency', elapsed(), 'millisecond', {
+        function_name: 'copy-league',
+      })
+      trackCount('league.copied')
       return response.data as {
         success: boolean
         leagueId: string
@@ -196,6 +209,7 @@ export function useDeleteLeague() {
       if (error) throw error
     },
     onSuccess: () => {
+      trackCount('league.deleted')
       queryClient.invalidateQueries({ queryKey: ['leagues'] })
     },
   })

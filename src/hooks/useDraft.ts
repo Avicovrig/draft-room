@@ -1,7 +1,8 @@
-import { useEffect, useCallback, useMemo, useState } from 'react'
+import { useEffect, useCallback, useMemo, useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { parseEdgeFunctionError } from '@/lib/edgeFunctionUtils'
+import { trackCount, trackDistribution, startTimer } from '@/lib/metrics'
 import { useLeague, useUpdateLeague } from './useLeagues'
 import { getPickOrder, getCaptainAtPick, getAvailablePlayers } from '@/lib/draft'
 import type { LeagueFullPublic, PlayerPublic, CaptainPublic, ValidatedCaptain } from '@/lib/types'
@@ -27,6 +28,7 @@ interface UseDraftReturn {
 export function useDraft(leagueId: string | undefined): UseDraftReturn {
   const queryClient = useQueryClient()
   const [isSubscribed, setIsSubscribed] = useState(false)
+  const prevStatusRef = useRef<string | undefined>(undefined)
 
   // Use polling as fallback when subscription isn't connected or draft is active
   // Poll every 2 seconds during active draft for reliability
@@ -96,8 +98,12 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
         }
       )
       .subscribe((status) => {
-        // Silently handle subscription - polling fallback will work if this fails
-        setIsSubscribed(status === 'SUBSCRIBED')
+        trackCount('realtime.subscription_status', { status })
+        const connected = status === 'SUBSCRIBED'
+        if (!connected && status !== 'CLOSED') {
+          trackCount('realtime.fallback_to_polling')
+        }
+        setIsSubscribed(connected)
       })
 
     return () => {
@@ -105,6 +111,14 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
       supabase.removeChannel(channel)
     }
   }, [leagueId, queryClient])
+
+  // Track draft completion when status transitions to 'completed'
+  useEffect(() => {
+    if (league?.status === 'completed' && prevStatusRef.current === 'in_progress') {
+      trackCount('draft.completed')
+    }
+    prevStatusRef.current = league?.status
+  }, [league?.status])
 
   // Calculate derived values with memoization
   // Note: deps use `league` (not sub-fields) to satisfy the React Compiler's preserve-manual-memoization rule
@@ -140,6 +154,13 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
       current_pick_index: 0,
       current_pick_started_at: new Date().toISOString(),
     })
+
+    trackCount('draft.started', {
+      draft_type: league.draft_type,
+      captain_count: league.captains.length,
+      player_count: league.players.length,
+      time_limit: league.time_limit_seconds,
+    })
   }, [league, updateLeague])
 
   const pauseDraft = useCallback(async () => {
@@ -150,6 +171,8 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
       status: 'paused',
       current_pick_started_at: null,
     })
+
+    trackCount('draft.paused')
   }, [league, updateLeague])
 
   const resumeDraft = useCallback(async () => {
@@ -160,6 +183,8 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
       status: 'in_progress',
       current_pick_started_at: new Date().toISOString(),
     })
+
+    trackCount('draft.resumed')
   }, [league, updateLeague])
 
   const restartDraft = useCallback(async () => {
@@ -171,18 +196,25 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
       throw new Error('Session expired. Please refresh the page and log in again.')
     }
 
+    const elapsed = startTimer()
     const response = await supabase.functions.invoke('restart-draft', {
       body: { leagueId: league.id },
     })
 
     if (response.error) {
+      trackCount('edge_function.error', { function_name: 'restart-draft' })
       const message = await parseEdgeFunctionError(response.response, 'Failed to restart draft')
       throw new Error(message)
     }
     if (response.data?.error) {
+      trackCount('edge_function.error', { function_name: 'restart-draft' })
       throw new Error(response.data.error)
     }
 
+    trackDistribution('edge_function.latency', elapsed(), 'millisecond', {
+      function_name: 'restart-draft',
+    })
+    trackCount('draft.restarted')
     queryClient.invalidateQueries({ queryKey: ['league', league.id] })
   }, [league, queryClient])
 
@@ -196,18 +228,25 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
       throw new Error('Session expired. Please refresh the page and log in again.')
     }
 
+    const elapsed = startTimer()
     const response = await supabase.functions.invoke('undo-pick', {
       body: { leagueId: league.id },
     })
 
     if (response.error) {
+      trackCount('edge_function.error', { function_name: 'undo-pick' })
       const message = await parseEdgeFunctionError(response.response, 'Failed to undo pick')
       throw new Error(message)
     }
     if (response.data?.error) {
+      trackCount('edge_function.error', { function_name: 'undo-pick' })
       throw new Error(response.data.error)
     }
 
+    trackDistribution('edge_function.latency', elapsed(), 'millisecond', {
+      function_name: 'undo-pick',
+    })
+    trackCount('draft.pick_undone')
     queryClient.invalidateQueries({ queryKey: ['league', league.id] })
   }, [league, queryClient])
 
@@ -218,6 +257,7 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
       }
 
       // Use edge function to make pick (bypasses RLS for captain picks)
+      const elapsed = startTimer()
       let response
       try {
         response = await supabase.functions.invoke('make-pick', {
@@ -229,12 +269,14 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
           },
         })
       } catch {
+        trackCount('edge_function.error', { function_name: 'make-pick' })
         throw new Error('Network error. Check your connection.')
       }
 
       const { data, error, response: rawResponse } = response
 
       if (error) {
+        trackCount('edge_function.error', { function_name: 'make-pick' })
         const message = await parseEdgeFunctionError(
           rawResponse,
           'Failed to make pick. Please try again.'
@@ -243,12 +285,20 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
       }
 
       if (data?.error) {
+        trackCount('edge_function.error', { function_name: 'make-pick' })
         throw new Error(data.error)
       }
 
       if (!data?.success) {
         throw new Error('Unexpected response from server')
       }
+
+      const latency = elapsed()
+      trackDistribution('edge_function.latency', latency, 'millisecond', {
+        function_name: 'make-pick',
+      })
+      trackDistribution('draft.pick_made.latency', latency, 'millisecond')
+      trackCount('draft.pick_made', { by_manager: !captainToken })
 
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['league', league.id] })
@@ -289,7 +339,11 @@ export function useCaptainByToken(leagueId: string | undefined, token: string | 
         p_token: token,
       })
 
-      if (error) throw error
+      if (error) {
+        trackCount('auth.captain_token_validated', { success: false })
+        throw error
+      }
+      trackCount('auth.captain_token_validated', { success: !!data })
       return (data as ValidatedCaptain) ?? null
     },
     enabled: !!leagueId && !!token,
@@ -310,7 +364,11 @@ export function useSpectatorAccess(leagueId: string | undefined, token: string |
         p_token: token,
       })
 
-      if (error) return false
+      if (error) {
+        trackCount('auth.spectator_token_validated', { success: false })
+        return false
+      }
+      trackCount('auth.spectator_token_validated', { success: !!data })
       return data as boolean
     },
     enabled: !!leagueId && !!token,

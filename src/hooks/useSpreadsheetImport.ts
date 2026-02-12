@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { trackCount, trackDistribution } from '@/lib/metrics'
 import type { SpreadsheetData, ParsedPlayer, ImportResult } from '@/lib/spreadsheetTypes'
 
 // Re-export pure functions for existing consumers
@@ -147,7 +148,9 @@ export function useImportPlayers({ leagueId }: UseImportPlayersOptions) {
         errors,
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      trackCount('players.imported')
+      trackDistribution('players.imported.count', result.playersCreated, 'none')
       queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
     },
   })

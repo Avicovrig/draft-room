@@ -14,6 +14,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { useToast } from '@/components/ui/Toast'
 import { getCurrentRound } from '@/lib/draft'
 import { playSound, resumeAudioContext } from '@/lib/sounds'
+import { trackCount } from '@/lib/metrics'
 import { useDraftQueue, useAddToQueue } from '@/hooks/useDraftQueue'
 import { useDraftNotes } from '@/hooks/useDraftNotes'
 import { useAuth } from '@/context/AuthContext'
@@ -133,8 +134,14 @@ export function DraftBoard({
       setShowRefreshHint(false)
       return
     }
+    let wasStale = false
     const checkStaleness = () => {
-      setShowRefreshHint(Date.now() - dataUpdatedAt > 15000)
+      const isStale = Date.now() - dataUpdatedAt > 15000
+      if (isStale && !wasStale) {
+        trackCount('realtime.stale_data_warning')
+      }
+      wasStale = isStale
+      setShowRefreshHint(isStale)
     }
     checkStaleness()
     const interval = setInterval(checkStaleness, 5000)

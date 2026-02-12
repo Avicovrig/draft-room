@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/components/ui/Toast'
+import { trackCount, trackDistribution, startTimer } from '@/lib/metrics'
 import type { CaptainPublic } from '@/lib/types'
 
 interface UseAutoPickOptions {
@@ -48,8 +49,11 @@ export function useAutoPick({
     isAutoPickingRef.current = true
 
     try {
+      trackCount('draft.auto_pick_triggered')
+
       // Call the edge function for auto-pick with idempotency key
       const currentIdx = pickIndexRef.current
+      const elapsed = startTimer()
       const response = await supabase.functions.invoke('auto-pick', {
         body: {
           leagueId,
@@ -60,7 +64,10 @@ export function useAutoPick({
 
       if (response.error) {
         // Only show error if it's not a race condition (multiple clients calling simultaneously)
-        if (!response.error.message?.includes('Pick already made')) {
+        if (response.error.message?.includes('Pick already made')) {
+          trackCount('draft.auto_pick_race_condition')
+        } else {
+          trackCount('draft.auto_pick_error')
           addToast('Auto-pick failed. Please make a manual selection.', 'error')
         }
       } else if (response.data?.error) {
@@ -71,10 +78,17 @@ export function useAutoPick({
           'Draft is not in progress',
           'Draft state changed concurrently',
         ]
-        if (!expectedErrors.includes(response.data.error)) {
+        if (expectedErrors.includes(response.data.error)) {
+          trackCount('draft.auto_pick_race_condition')
+        } else {
+          trackCount('draft.auto_pick_error')
           addToast(`Auto-pick failed: ${response.data.error}`, 'error')
         }
       } else if (response.data?.success) {
+        trackCount('draft.auto_pick_success')
+        trackDistribution('edge_function.latency', elapsed(), 'millisecond', {
+          function_name: 'auto-pick',
+        })
         addToast(
           `Auto-picked ${response.data.pick.player} for ${response.data.pick.captain}`,
           'info'
@@ -86,6 +100,7 @@ export function useAutoPick({
         queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
       }
     } catch {
+      trackCount('draft.auto_pick_error')
       addToast('Auto-pick failed due to a network error.', 'error')
     } finally {
       isAutoPickingRef.current = false

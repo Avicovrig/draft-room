@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { trackCount } from '@/lib/metrics'
 import type { CaptainDraftQueue, LeagueFullPublic, PlayerPublic } from '@/lib/types'
 
 export interface QueuedPlayer extends CaptainDraftQueue {
@@ -64,6 +65,7 @@ export function useAddToQueue() {
       return data as CaptainDraftQueue
     },
     onSuccess: (_, variables) => {
+      trackCount('draft_queue.player_added')
       queryClient.invalidateQueries({ queryKey: ['draft-queue', variables.captainId] })
     },
   })
@@ -84,6 +86,7 @@ export function useRemoveFromQueue() {
       if (error) throw error
     },
     onSuccess: (_, variables) => {
+      trackCount('draft_queue.player_removed')
       queryClient.invalidateQueries({ queryKey: ['draft-queue', variables.captainId] })
     },
   })
@@ -214,6 +217,7 @@ export function useToggleAutoPick() {
         throw new Error(response.data.error)
       }
 
+      trackCount('draft.auto_pick_toggled', { enabled })
       return response.data
     },
     onMutate: async ({ captainId, enabled, leagueId }) => {
