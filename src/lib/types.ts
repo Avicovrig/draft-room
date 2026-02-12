@@ -307,8 +307,8 @@ export type PlayerPublic = Omit<Player, 'edit_token'>
 export type LeaguePublic = Omit<League, 'spectator_token'>
 
 export interface LeagueWithCounts extends LeaguePublic {
-  captains: [{ count: number }]
-  players: [{ count: number }]
+  captains: { id: string }[]
+  players: { id: string }[]
 }
 
 export interface LeagueFullPublic extends LeaguePublic {

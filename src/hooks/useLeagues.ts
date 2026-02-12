@@ -28,7 +28,7 @@ export function useLeagues() {
 
       const { data, error } = await supabase
         .from('leagues')
-        .select(`${LEAGUE_COLUMNS}, captains(count), players(count)`)
+        .select(`${LEAGUE_COLUMNS}, captains(id), players(id)`)
         .eq('manager_id', user.id)
         .order('created_at', { ascending: false })
 
