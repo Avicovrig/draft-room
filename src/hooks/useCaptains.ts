@@ -205,6 +205,7 @@ export function useUpdateCaptainColorAsCaptain() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['league', variables.leagueId] })
+      queryClient.invalidateQueries({ queryKey: ['captain-by-token', variables.leagueId] })
     },
   })
 }
@@ -277,6 +278,7 @@ export function useUploadTeamPhotoAsCaptain() {
     },
     onSuccess: ({ leagueId }) => {
       queryClient.invalidateQueries({ queryKey: ['league', leagueId] })
+      queryClient.invalidateQueries({ queryKey: ['captain-by-token', leagueId] })
     },
   })
 }
