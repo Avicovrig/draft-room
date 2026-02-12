@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Settings, Play, Users, Copy } from 'lucide-react'
+import { Settings, Play, Users, Copy, Crown, Clock } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { CopyLeagueModal } from '@/components/league/CopyLeagueModal'
-import type { LeaguePublic } from '@/lib/types'
+import type { LeagueWithCounts } from '@/lib/types'
 
 interface LeagueCardProps {
-  league: LeaguePublic
+  league: LeagueWithCounts
   index?: number
 }
 
@@ -67,9 +67,17 @@ export function LeagueCard({ league, index = 0 }: LeagueCardProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Crown className="h-4 w-4" />
+                <span>{league.captains[0]?.count ?? 0} captains</span>
+              </div>
               <div className="flex items-center gap-1">
                 <Users className="h-4 w-4" />
+                <span>{league.players[0]?.count ?? 0} players</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
                 <span>
                   {league.time_limit_seconds >= 60 && league.time_limit_seconds % 60 === 0
                     ? `${league.time_limit_seconds / 60}m`
@@ -77,17 +85,31 @@ export function LeagueCard({ league, index = 0 }: LeagueCardProps) {
                   per pick
                 </span>
               </div>
-              {league.status === 'not_started' ? (
-                <div className="flex items-center gap-1">
-                  <Settings className="h-4 w-4" />
-                  <span>Configure</span>
-                </div>
-              ) : (
+              {league.scheduled_start_at && (
                 <div className="flex items-center gap-1">
                   <Play className="h-4 w-4" />
-                  <span>View Draft</span>
+                  <span>
+                    {new Date(league.scheduled_start_at).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </span>
                 </div>
               )}
+              {!league.scheduled_start_at &&
+                (league.status === 'not_started' ? (
+                  <div className="flex items-center gap-1">
+                    <Settings className="h-4 w-4" />
+                    <span>Configure</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <Play className="h-4 w-4" />
+                    <span>View Draft</span>
+                  </div>
+                ))}
             </div>
           </CardContent>
         </Card>

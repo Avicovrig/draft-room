@@ -1,0 +1,25 @@
+export const TEAM_COLORS = [
+  { name: 'Black', hex: '#000000' },
+  { name: 'Dark Grey', hex: '#374151' },
+  { name: 'Grey', hex: '#6B7280' },
+  { name: 'Light Grey', hex: '#D1D5DB' },
+  { name: 'White', hex: '#FFFFFF' },
+  { name: 'Red', hex: '#EF4444' },
+  { name: 'Yellow', hex: '#FACC15' },
+  { name: 'Mustard', hex: '#CA8A04' },
+  { name: 'Light Green', hex: '#86EFAC' },
+  { name: 'Neon Green', hex: '#22C55E' },
+  { name: 'Green', hex: '#16A34A' },
+  { name: 'Dark Green', hex: '#166534' },
+  { name: 'Light Blue', hex: '#93C5FD' },
+  { name: 'Blue', hex: '#3B82F6' },
+  { name: 'Dark Blue', hex: '#1E3A8A' },
+  { name: 'Turquoise', hex: '#14B8A6' },
+  { name: 'Magenta', hex: '#EC4899' },
+  { name: 'Burgundy', hex: '#881337' },
+  { name: 'Lavender', hex: '#C4B5FD' },
+  { name: 'Purple', hex: '#A855F7' },
+  { name: 'Dark Purple', hex: '#6B21A8' },
+] as const
+
+export const DEFAULT_CAPTAIN_COLORS = ['#3B82F6', '#EF4444', '#22C55E', '#A855F7']

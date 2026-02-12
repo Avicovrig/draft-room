@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import type {
   LeaguePublic,
+  LeagueWithCounts,
   LeagueFullPublic,
   LeagueTokens,
   DraftType,
@@ -27,12 +28,12 @@ export function useLeagues() {
 
       const { data, error } = await supabase
         .from('leagues')
-        .select(LEAGUE_COLUMNS)
+        .select(`${LEAGUE_COLUMNS}, captains(count), players(count)`)
         .eq('manager_id', user.id)
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      return data as LeaguePublic[]
+      return data as LeagueWithCounts[]
     },
     enabled: !!user,
   })

@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Select } from '@/components/ui/Select'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
+import { ColorPicker } from '@/components/ui/ColorPicker'
 import { ImageCropper } from '@/components/ui/ImageCropper'
 import { useToast } from '@/components/ui/Toast'
 import { useModalFocus } from '@/hooks/useModalFocus'
@@ -41,9 +42,8 @@ import {
   useUpdateCaptainColor,
   useUploadTeamPhoto,
 } from '@/hooks/useCaptains'
+import { DEFAULT_CAPTAIN_COLORS } from '@/lib/colors'
 import type { CaptainPublic, LeagueFullPublic } from '@/lib/types'
-
-const DEFAULT_COLORS = ['#3B82F6', '#EF4444', '#22C55E', '#A855F7']
 
 interface CaptainListProps {
   league: LeagueFullPublic
@@ -93,121 +93,133 @@ function SortableCaptainItem({
     opacity: isDragging ? 0.5 : undefined,
   }
 
+  const [showColorPicker, setShowColorPicker] = useState(false)
+
   return (
-    <li
-      ref={setNodeRef}
-      style={style}
-      className="flex items-center justify-between rounded-lg border border-border p-3"
-    >
-      <div className="flex items-center gap-3">
-        {isEditable && (
-          <button
-            type="button"
-            className="cursor-grab touch-none p-0.5 text-muted-foreground hover:text-foreground active:cursor-grabbing"
-            aria-label="Drag to reorder"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className="h-4 w-4" />
-          </button>
-        )}
-        {isEditable && (
-          <div className="flex flex-col">
+    <li ref={setNodeRef} style={style} className="space-y-2 rounded-lg border border-border p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {isEditable && (
             <button
               type="button"
-              onClick={() => onMoveUp(index)}
-              disabled={isFirst || isReordering}
-              className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-              aria-label="Move up"
+              className="cursor-grab touch-none p-0.5 text-muted-foreground hover:text-foreground active:cursor-grabbing"
+              aria-label="Drag to reorder"
+              {...attributes}
+              {...listeners}
             >
-              <ChevronUp className="h-4 w-4" />
+              <GripVertical className="h-4 w-4" />
             </button>
-            <button
-              type="button"
-              onClick={() => onMoveDown(index)}
-              disabled={isLast || isReordering}
-              className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-              aria-label="Move down"
-            >
-              <ChevronDown className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-          {index + 1}
-        </span>
-        {isEditable && (
-          <input
-            type="color"
-            value={captain.team_color || '#3B82F6'}
-            onChange={(e) => onColorChange(captain.id, e.target.value)}
-            className="h-8 w-8 cursor-pointer rounded border-0 p-0"
-            title="Team color"
-          />
-        )}
-        {!isEditable && captain.team_color && (
-          <span
-            className="h-4 w-4 flex-shrink-0 rounded-full"
-            style={{ backgroundColor: captain.team_color }}
-          />
-        )}
-        {captain.team_photo_url ? (
-          <img
-            src={captain.team_photo_url}
-            alt=""
-            className="h-8 w-8 flex-shrink-0 rounded object-cover"
-          />
-        ) : null}
-        {isEditable && (
-          <button
-            type="button"
-            onClick={() => onEditPhoto(captain.id)}
-            className="flex-shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-            title={captain.team_photo_url ? 'Change team photo' : 'Upload team photo'}
-          >
-            <Camera className="h-4 w-4" />
-          </button>
-        )}
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="truncate font-medium">{captain.name}</span>
-            {captain.player_id || captain.is_participant ? (
-              <span className="whitespace-nowrap text-xs text-green-600 dark:text-green-400">
-                (Player)
-              </span>
-            ) : (
-              <span className="whitespace-nowrap text-xs text-muted-foreground">(Non-player)</span>
-            )}
-          </div>
+          )}
+          {isEditable && (
+            <div className="flex flex-col">
+              <button
+                type="button"
+                onClick={() => onMoveUp(index)}
+                disabled={isFirst || isReordering}
+                className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                aria-label="Move up"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onMoveDown(index)}
+                disabled={isLast || isReordering}
+                className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                aria-label="Move down"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+            {index + 1}
+          </span>
           {isEditable ? (
-            <input
-              type="text"
-              placeholder="Team name (optional)"
-              defaultValue={captain.team_name || ''}
-              onBlur={(e) => {
-                const newName = e.target.value.trim() || null
-                if (newName !== (captain.team_name || null)) {
-                  onTeamNameBlur(captain.id, newName)
-                }
-              }}
-              maxLength={50}
-              className="mt-0.5 w-full border-b border-transparent bg-transparent text-sm text-muted-foreground outline-none hover:border-border focus:border-primary"
+            <button
+              type="button"
+              onClick={() => setShowColorPicker((prev) => !prev)}
+              className="h-6 w-6 flex-shrink-0 rounded-full border border-border transition-transform hover:scale-110"
+              style={{ backgroundColor: captain.team_color || '#3B82F6' }}
+              title="Change team color"
             />
-          ) : captain.team_name ? (
-            <span className="text-sm text-muted-foreground">{captain.team_name}</span>
+          ) : captain.team_color ? (
+            <span
+              className="h-4 w-4 flex-shrink-0 rounded-full"
+              style={{ backgroundColor: captain.team_color }}
+            />
           ) : null}
+          {captain.team_photo_url ? (
+            <img
+              src={captain.team_photo_url}
+              alt=""
+              className="h-8 w-8 flex-shrink-0 rounded object-cover"
+            />
+          ) : null}
+          {isEditable && (
+            <button
+              type="button"
+              onClick={() => onEditPhoto(captain.id)}
+              className="flex-shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              title={captain.team_photo_url ? 'Change team photo' : 'Upload team photo'}
+            >
+              <Camera className="h-4 w-4" />
+            </button>
+          )}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="truncate font-medium">{captain.name}</span>
+              {captain.player_id || captain.is_participant ? (
+                <span className="whitespace-nowrap text-xs text-green-600 dark:text-green-400">
+                  (Player)
+                </span>
+              ) : (
+                <span className="whitespace-nowrap text-xs text-muted-foreground">
+                  (Non-player)
+                </span>
+              )}
+            </div>
+            {isEditable ? (
+              <input
+                type="text"
+                placeholder="Team name (optional)"
+                defaultValue={captain.team_name || ''}
+                onBlur={(e) => {
+                  const newName = e.target.value.trim() || null
+                  if (newName !== (captain.team_name || null)) {
+                    onTeamNameBlur(captain.id, newName)
+                  }
+                }}
+                maxLength={50}
+                className="mt-0.5 w-full border-b border-transparent bg-transparent text-sm text-muted-foreground outline-none hover:border-border focus:border-primary"
+              />
+            ) : captain.team_name ? (
+              <span className="text-sm text-muted-foreground">{captain.team_name}</span>
+            ) : null}
+          </div>
         </div>
+        {isEditable && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onDelete(captain.id)}
+            disabled={isDeleting}
+            aria-label="Delete captain"
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        )}
       </div>
-      {isEditable && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onDelete(captain.id)}
-          disabled={isDeleting}
-          aria-label="Delete captain"
-        >
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
+      {isEditable && showColorPicker && (
+        <div className="pl-8">
+          <ColorPicker
+            value={captain.team_color || '#3B82F6'}
+            onChange={(color) => {
+              onColorChange(captain.id, color)
+              setShowColorPicker(false)
+            }}
+          />
+        </div>
       )}
     </li>
   )
@@ -314,7 +326,7 @@ export function CaptainList({ league }: CaptainListProps) {
 
     const nextPosition = league.captains.length + 1
 
-    const defaultColor = DEFAULT_COLORS[(nextPosition - 1) % DEFAULT_COLORS.length]
+    const defaultColor = DEFAULT_CAPTAIN_COLORS[(nextPosition - 1) % DEFAULT_CAPTAIN_COLORS.length]
 
     if (captainMode === 'select') {
       if (!selectedPlayerId) return

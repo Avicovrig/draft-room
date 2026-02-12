@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header'
 import { DraftBoard } from '@/components/draft/DraftBoard'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ColorPicker } from '@/components/ui/ColorPicker'
 import { ImageCropper } from '@/components/ui/ImageCropper'
 import { useToast } from '@/components/ui/Toast'
 import { useDraft, useCaptainByToken } from '@/hooks/useDraft'
@@ -127,37 +128,32 @@ export function CaptainView() {
 
           {isPreDraft && !showTeamPhotoCropper && (
             <div className="mt-3 space-y-3">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-muted-foreground" htmlFor="captain-color">
-                    Team color
-                  </label>
-                  <input
-                    id="captain-color"
-                    type="color"
-                    value={captain.team_color || '#3B82F6'}
-                    onChange={(e) =>
-                      updateCaptain.mutate(
-                        {
-                          captainId: captain.id,
-                          color: e.target.value,
-                          leagueId: league.id,
-                          captainToken: token!,
+              <div className="space-y-1">
+                <label className="text-sm text-muted-foreground">Team color</label>
+                <ColorPicker
+                  value={captain.team_color || '#3B82F6'}
+                  onChange={(color) =>
+                    updateCaptain.mutate(
+                      {
+                        captainId: captain.id,
+                        color,
+                        leagueId: league.id,
+                        captainToken: token!,
+                      },
+                      {
+                        onError: (err) => {
+                          addToast(
+                            err instanceof Error ? err.message : 'Failed to update color',
+                            'error'
+                          )
                         },
-                        {
-                          onError: (err) => {
-                            addToast(
-                              err instanceof Error ? err.message : 'Failed to update color',
-                              'error'
-                            )
-                          },
-                        }
-                      )
-                    }
-                    className="h-8 w-8 cursor-pointer rounded border-0 p-0"
-                  />
-                </div>
+                      }
+                    )
+                  }
+                />
+              </div>
 
+              <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
                   <label className="text-sm text-muted-foreground" htmlFor="team-name">
                     Team name

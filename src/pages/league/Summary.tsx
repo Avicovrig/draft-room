@@ -12,6 +12,7 @@ import { useSecureToken } from '@/hooks/useSecureToken'
 import { useAuth } from '@/context/AuthContext'
 import { playSound, resumeAudioContext } from '@/lib/sounds'
 import { exportDraftResults } from '@/lib/exportDraftResults'
+import { getInitials } from '@/lib/utils'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import type { CaptainPublic, PlayerPublic, LeagueFullPublic } from '@/lib/types'
 
@@ -467,6 +468,17 @@ export function Summary() {
                           <span className="flex h-6 w-6 items-center justify-center rounded bg-muted text-xs font-medium">
                             {player.draft_pick_number}
                           </span>
+                          {player.profile_picture_url ? (
+                            <img
+                              src={player.profile_picture_url}
+                              alt={player.name}
+                              className="h-6 w-6 flex-shrink-0 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium flex-shrink-0">
+                              {getInitials(player.name)}
+                            </span>
+                          )}
                           <span>{player.name}</span>
                           {pick?.is_auto_pick && (
                             <span className="ml-auto rounded bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-600 dark:text-yellow-400">
@@ -586,12 +598,27 @@ function PickHistory({
                           </div>
                         </td>
                         <td className="py-2 pr-4">
-                          {player?.name ?? 'Unknown'}
-                          {pick.is_auto_pick && (
-                            <span className="ml-1.5 rounded bg-yellow-500/20 px-1.5 py-0.5 text-xs text-yellow-600 sm:hidden dark:text-yellow-400">
-                              Auto
+                          <div className="flex items-center gap-2">
+                            {player?.profile_picture_url ? (
+                              <img
+                                src={player.profile_picture_url}
+                                alt={player.name}
+                                className="h-5 w-5 flex-shrink-0 rounded-full object-cover"
+                              />
+                            ) : player ? (
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-medium flex-shrink-0">
+                                {getInitials(player.name)}
+                              </span>
+                            ) : null}
+                            <span>
+                              {player?.name ?? 'Unknown'}
+                              {pick.is_auto_pick && (
+                                <span className="ml-1.5 rounded bg-yellow-500/20 px-1.5 py-0.5 text-xs text-yellow-600 sm:hidden dark:text-yellow-400">
+                                  Auto
+                                </span>
+                              )}
                             </span>
-                          )}
+                          </div>
                         </td>
                         <td className="hidden py-2 pr-4 text-sm text-muted-foreground sm:table-cell">
                           {i === 0 ? '—' : timeDelta || '—'}
