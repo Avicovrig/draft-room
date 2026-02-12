@@ -5,6 +5,7 @@
 .env.production
 .env.qa
 .env.development
+.env.sentry-build-plugin
 
 # Supabase temp files
 supabase/.temp/

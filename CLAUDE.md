@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Draft Room is a custom league draft application. League managers can create leagues, add players, assign captains, and run real-time drafts with spectator support.
 
-**Tech Stack**: React 19 + TypeScript + Vite + Tailwind v4 + Supabase
+**Tech Stack**: React 19 + TypeScript + Vite + Tailwind v4 + Supabase + Sentry
 
 ## Commands
 
@@ -153,14 +153,29 @@ Dev docs are gitignored (`dev/active/`) — they're local working files, not com
 - **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability. QA defaults to the stable Vercel branch alias URL.
 - **Keep CLAUDE.md updated**: When adding or modifying tests, implementing best practices, or changing conventions, update this file to reflect the changes.
 
+## Error Monitoring (Sentry)
+
+Sentry captures frontend errors, performance data, and session replays (on error). Configured in `src/lib/sentry.ts`, imported first in `main.tsx`. Disabled in local dev (`enabled: import.meta.env.PROD`).
+
+- React 19 error handlers (`onUncaughtError`, `onCaughtError`, `onRecoverableError`) report to Sentry via `Sentry.reactErrorHandler()` in `main.tsx`
+- `ErrorBoundary.componentDidCatch` also calls `Sentry.captureException()`
+- Source maps upload via `@sentry/vite-plugin` during builds (requires `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`)
+- CSP in `vercel.json` allows `*.sentry.io` and `*.ingest.sentry.io`
+
 ## Environment Variables
 
 Vite loads `.env.[mode]` automatically. Local dev defaults to QA mode.
 
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
+- `VITE_SENTRY_DSN` - Sentry DSN (optional — Sentry disabled if empty)
 
 Edge functions use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (set automatically by Supabase).
+
+Build-time env vars (set in CI/Vercel, not in `.env` files):
+- `SENTRY_AUTH_TOKEN` - Sentry auth token for source map uploads
+- `SENTRY_ORG` - Sentry organization slug
+- `SENTRY_PROJECT` - Sentry project slug
 
 ## Accepted Design Trade-offs
 

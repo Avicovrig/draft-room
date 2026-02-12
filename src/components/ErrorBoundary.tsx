@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react'
 import { Component, type ReactNode, type ErrorInfo } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -24,6 +25,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Error caught by boundary:', error, errorInfo)
+    Sentry.captureException(error, {
+      extra: { componentStack: errorInfo.componentStack },
+    })
   }
 
   handleRetry = () => {
