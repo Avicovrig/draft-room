@@ -161,6 +161,7 @@ Sentry captures frontend errors, performance data, and session replays (on error
 - `ErrorBoundary.componentDidCatch` also calls `Sentry.captureException()`
 - Source maps upload via `@sentry/vite-plugin` during builds (requires `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`)
 - CSP in `vercel.json` allows `*.sentry.io` and `*.ingest.sentry.io`
+- **IMPORTANT: `tracePropagationTargets` must NOT include `supabase.co`** — the Supabase API gateway overrides `Access-Control-Allow-Headers` returned by edge functions, stripping any non-standard headers like `sentry-trace` and `baggage`. If Sentry injects these on Supabase requests, browsers block the POST after CORS preflight fails. Only propagate traces to same-origin (`/^\//`).
 
 ## Environment Variables
 

@@ -18,7 +18,7 @@ Every edge function follows this structure:
 ```typescript
 import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { createAdminClient } from '../_shared/supabase.ts'
-import { UUID_RE, errorResponse } from '../_shared/validation.ts'
+import { UUID_RE, errorResponse, requirePost, requireJson } from '../_shared/validation.ts'
 import { rateLimit } from '../_shared/rateLimit.ts'
 import { logAudit, getClientIp } from '../_shared/audit.ts'
 import type { MyRequestType } from '../_shared/types.ts'
@@ -28,26 +28,32 @@ Deno.serve(async (req) => {
   const corsResponse = handleCors(req)
   if (corsResponse) return corsResponse
 
-  // 2. Rate limiting
+  // 2. Method + Content-Type enforcement
+  const methodResponse = requirePost(req)
+  if (methodResponse) return methodResponse
+  const jsonResponse = requireJson(req)
+  if (jsonResponse) return jsonResponse
+
+  // 3. Rate limiting
   const rateLimitResponse = rateLimit(req, { windowMs: 60_000, maxRequests: 30 })
   if (rateLimitResponse) return rateLimitResponse
 
   try {
-    // 3. Parse and validate request body
+    // 4. Parse and validate request body
     const body: MyRequestType = await req.json()
     if (!body.leagueId || !UUID_RE.test(body.leagueId)) {
       return errorResponse('Invalid field format', 400, req)
     }
 
-    // 4. Create admin client (bypasses RLS via service role key)
+    // 5. Create admin client (bypasses RLS via service role key)
     const supabaseAdmin = createAdminClient()
 
-    // 5. Business logic...
+    // 6. Business logic...
 
-    // 6. Audit log (fire-and-forget, don't await)
+    // 7. Audit log (fire-and-forget, don't await)
     logAudit(supabaseAdmin, { action: 'my_action', leagueId, actorType: 'manager', ... })
 
-    // 7. Return success
+    // 8. Return success
     return new Response(
       JSON.stringify({ success: true }),
       { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
@@ -66,12 +72,14 @@ All in `supabase/functions/_shared/`:
 | File | Exports | Purpose |
 |------|---------|---------|
 | `cors.ts` | `getCorsHeaders(req)`, `handleCors(req)` | CORS origin checking, preflight responses |
-| `validation.ts` | `UUID_RE`, `errorResponse(msg, status, req)`, `validateUrl(url)` | UUID regex, JSON error responses |
+| `validation.ts` | `UUID_RE`, `errorResponse()`, `requirePost()`, `requireJson()`, `validateUrl()`, `timingSafeEqual()`, `isValidHexColor()`, `isValidJpeg()` | Validation, error responses, security utilities |
 | `rateLimit.ts` | `rateLimit(req, opts)` | In-memory per-isolate rate limiter |
-| `auth.ts` | `authenticateManager(req, leagueId)` | Manager JWT auth, returns `{user, league}` or error Response |
+| `auth.ts` | `authenticateManager(req, leagueId, client?)` | Manager JWT auth, returns `{user, league}` or error Response |
 | `audit.ts` | `logAudit(client, entry)`, `getClientIp(req)` | Fire-and-forget audit logging |
 | `supabase.ts` | `createAdminClient()` | Supabase client with service role key |
-| `types.ts` | All interfaces | Shared type definitions |
+| `draftOrder.ts` | `getCurrentCaptainId()`, `getAvailablePlayersServer()` | Draft order logic + available players filter (shared by `make-pick` and `auto-pick`) |
+| `draftHelpers.ts` | `rollbackPick()`, `advanceLeague()` | Pick rollback and league advancement with optimistic locking |
+| `types.ts` | All interfaces | Request body types + entity interfaces |
 
 ## CRITICAL: Use Types from `_shared/types.ts`
 
@@ -97,13 +105,16 @@ For actions callable by both captains and managers (`make-pick`, `auto-pick`, `t
 
 ```typescript
 if (captainToken) {
-  // Validate captain token
-  if (captain.access_token !== captainToken) {
+  // Validate captain token (timing-safe comparison to prevent timing attacks)
+  const captain = league.captains.find(
+    (c) => c.id === captainId && timingSafeEqual(c.access_token, captainToken)
+  )
+  if (!captain) {
     return errorResponse('Invalid captain token', 403, req)
   }
 } else {
   // No captain token — require manager JWT
-  const authResult = await authenticateManager(req, leagueId)
+  const authResult = await authenticateManager(req, leagueId, supabaseAdmin)
   if (authResult instanceof Response) return authResult
 }
 ```

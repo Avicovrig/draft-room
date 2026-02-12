@@ -9,19 +9,20 @@ description: "GUARDRAIL: Draft logic is duplicated between src/lib/draft.ts and 
 
 Draft logic exists in TWO places that MUST stay in sync:
 
-| Logic | Frontend | Edge Functions |
-|-------|----------|---------------|
-| Pick order (snake/round robin) | `src/lib/draft.ts` — `getPickOrder()`, `getCaptainAtPick()` | `make-pick/index.ts` (lines 54-68), `auto-pick/index.ts` (lines 70-81) |
-| Available players filter | `src/lib/draft.ts` — `getAvailablePlayers()` | `make-pick/index.ts` (lines 87-94, 149-166), `auto-pick/index.ts` (lines 112-119) |
-| Timer validation | `src/components/draft/PickTimer.tsx` | `auto-pick/index.ts` (lines 86-108) |
+| Logic | Frontend | Edge Functions (shared) | Edge Function call sites |
+|-------|----------|------------------------|--------------------------|
+| Pick order (snake/round robin) | `src/lib/draft.ts` — `getPickOrder()`, `getCaptainAtPick()` | `_shared/draftOrder.ts` — `getCurrentCaptainId()` | `make-pick` (line 23), `auto-pick` (line 153) |
+| Available players filter | `src/lib/draft.ts` — `getAvailablePlayers()` | `_shared/draftOrder.ts` — `getAvailablePlayersServer()` | `make-pick` (lines 40-62 count, 141-143 reject), `auto-pick` (line 181) |
+| Timer validation | `src/components/draft/PickTimer.tsx` | Inline in `auto-pick/index.ts` | `auto-pick` (timer check + 2s grace) |
 
 ## When Modifying Draft Logic, ALWAYS:
 
 1. Change `src/lib/draft.ts` (frontend)
-2. Change BOTH `make-pick/index.ts` AND `auto-pick/index.ts` (edge functions)
-3. Run `npm test` to verify frontend tests pass (58 draft logic tests)
-4. Deploy changed edge functions to QA and test
-5. Look for `// NOTE: Keep in sync with ...` comments — check the referenced location
+2. Change `_shared/draftOrder.ts` (shared edge function logic)
+3. Check call sites in `make-pick/index.ts` and `auto-pick/index.ts` for inline logic (e.g., `countRemainingPlayers`, captain-player rejection)
+4. Run `npm test` to verify frontend tests pass
+5. Deploy changed edge functions to QA and test
+6. Look for `// NOTE: Keep in sync with ...` comments — check the referenced location
 
 ---
 
@@ -55,7 +56,8 @@ A player is available if ALL of these are true:
 
 Captain-linked players: players whose `id` matches some captain's `player_id`. They are team captains and must NOT appear in available lists or be draftable. The `make-pick` edge function explicitly rejects them server-side.
 
-The `getAvailablePlayers()` utility in `src/lib/draft.ts` handles both filters. It is also used in `PlayerList.tsx` (management page). Any new view showing available players MUST use this utility.
+- **Frontend**: `getAvailablePlayers()` in `src/lib/draft.ts` handles both filters. Also used in `PlayerList.tsx` (management page). Any new view showing available players MUST use this utility.
+- **Edge functions**: `getAvailablePlayersServer()` in `_shared/draftOrder.ts` is the server-side equivalent. Used by `auto-pick`. `make-pick` has inline logic (`countRemainingPlayers` + captain rejection check) that must also stay in sync.
 
 ## Timer System
 
