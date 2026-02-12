@@ -6,7 +6,7 @@ Sentry.init({
   enabled: import.meta.env.PROD,
   integrations: [Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
   tracesSampleRate: 1.0,
-  tracePropagationTargets: [/^\//, /^https:\/\/.*\.supabase\.co/],
+  tracePropagationTargets: [/^\//],
   replaysSessionSampleRate: 0,
   replaysOnErrorSampleRate: 1.0,
 })
