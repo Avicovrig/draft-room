@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Confetti } from '@/components/ui/Confetti'
+import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { useDraft, useSpectatorAccess, useCaptainByToken } from '@/hooks/useDraft'
+import { useLeagueCustomFields } from '@/hooks/useCustomFields'
+import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber'
 import { useSecureToken } from '@/hooks/useSecureToken'
 import { useAuth } from '@/context/AuthContext'
@@ -52,6 +55,9 @@ export function Summary() {
   const { league, isLoading, error } = useDraft(id)
   const { data: hasSpectatorAccess, isLoading: spectatorLoading } = useSpectatorAccess(id, token)
   const { data: captainData, isLoading: captainLoading } = useCaptainByToken(id, token)
+  const { data: customFieldsMap = {} } = useLeagueCustomFields(id)
+  const { data: fieldSchemas = [] } = useLeagueFieldSchemas(id)
+  const [viewingPlayer, setViewingPlayer] = useState<PlayerPublic | null>(null)
 
   const isManager = league?.manager_id === user?.id
   const hasAccess = isManager || !!hasSpectatorAccess || !!captainData
@@ -461,30 +467,32 @@ export function Summary() {
                     {players.map((player) => {
                       const pick = league.draft_picks.find((p) => p.player_id === player.id)
                       return (
-                        <li
-                          key={player.id}
-                          className="flex items-center gap-3 rounded-lg bg-muted/50 px-3 py-2"
-                        >
-                          <span className="flex h-6 w-6 items-center justify-center rounded bg-muted text-xs font-medium">
-                            {player.draft_pick_number}
-                          </span>
-                          {player.profile_picture_url ? (
-                            <img
-                              src={player.profile_picture_url}
-                              alt={player.name}
-                              className="h-6 w-6 flex-shrink-0 rounded-full object-cover"
-                            />
-                          ) : (
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium flex-shrink-0">
-                              {getInitials(player.name)}
+                        <li key={player.id}>
+                          <button
+                            onClick={() => setViewingPlayer(player)}
+                            className="flex w-full items-center gap-3 rounded-lg bg-muted/50 px-3 py-2 text-left transition-colors hover:bg-muted"
+                          >
+                            <span className="flex h-6 w-6 items-center justify-center rounded bg-muted text-xs font-medium">
+                              {player.draft_pick_number}
                             </span>
-                          )}
-                          <span>{player.name}</span>
-                          {pick?.is_auto_pick && (
-                            <span className="ml-auto rounded bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-600 dark:text-yellow-400">
-                              Auto
-                            </span>
-                          )}
+                            {player.profile_picture_url ? (
+                              <img
+                                src={player.profile_picture_url}
+                                alt={player.name}
+                                className="h-6 w-6 flex-shrink-0 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium flex-shrink-0">
+                                {getInitials(player.name)}
+                              </span>
+                            )}
+                            <span>{player.name}</span>
+                            {pick?.is_auto_pick && (
+                              <span className="ml-auto rounded bg-yellow-500/20 px-2 py-0.5 text-xs text-yellow-600 dark:text-yellow-400">
+                                Auto
+                              </span>
+                            )}
+                          </button>
                         </li>
                       )
                     })}
@@ -506,6 +514,7 @@ export function Summary() {
             captains={league.captains}
             players={league.players}
             timeLimitSeconds={league.time_limit_seconds}
+            onPlayerClick={setViewingPlayer}
           />
         )}
 
@@ -517,6 +526,15 @@ export function Summary() {
             </Link>
           </div>
         )}
+
+        {viewingPlayer && (
+          <PlayerProfileModal
+            player={viewingPlayer}
+            customFields={customFieldsMap[viewingPlayer.id] || []}
+            fieldSchemas={fieldSchemas}
+            onClose={() => setViewingPlayer(null)}
+          />
+        )}
       </main>
     </div>
   )
@@ -527,11 +545,13 @@ function PickHistory({
   captains,
   players,
   timeLimitSeconds,
+  onPlayerClick,
 }: {
   picks: LeagueFullPublic['draft_picks']
   captains: CaptainPublic[]
   players: PlayerPublic[]
   timeLimitSeconds: number
+  onPlayerClick: (player: PlayerPublic) => void
 }) {
   const captainCount = captains.length
   const historyPicks = [...picks].sort((a, b) => a.pick_number - b.pick_number)
@@ -598,27 +618,34 @@ function PickHistory({
                           </div>
                         </td>
                         <td className="py-2 pr-4">
-                          <div className="flex items-center gap-2">
-                            {player?.profile_picture_url ? (
-                              <img
-                                src={player.profile_picture_url}
-                                alt={player.name}
-                                className="h-5 w-5 flex-shrink-0 rounded-full object-cover"
-                              />
-                            ) : player ? (
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-medium flex-shrink-0">
-                                {getInitials(player.name)}
-                              </span>
-                            ) : null}
-                            <span>
-                              {player?.name ?? 'Unknown'}
-                              {pick.is_auto_pick && (
-                                <span className="ml-1.5 rounded bg-yellow-500/20 px-1.5 py-0.5 text-xs text-yellow-600 sm:hidden dark:text-yellow-400">
-                                  Auto
+                          {player ? (
+                            <button
+                              onClick={() => onPlayerClick(player)}
+                              className="flex items-center gap-2 rounded transition-colors hover:text-primary"
+                            >
+                              {player.profile_picture_url ? (
+                                <img
+                                  src={player.profile_picture_url}
+                                  alt={player.name}
+                                  className="h-5 w-5 flex-shrink-0 rounded-full object-cover"
+                                />
+                              ) : (
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-medium flex-shrink-0">
+                                  {getInitials(player.name)}
                                 </span>
                               )}
-                            </span>
-                          </div>
+                              <span>
+                                {player.name}
+                                {pick.is_auto_pick && (
+                                  <span className="ml-1.5 rounded bg-yellow-500/20 px-1.5 py-0.5 text-xs text-yellow-600 sm:hidden dark:text-yellow-400">
+                                    Auto
+                                  </span>
+                                )}
+                              </span>
+                            </button>
+                          ) : (
+                            <span className="text-muted-foreground">Unknown</span>
+                          )}
                         </td>
                         <td className="hidden py-2 pr-4 text-sm text-muted-foreground sm:table-cell">
                           {i === 0 ? '—' : timeDelta || '—'}
