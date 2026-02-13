@@ -216,7 +216,7 @@ export function DraftBoard({
   function handleAddToQueue(playerId: string) {
     if (!viewingAsCaptain) return
     addToQueue.mutate(
-      { captainId: viewingAsCaptain.id, playerId },
+      { captainId: viewingAsCaptain.id, playerId, leagueId: league.id, captainToken },
       {
         onSuccess: () => {
           addToast('Added to queue', 'success')
@@ -300,15 +300,28 @@ export function DraftBoard({
 
   const prevPickIndexRef = useRef(league.current_pick_index)
   const prevIsMyTurnRef = useRef(isMyTurn)
+  const [pickAnnouncement, setPickAnnouncement] = useState('')
 
-  // Play sound when a pick is made (pick index changes)
+  // Play sound and announce when a pick is made (pick index changes)
   useEffect(() => {
     if (league.current_pick_index !== prevPickIndexRef.current && league.current_pick_index > 0) {
       resumeAudioContext()
       playSound('pickMade')
+
+      // Announce the pick for screen readers
+      const lastPick = league.draft_picks[league.draft_picks.length - 1]
+      if (lastPick) {
+        const captain = league.captains.find((c) => c.id === lastPick.captain_id)
+        const player = league.players.find((p) => p.id === lastPick.player_id)
+        if (captain && player) {
+          setPickAnnouncement(
+            `Pick ${lastPick.pick_number}: ${captain.team_name || captain.name} selected ${player.name}`
+          )
+        }
+      }
     }
     prevPickIndexRef.current = league.current_pick_index
-  }, [league.current_pick_index])
+  }, [league.current_pick_index, league.draft_picks, league.captains, league.players])
 
   // Play sound and send browser notification when it becomes your turn
   useEffect(() => {
@@ -354,6 +367,11 @@ export function DraftBoard({
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Screen reader announcements for draft picks */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {pickAnnouncement}
+      </div>
+
       {/* Draft Status Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>

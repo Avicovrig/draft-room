@@ -123,9 +123,10 @@ export function DragHandle({ className }: DragHandleProps) {
         'cursor-grab touch-none p-0.5 text-muted-foreground hover:text-foreground active:cursor-grabbing',
         className
       )}
-      aria-label="Drag to reorder"
       {...ctx.attributes}
       {...ctx.listeners}
+      aria-label="Drag to reorder"
+      aria-roledescription="sortable"
     >
       <GripVertical className="h-4 w-4" />
     </button>

@@ -142,6 +142,8 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
       captainId: captain.id,
       queueEntryId: activeId,
       newPosition: newIndex,
+      leagueId,
+      captainToken,
     })
   }
 
@@ -152,6 +154,8 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
       captainId: captain.id,
       queueEntryId: item.id,
       newPosition: index - 1,
+      leagueId,
+      captainToken,
     })
   }
 
@@ -162,6 +166,8 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
       captainId: captain.id,
       queueEntryId: item.id,
       newPosition: index + 1,
+      leagueId,
+      captainToken,
     })
   }
 
@@ -169,6 +175,8 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
     removeFromQueue.mutate({
       captainId: captain.id,
       queueEntryId,
+      leagueId,
+      captainToken,
     })
   }
 

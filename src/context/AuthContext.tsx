@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
+import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { trackCount } from '@/lib/metrics'
 
@@ -38,6 +39,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+
+      if (session?.user) {
+        Sentry.setUser({ id: session.user.id, email: session.user.email })
+      } else {
+        Sentry.setUser(null)
+      }
     })
 
     return () => subscription.unsubscribe()

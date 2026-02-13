@@ -105,3 +105,16 @@ export interface CopyLeagueRequest {
   sourceLeagueId: string
   newLeagueName: string
 }
+
+export interface ManageDraftQueueRequest {
+  action: 'add' | 'remove' | 'reorder'
+  captainId: string
+  leagueId: string
+  captainToken?: string
+  // For 'add'
+  playerId?: string
+  // For 'remove'
+  queueEntryId?: string
+  // For 'reorder' — array of entry IDs in desired order
+  entryIds?: string[]
+}

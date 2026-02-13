@@ -34,35 +34,33 @@ export function useDraftQueue(captainId: string | undefined) {
 interface AddToQueueInput {
   captainId: string
   playerId: string
+  leagueId: string
+  captainToken?: string
 }
 
 export function useAddToQueue() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ captainId, playerId }: AddToQueueInput) => {
-      // Get current max position
-      const { data: existing } = await supabase
-        .from('captain_draft_queues')
-        .select('position')
-        .eq('captain_id', captainId)
-        .order('position', { ascending: false })
-        .limit(1)
+    mutationFn: async ({ captainId, playerId, leagueId, captainToken }: AddToQueueInput) => {
+      const response = await supabase.functions.invoke('manage-draft-queue', {
+        body: {
+          action: 'add',
+          captainId,
+          playerId,
+          leagueId,
+          captainToken,
+        },
+      })
 
-      const nextPosition = existing && existing.length > 0 ? existing[0].position + 1 : 0
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to add to queue')
+      }
+      if (response.data?.error) {
+        throw new Error(response.data.error)
+      }
 
-      const { data, error } = await supabase
-        .from('captain_draft_queues')
-        .insert({
-          captain_id: captainId,
-          player_id: playerId,
-          position: nextPosition,
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-      return data as CaptainDraftQueue
+      return response.data.entry as CaptainDraftQueue
     },
     onSuccess: (_, variables) => {
       trackCount('draft_queue.player_added')
@@ -74,16 +72,36 @@ export function useAddToQueue() {
 interface RemoveFromQueueInput {
   captainId: string
   queueEntryId: string
+  leagueId: string
+  captainToken?: string
 }
 
 export function useRemoveFromQueue() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ queueEntryId }: RemoveFromQueueInput) => {
-      const { error } = await supabase.from('captain_draft_queues').delete().eq('id', queueEntryId)
+    mutationFn: async ({
+      queueEntryId,
+      captainId,
+      leagueId,
+      captainToken,
+    }: RemoveFromQueueInput) => {
+      const response = await supabase.functions.invoke('manage-draft-queue', {
+        body: {
+          action: 'remove',
+          captainId,
+          queueEntryId,
+          leagueId,
+          captainToken,
+        },
+      })
 
-      if (error) throw error
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to remove from queue')
+      }
+      if (response.data?.error) {
+        throw new Error(response.data.error)
+      }
     },
     onSuccess: (_, variables) => {
       trackCount('draft_queue.player_removed')
@@ -96,59 +114,38 @@ interface MoveInQueueInput {
   captainId: string
   queueEntryId: string
   newPosition: number
+  leagueId: string
+  captainToken?: string
 }
 
 export function useMoveInQueue() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ captainId, queueEntryId, newPosition }: MoveInQueueInput) => {
-      // Get current queue
-      const { data: queue, error: fetchError } = await supabase
-        .from('captain_draft_queues')
-        .select('*')
-        .eq('captain_id', captainId)
-        .order('position', { ascending: true })
+    mutationFn: async ({ captainId, leagueId, captainToken }: MoveInQueueInput) => {
+      // Read current queue from cache for reorder
+      const cached = queryClient.getQueryData<QueuedPlayer[]>(['draft-queue', captainId])
+      if (!cached || cached.length === 0) return
 
-      if (fetchError) throw fetchError
-      if (!queue) return
+      // The optimistic update in onMutate already reordered the cache.
+      // Send the reordered entry IDs to the server.
+      const entryIds = cached.map((q) => q.id)
 
-      const currentIndex = queue.findIndex((q) => q.id === queueEntryId)
-      if (currentIndex === -1) return
+      const response = await supabase.functions.invoke('manage-draft-queue', {
+        body: {
+          action: 'reorder',
+          captainId,
+          entryIds,
+          leagueId,
+          captainToken,
+        },
+      })
 
-      // Reorder array (immutable)
-      const reordered = [...queue]
-      const [item] = reordered.splice(currentIndex, 1)
-      reordered.splice(newPosition, 0, item)
-
-      // Two-phase update to avoid unique constraint violations on (captain_id, position):
-      // Phase 1: Set all positions to negative temporary values (parallel)
-      const tempResults = await Promise.all(
-        reordered.map((entry, i) =>
-          supabase
-            .from('captain_draft_queues')
-            .update({ position: -(i + 1) })
-            .eq('id', entry.id)
-        )
-      )
-      const tempError = tempResults.find((r) => r.error)
-      if (tempError?.error) throw tempError.error
-
-      // Phase 2: Set final positive positions (parallel)
-      const finalResults = await Promise.all(
-        reordered.map((entry, i) =>
-          supabase.from('captain_draft_queues').update({ position: i }).eq('id', entry.id)
-        )
-      )
-      const finalError = finalResults.find((r) => r.error)
-      if (finalError?.error) {
-        // Rollback: restore original positions from the queue fetched earlier
-        await Promise.all(
-          queue.map((entry, i) =>
-            supabase.from('captain_draft_queues').update({ position: i }).eq('id', entry.id)
-          )
-        )
-        throw finalError.error
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to reorder queue')
+      }
+      if (response.data?.error) {
+        throw new Error(response.data.error)
       }
     },
     onMutate: async ({ captainId, queueEntryId, newPosition }) => {

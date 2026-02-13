@@ -28,7 +28,7 @@ else
   exit 1
 fi
 
-ALL_FUNCTIONS=(make-pick auto-pick toggle-auto-pick update-player-profile update-captain-color restart-draft undo-pick copy-league)
+ALL_FUNCTIONS=(make-pick auto-pick toggle-auto-pick update-player-profile update-captain-color restart-draft undo-pick copy-league manage-draft-queue)
 MARKER_FILE=".last-deploy-functions-${ENV}"
 CURRENT_SHA=$(git rev-parse HEAD)
 

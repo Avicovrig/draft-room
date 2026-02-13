@@ -139,19 +139,25 @@ function SortableCaptainItem({
               )}
             </div>
             {isEditable ? (
-              <input
-                type="text"
-                placeholder="Team name (optional)"
-                defaultValue={captain.team_name || ''}
-                onBlur={(e) => {
-                  const newName = e.target.value.trim() || null
-                  if (newName !== (captain.team_name || null)) {
-                    onTeamNameBlur(captain.id, newName)
-                  }
-                }}
-                maxLength={50}
-                className="mt-0.5 w-full border-b border-transparent bg-transparent text-sm text-muted-foreground outline-none hover:border-border focus:border-primary"
-              />
+              <>
+                <label htmlFor={`team-name-${captain.id}`} className="sr-only">
+                  Team name for {captain.name}
+                </label>
+                <input
+                  id={`team-name-${captain.id}`}
+                  type="text"
+                  placeholder="Team name (optional)"
+                  defaultValue={captain.team_name || ''}
+                  onBlur={(e) => {
+                    const newName = e.target.value.trim() || null
+                    if (newName !== (captain.team_name || null)) {
+                      onTeamNameBlur(captain.id, newName)
+                    }
+                  }}
+                  maxLength={50}
+                  className="mt-0.5 w-full border-b border-transparent bg-transparent text-sm text-muted-foreground outline-none hover:border-border focus:border-primary"
+                />
+              </>
             ) : captain.team_name ? (
               <span className="text-sm text-muted-foreground">{captain.team_name}</span>
             ) : null}
@@ -420,7 +426,11 @@ export function CaptainList({ league }: CaptainListProps) {
             <form onSubmit={handleAddCaptain} className="space-y-4">
               {captainMode === 'select' ? (
                 <div className="flex gap-2">
+                  <label htmlFor="select-captain-player" className="sr-only">
+                    Select a player to make captain
+                  </label>
                   <Select
+                    id="select-captain-player"
                     value={selectedPlayerId}
                     onChange={(e) => setSelectedPlayerId(e.target.value)}
                     className="flex-1"
@@ -443,7 +453,11 @@ export function CaptainList({ league }: CaptainListProps) {
                 </div>
               ) : (
                 <div className="flex gap-2">
+                  <label htmlFor="new-captain-name" className="sr-only">
+                    Captain name
+                  </label>
                   <Input
+                    id="new-captain-name"
                     placeholder="Captain name"
                     value={newCaptainName}
                     onChange={(e) => setNewCaptainName(e.target.value)}

@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useMemo, useState, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { parseEdgeFunctionError } from '@/lib/edgeFunctionUtils'
 import { trackCount, trackDistribution, startTimer } from '@/lib/metrics'
@@ -119,6 +120,20 @@ export function useDraft(leagueId: string | undefined): UseDraftReturn {
     }
     prevStatusRef.current = league?.status
   }, [league?.status])
+
+  // Set Sentry context for draft state (aids debugging when errors occur)
+  useEffect(() => {
+    if (league) {
+      Sentry.setContext('draft', {
+        leagueId: league.id,
+        status: league.status,
+        draftType: league.draft_type,
+        currentPickIndex: league.current_pick_index,
+        captainCount: league.captains.length,
+        playerCount: league.players.length,
+      })
+    }
+  }, [league])
 
   // Calculate derived values with memoization
   // Note: deps use `league` (not sub-fields) to satisfy the React Compiler's preserve-manual-memoization rule

@@ -10,6 +10,12 @@ export function Header() {
 
   return (
     <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        Skip to main content
+      </a>
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
         <Link
           to={user ? '/dashboard' : '/'}

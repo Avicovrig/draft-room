@@ -141,7 +141,11 @@ export function PlayerPoolItem({
       {/* Inline Note Editor */}
       {isEditingNote && onNoteChange && (
         <div className="border-t border-border/50 bg-yellow-50/50 px-4 py-2 dark:bg-yellow-950/20">
+          <label htmlFor={`note-${player.id}`} className="sr-only">
+            Note about {player.name}
+          </label>
           <textarea
+            id={`note-${player.id}`}
             autoFocus
             rows={2}
             placeholder="Add a note about this player..."

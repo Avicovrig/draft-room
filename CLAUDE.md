@@ -45,6 +45,7 @@ All draft-critical mutations go through Deno edge functions in `supabase/functio
 - **`restart-draft`** - Manager-only. Deletes all picks, resets players, sets league back to `not_started`. Requires manager JWT.
 - **`undo-pick`** - Manager-only. Removes last pick, resets that player, decrements pick index. Requires manager JWT.
 - **`copy-league`** - Manager-only. Duplicates a league with all captains, players, field schemas, custom fields, and draft queues. Creates fresh tokens, resets draft state. Rolls back on partial failure.
+- **`manage-draft-queue`** - Captain queue operations (add, remove, reorder). Requires captain token OR manager JWT. Validates captain belongs to league, entry ownership. Uses two-phase position updates for reorder to avoid unique constraint violations.
 
 All edge functions share utilities in `supabase/functions/_shared/`: CORS origin checking (`cors.ts`), rate limiting (`rateLimit.ts`), UUID/URL validation + Content-Type enforcement + JPEG validation + timing-safe comparison + HTTP method enforcement (`validation.ts`), manager JWT auth with optional client reuse (`auth.ts`), audit logging (`audit.ts`), admin client creation with fail-fast env validation (`supabase.ts`), draft order logic (`draftOrder.ts`), and shared type definitions (`types.ts`). All validate UUID format on ID parameters before hitting the database. All enforce `Content-Type: application/json` via `requireJson()`. Request body types and entity interfaces are defined in `_shared/types.ts` — use these instead of inline type annotations.
 
@@ -152,7 +153,6 @@ Dev docs are gitignored (`dev/active/`) — they're local working files, not com
 - **Draft logic is duplicated** in `src/lib/draft.ts` and edge functions (`make-pick`, `auto-pick`). Shared helpers are in `supabase/functions/_shared/draftOrder.ts`. Tests cover both the frontend version and the shared helpers (via re-implementation). When modifying draft logic, update both locations and verify tests still pass.
 - **Coverage thresholds**: 80% for statements, branches, functions, and lines (enforced in `vitest.config.ts`). Applies to `src/lib/` files. Edge function shared files are excluded from v8 coverage metrics but tested via re-implementation.
 - **Pre-commit hook**: Husky runs `lint-staged` (ESLint with `--max-warnings 0` + Prettier on staged `.ts`/`.tsx` files — any warning blocks the commit). The full test suite runs in CI, not locally.
-- **Claude Code stop hook**: `.claude/hooks/build-check.sh` runs `tsc -b` when Claude finishes responding. If type errors exist, it exits with code 2 (shows errors to Claude, expects them to be fixed before stopping).
 - **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) on every push to `main` and on PRs. Three jobs: `lint-and-typecheck` (ESLint + `tsc -b`), `test` (coverage), then `build` (depends on both; uses dummy env vars since it only checks compilation).
 - **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability. QA defaults to the stable Vercel branch alias URL.
 - **Keep CLAUDE.md updated**: When adding or modifying tests, implementing best practices, or changing conventions, update this file to reflect the changes.
@@ -194,7 +194,7 @@ Build-time env vars (set in CI/Vercel, not in `.env` files):
 ## Supabase Setup
 
 1. Run migrations from `supabase/migrations/` in order (001-020)
-2. Deploy all 8 edge functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`, `copy-league`
+2. Deploy all 9 edge functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`, `copy-league`, `manage-draft-queue`
 3. Enable realtime on tables: `leagues`, `players`, `draft_picks`, `captains`
 4. Set up QStash for server-side timer enforcement:
    - Create Upstash account (free tier: 500 messages/day)
