@@ -355,7 +355,8 @@ export function DraftBoard({
     setIsPicking(true)
     try {
       await onMakePick(playerId, currentCaptain.id, captainToken)
-      playSound('pickMade')
+      // Sound is played by the useEffect watching league.current_pick_index,
+      // which fires for all pick types (manual, auto, other captains).
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to make pick. Please try again.'
