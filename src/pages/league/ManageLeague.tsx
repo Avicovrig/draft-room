@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react'
+import { useState, Suspense } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Settings, Users, Crown, Share2, Play, Trash2, ListChecks, Copy } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
@@ -13,21 +13,27 @@ import { DraftReadinessChecklist } from '@/components/league/DraftReadinessCheck
 import { CopyLeagueModal } from '@/components/league/CopyLeagueModal'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getAvailablePlayers } from '@/lib/draft'
+import { lazyWithRetry } from '@/lib/lazyWithRetry'
 
-const PlayerList = lazy(() =>
-  import('@/components/league/PlayerList').then((m) => ({ default: m.PlayerList }))
+const PlayerList = lazyWithRetry(
+  () => import('@/components/league/PlayerList').then((m) => ({ default: m.PlayerList })),
+  'PlayerList'
 )
-const CaptainList = lazy(() =>
-  import('@/components/league/CaptainList').then((m) => ({ default: m.CaptainList }))
+const CaptainList = lazyWithRetry(
+  () => import('@/components/league/CaptainList').then((m) => ({ default: m.CaptainList })),
+  'CaptainList'
 )
-const FieldSchemaList = lazy(() =>
-  import('@/components/league/FieldSchemaList').then((m) => ({ default: m.FieldSchemaList }))
+const FieldSchemaList = lazyWithRetry(
+  () => import('@/components/league/FieldSchemaList').then((m) => ({ default: m.FieldSchemaList })),
+  'FieldSchemaList'
 )
-const LeagueSettings = lazy(() =>
-  import('@/components/league/LeagueSettings').then((m) => ({ default: m.LeagueSettings }))
+const LeagueSettings = lazyWithRetry(
+  () => import('@/components/league/LeagueSettings').then((m) => ({ default: m.LeagueSettings })),
+  'LeagueSettings'
 )
-const ShareLinks = lazy(() =>
-  import('@/components/league/ShareLinks').then((m) => ({ default: m.ShareLinks }))
+const ShareLinks = lazyWithRetry(
+  () => import('@/components/league/ShareLinks').then((m) => ({ default: m.ShareLinks })),
+  'ShareLinks'
 )
 
 type Tab = 'settings' | 'players' | 'captains' | 'fields' | 'share'

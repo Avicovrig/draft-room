@@ -8,6 +8,7 @@ import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { Confetti } from '@/components/ui/Confetti'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { useDraft, useSpectatorAccess, useCaptainByToken } from '@/hooks/useDraft'
+import { useLeagueTokens } from '@/hooks/useLeagues'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber'
@@ -60,6 +61,7 @@ export function Summary() {
   const [viewingPlayer, setViewingPlayer] = useState<PlayerPublic | null>(null)
 
   const isManager = league?.manager_id === user?.id
+  const { data: managerTokens } = useLeagueTokens(isManager ? id : undefined)
   const hasAccess = isManager || !!hasSpectatorAccess || !!captainData
   const accessLoading = spectatorLoading || captainLoading
 
@@ -78,7 +80,11 @@ export function Summary() {
   }, [league?.status, id])
 
   async function handleCopyLink() {
-    const url = window.location.href
+    const shareToken = isManager ? managerTokens?.spectator_token : token
+    const baseUrl = window.location.origin
+    const url = shareToken
+      ? `${baseUrl}/league/${id}/summary?token=${shareToken}`
+      : `${baseUrl}/league/${id}/summary`
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)

@@ -26,7 +26,8 @@ export default defineConfig({
         // Type-only files (no runtime code)
         'src/lib/types.ts',
         'src/lib/spreadsheetTypes.ts',
-        // Browser-dependent files that require Web Audio API / ExcelJS / FileReader mocking
+        // Browser-dependent files that require Web Audio API / ExcelJS / FileReader / location mocking
+        'src/lib/lazyWithRetry.ts',
         'src/lib/sounds.ts',
         'src/lib/exportPlayers.ts',
         'src/lib/exportDraftResults.ts',

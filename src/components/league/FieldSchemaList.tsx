@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, Trash2, ChevronUp, ChevronDown, Pencil, X } from 'lucide-react'
+import { SortableList, SortableItem, DragHandle } from '@/components/ui/SortableList'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
@@ -401,6 +402,21 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
     })
   }
 
+  async function handleDragReorder(activeId: string, overId: string) {
+    const oldIndex = schemas.findIndex((s) => s.id === activeId)
+    const newIndex = schemas.findIndex((s) => s.id === overId)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const newOrder = [...schemas]
+    const [moved] = newOrder.splice(oldIndex, 1)
+    newOrder.splice(newIndex, 0, moved)
+
+    await reorderSchemas.mutateAsync({
+      leagueId: league.id,
+      schemaIds: newOrder.map((s) => s.id),
+    })
+  }
+
   return (
     <div className="space-y-6">
       {/* Add Field */}
@@ -502,211 +518,223 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
               <p className="text-sm text-muted-foreground">No custom fields defined yet.</p>
             </div>
           ) : (
-            <ul className="space-y-2">
-              {schemas.map((schema, index) => (
-                <li key={schema.id} className="rounded-lg border border-border p-3">
-                  {editState?.id === schema.id ? (
-                    /* Expanded Edit Panel */
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap items-end gap-2">
-                        <div className="min-w-0 flex-1">
-                          <Label className="mb-1 text-xs text-muted-foreground">Field name</Label>
-                          <Input
-                            value={editState.form.name}
-                            onChange={(e) =>
-                              setEditState((prev) =>
-                                prev
-                                  ? { ...prev, form: { ...prev.form, name: e.target.value } }
-                                  : null
-                              )
-                            }
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === 'Escape') setEditState(null)
-                            }}
-                          />
-                        </div>
-                        <div className="w-36">
-                          <Label className="mb-1 text-xs text-muted-foreground">Type</Label>
-                          <Select
-                            value={editState.form.type}
-                            onChange={(e) =>
-                              setEditState((prev) =>
-                                prev
-                                  ? {
-                                      ...prev,
-                                      form: { ...prev.form, type: e.target.value as FieldType },
-                                    }
-                                  : null
-                              )
-                            }
-                          >
-                            {FIELD_TYPES.map((t) => (
-                              <option key={t.value} value={t.value}>
-                                {t.label}
-                              </option>
-                            ))}
-                          </Select>
-                        </div>
-                        {editState.form.type !== 'checkbox' && (
-                          <label className="flex shrink-0 items-center gap-1.5 pb-1 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={editState.form.required}
+            <SortableList
+              items={schemas.map((s) => s.id)}
+              onReorder={handleDragReorder}
+              disabled={!isEditable}
+            >
+              <ul className="space-y-2">
+                {schemas.map((schema, index) => (
+                  <SortableItem
+                    key={schema.id}
+                    id={schema.id}
+                    disabled={!isEditable}
+                    className="rounded-lg border border-border p-3"
+                  >
+                    {editState?.id === schema.id ? (
+                      /* Expanded Edit Panel */
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-end gap-2">
+                          <div className="min-w-0 flex-1">
+                            <Label className="mb-1 text-xs text-muted-foreground">Field name</Label>
+                            <Input
+                              value={editState.form.name}
+                              onChange={(e) =>
+                                setEditState((prev) =>
+                                  prev
+                                    ? { ...prev, form: { ...prev.form, name: e.target.value } }
+                                    : null
+                                )
+                              }
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Escape') setEditState(null)
+                              }}
+                            />
+                          </div>
+                          <div className="w-36">
+                            <Label className="mb-1 text-xs text-muted-foreground">Type</Label>
+                            <Select
+                              value={editState.form.type}
                               onChange={(e) =>
                                 setEditState((prev) =>
                                   prev
                                     ? {
                                         ...prev,
-                                        form: { ...prev.form, required: e.target.checked },
+                                        form: { ...prev.form, type: e.target.value as FieldType },
                                       }
                                     : null
                                 )
                               }
-                              className="h-4 w-4 rounded border-border"
-                            />
-                            Required
-                          </label>
-                        )}
-                      </div>
-
-                      <FieldOptionsEditor
-                        type={editState.form.type}
-                        unit={editState.form.unit}
-                        onUnitChange={(v) =>
-                          setEditState((prev) =>
-                            prev ? { ...prev, form: { ...prev.form, unit: v } } : null
-                          )
-                        }
-                        includeTime={editState.form.includeTime}
-                        onIncludeTimeChange={(v) =>
-                          setEditState((prev) =>
-                            prev ? { ...prev, form: { ...prev.form, includeTime: v } } : null
-                          )
-                        }
-                        dropdownOptions={editState.form.dropdownOptions}
-                        onDropdownOptionsChange={(v) =>
-                          setEditState((prev) =>
-                            prev ? { ...prev, form: { ...prev.form, dropdownOptions: v } } : null
-                          )
-                        }
-                        defaultValue={editState.form.defaultValue}
-                        onDefaultValueChange={(v) =>
-                          setEditState((prev) =>
-                            prev ? { ...prev, form: { ...prev.form, defaultValue: v } } : null
-                          )
-                        }
-                      />
-
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleSaveEdit(schema.id)}
-                          disabled={updateSchema.isPending || !editState.form.name.trim()}
-                          loading={updateSchema.isPending}
-                        >
-                          Save
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => setEditState(null)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Normal Display */
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {isEditable && (
-                          <div className="flex flex-col">
-                            <button
-                              type="button"
-                              onClick={() => handleMoveUp(index)}
-                              disabled={index === 0 || reorderSchemas.isPending}
-                              className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                              aria-label="Move up"
                             >
-                              <ChevronUp className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMoveDown(index)}
-                              disabled={index === schemas.length - 1 || reorderSchemas.isPending}
-                              className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                              aria-label="Move down"
-                            >
-                              <ChevronDown className="h-4 w-4" />
-                            </button>
+                              {FIELD_TYPES.map((t) => (
+                                <option key={t.value} value={t.value}>
+                                  {t.label}
+                                </option>
+                              ))}
+                            </Select>
                           </div>
-                        )}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium">{schema.field_name}</span>
-                          {isEditable && (
-                            <button
-                              type="button"
-                              onClick={() => startEditing(schema)}
-                              className="p-1 text-muted-foreground hover:text-foreground"
-                              aria-label="Edit field"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                          )}
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                            {getTypeLabel(schema)}
-                          </span>
-                          {schema.is_required ? (
-                            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                          {editState.form.type !== 'checkbox' && (
+                            <label className="flex shrink-0 items-center gap-1.5 pb-1 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={editState.form.required}
+                                onChange={(e) =>
+                                  setEditState((prev) =>
+                                    prev
+                                      ? {
+                                          ...prev,
+                                          form: { ...prev.form, required: e.target.checked },
+                                        }
+                                      : null
+                                  )
+                                }
+                                className="h-4 w-4 rounded border-border"
+                              />
                               Required
-                            </span>
-                          ) : (
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                              Optional
-                            </span>
-                          )}
-                          {!!schema.field_options?.defaultValue && (
-                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                              Default: {String(schema.field_options.defaultValue)}
-                            </span>
+                            </label>
                           )}
                         </div>
+
+                        <FieldOptionsEditor
+                          type={editState.form.type}
+                          unit={editState.form.unit}
+                          onUnitChange={(v) =>
+                            setEditState((prev) =>
+                              prev ? { ...prev, form: { ...prev.form, unit: v } } : null
+                            )
+                          }
+                          includeTime={editState.form.includeTime}
+                          onIncludeTimeChange={(v) =>
+                            setEditState((prev) =>
+                              prev ? { ...prev, form: { ...prev.form, includeTime: v } } : null
+                            )
+                          }
+                          dropdownOptions={editState.form.dropdownOptions}
+                          onDropdownOptionsChange={(v) =>
+                            setEditState((prev) =>
+                              prev ? { ...prev, form: { ...prev.form, dropdownOptions: v } } : null
+                            )
+                          }
+                          defaultValue={editState.form.defaultValue}
+                          onDefaultValueChange={(v) =>
+                            setEditState((prev) =>
+                              prev ? { ...prev, form: { ...prev.form, defaultValue: v } } : null
+                            )
+                          }
+                        />
+
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleSaveEdit(schema.id)}
+                            disabled={updateSchema.isPending || !editState.form.name.trim()}
+                            loading={updateSchema.isPending}
+                          >
+                            Save
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setEditState(null)}>
+                            Cancel
+                          </Button>
+                        </div>
                       </div>
-                      {isEditable && (
-                        <div className="flex items-center gap-1">
-                          {deleteConfirmId === schema.id ? (
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDelete(schema.id)}
-                                disabled={deleteSchema.isPending}
-                                loading={deleteSchema.isPending}
+                    ) : (
+                      /* Normal Display */
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {isEditable && <DragHandle />}
+                          {isEditable && (
+                            <div className="flex flex-col">
+                              <button
+                                type="button"
+                                onClick={() => handleMoveUp(index)}
+                                disabled={index === 0 || reorderSchemas.isPending}
+                                className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                aria-label="Move up"
                               >
-                                Delete
-                              </Button>
+                                <ChevronUp className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleMoveDown(index)}
+                                disabled={index === schemas.length - 1 || reorderSchemas.isPending}
+                                className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                aria-label="Move down"
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium">{schema.field_name}</span>
+                            {isEditable && (
+                              <button
+                                type="button"
+                                onClick={() => startEditing(schema)}
+                                className="p-1 text-muted-foreground hover:text-foreground"
+                                aria-label="Edit field"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                            )}
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                              {getTypeLabel(schema)}
+                            </span>
+                            {schema.is_required ? (
+                              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                Required
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                Optional
+                              </span>
+                            )}
+                            {!!schema.field_options?.defaultValue && (
+                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                Default: {String(schema.field_options.defaultValue)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {isEditable && (
+                          <div className="flex items-center gap-1">
+                            {deleteConfirmId === schema.id ? (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDelete(schema.id)}
+                                  disabled={deleteSchema.isPending}
+                                  loading={deleteSchema.isPending}
+                                >
+                                  Delete
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setDeleteConfirmId(null)}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            ) : (
                               <Button
                                 variant="ghost"
-                                size="sm"
-                                onClick={() => setDeleteConfirmId(null)}
+                                size="icon"
+                                onClick={() => setDeleteConfirmId(schema.id)}
+                                aria-label="Delete field"
                               >
-                                Cancel
+                                <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeleteConfirmId(schema.id)}
-                              aria-label="Delete field"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </SortableItem>
+                ))}
+              </ul>
+            </SortableList>
           )}
         </CardContent>
       </Card>

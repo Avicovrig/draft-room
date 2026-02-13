@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { Suspense } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { ThemeProvider } from '@/context/ThemeContext'
@@ -9,34 +9,60 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { PageTransition } from '@/components/layout/PageTransition'
 import { Analytics } from '@vercel/analytics/react'
+import { lazyWithRetry } from '@/lib/lazyWithRetry'
 
-const Landing = lazy(() => import('@/pages/Landing').then((m) => ({ default: m.Landing })))
-const Login = lazy(() => import('@/pages/auth/Login').then((m) => ({ default: m.Login })))
-const Signup = lazy(() => import('@/pages/auth/Signup').then((m) => ({ default: m.Signup })))
-const AuthCallback = lazy(() =>
-  import('@/pages/auth/Callback').then((m) => ({ default: m.AuthCallback }))
+const Landing = lazyWithRetry(
+  () => import('@/pages/Landing').then((m) => ({ default: m.Landing })),
+  'Landing'
 )
-const Dashboard = lazy(() => import('@/pages/Dashboard').then((m) => ({ default: m.Dashboard })))
-const NewLeague = lazy(() =>
-  import('@/pages/league/NewLeague').then((m) => ({ default: m.NewLeague }))
+const Login = lazyWithRetry(
+  () => import('@/pages/auth/Login').then((m) => ({ default: m.Login })),
+  'Login'
 )
-const ManageLeague = lazy(() =>
-  import('@/pages/league/ManageLeague').then((m) => ({ default: m.ManageLeague }))
+const Signup = lazyWithRetry(
+  () => import('@/pages/auth/Signup').then((m) => ({ default: m.Signup })),
+  'Signup'
 )
-const DraftView = lazy(() =>
-  import('@/pages/league/DraftView').then((m) => ({ default: m.DraftView }))
+const AuthCallback = lazyWithRetry(
+  () => import('@/pages/auth/Callback').then((m) => ({ default: m.AuthCallback })),
+  'AuthCallback'
 )
-const CaptainView = lazy(() =>
-  import('@/pages/league/CaptainView').then((m) => ({ default: m.CaptainView }))
+const Dashboard = lazyWithRetry(
+  () => import('@/pages/Dashboard').then((m) => ({ default: m.Dashboard })),
+  'Dashboard'
 )
-const SpectatorView = lazy(() =>
-  import('@/pages/league/SpectatorView').then((m) => ({ default: m.SpectatorView }))
+const NewLeague = lazyWithRetry(
+  () => import('@/pages/league/NewLeague').then((m) => ({ default: m.NewLeague })),
+  'NewLeague'
 )
-const Summary = lazy(() => import('@/pages/league/Summary').then((m) => ({ default: m.Summary })))
-const EditProfile = lazy(() =>
-  import('@/pages/player/EditProfile').then((m) => ({ default: m.EditProfile }))
+const ManageLeague = lazyWithRetry(
+  () => import('@/pages/league/ManageLeague').then((m) => ({ default: m.ManageLeague })),
+  'ManageLeague'
 )
-const NotFound = lazy(() => import('@/pages/NotFound').then((m) => ({ default: m.NotFound })))
+const DraftView = lazyWithRetry(
+  () => import('@/pages/league/DraftView').then((m) => ({ default: m.DraftView })),
+  'DraftView'
+)
+const CaptainView = lazyWithRetry(
+  () => import('@/pages/league/CaptainView').then((m) => ({ default: m.CaptainView })),
+  'CaptainView'
+)
+const SpectatorView = lazyWithRetry(
+  () => import('@/pages/league/SpectatorView').then((m) => ({ default: m.SpectatorView })),
+  'SpectatorView'
+)
+const Summary = lazyWithRetry(
+  () => import('@/pages/league/Summary').then((m) => ({ default: m.Summary })),
+  'Summary'
+)
+const EditProfile = lazyWithRetry(
+  () => import('@/pages/player/EditProfile').then((m) => ({ default: m.EditProfile })),
+  'EditProfile'
+)
+const NotFound = lazyWithRetry(
+  () => import('@/pages/NotFound').then((m) => ({ default: m.NotFound })),
+  'NotFound'
+)
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -1,30 +1,6 @@
 import { useState, useCallback } from 'react'
-import {
-  Plus,
-  Trash2,
-  Shuffle,
-  ChevronUp,
-  ChevronDown,
-  Crown,
-  Camera,
-  GripVertical,
-} from 'lucide-react'
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { Plus, Trash2, Shuffle, ChevronUp, ChevronDown, Crown, Camera } from 'lucide-react'
+import { SortableList, SortableItem, DragHandle } from '@/components/ui/SortableList'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
@@ -82,34 +58,17 @@ function SortableCaptainItem({
   onTeamNameBlur,
   onEditPhoto,
 }: SortableCaptainItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: captain.id,
-    disabled: !isEditable,
-  })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : undefined,
-  }
-
   const [showColorPicker, setShowColorPicker] = useState(false)
 
   return (
-    <li ref={setNodeRef} style={style} className="space-y-2 rounded-lg border border-border p-3">
+    <SortableItem
+      id={captain.id}
+      disabled={!isEditable}
+      className="space-y-2 rounded-lg border border-border p-3"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {isEditable && (
-            <button
-              type="button"
-              className="cursor-grab touch-none p-0.5 text-muted-foreground hover:text-foreground active:cursor-grabbing"
-              aria-label="Drag to reorder"
-              {...attributes}
-              {...listeners}
-            >
-              <GripVertical className="h-4 w-4" />
-            </button>
-          )}
+          {isEditable && <DragHandle />}
           {isEditable && (
             <div className="flex flex-col">
               <button
@@ -221,7 +180,7 @@ function SortableCaptainItem({
           />
         </div>
       )}
-    </li>
+    </SortableItem>
   )
 }
 
@@ -257,18 +216,9 @@ export function CaptainList({ league }: CaptainListProps) {
   const canAddNonPlayerCaptain = availableDraftPlayers - league.captains.length >= 1
   const maxRandomCaptains = Math.floor(league.players.length / 2)
 
-  // Drag-and-drop sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
-
-  async function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const oldIndex = sortedCaptains.findIndex((c) => c.id === active.id)
-    const newIndex = sortedCaptains.findIndex((c) => c.id === over.id)
+  async function handleDragReorder(activeId: string, overId: string) {
+    const oldIndex = sortedCaptains.findIndex((c) => c.id === activeId)
+    const newIndex = sortedCaptains.findIndex((c) => c.id === overId)
     if (oldIndex === -1 || newIndex === -1) return
 
     const newOrder = [...sortedCaptains]
@@ -632,37 +582,32 @@ export function CaptainList({ league }: CaptainListProps) {
               </p>
             </div>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
+            <SortableList
+              items={sortedCaptains.map((c) => c.id)}
+              onReorder={handleDragReorder}
+              disabled={!isEditable}
             >
-              <SortableContext
-                items={sortedCaptains.map((c) => c.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <ul className="space-y-2">
-                  {sortedCaptains.map((captain, index) => (
-                    <SortableCaptainItem
-                      key={captain.id}
-                      captain={captain}
-                      index={index}
-                      isEditable={isEditable}
-                      isFirst={index === 0}
-                      isLast={index === sortedCaptains.length - 1}
-                      isReordering={reorderCaptains.isPending}
-                      isDeleting={deleteCaptain.isPending}
-                      onMoveUp={handleMoveUp}
-                      onMoveDown={handleMoveDown}
-                      onDelete={handleDeleteCaptain}
-                      onColorChange={handleColorChange}
-                      onTeamNameBlur={handleTeamNameBlur}
-                      onEditPhoto={setEditingTeamPhotoId}
-                    />
-                  ))}
-                </ul>
-              </SortableContext>
-            </DndContext>
+              <ul className="space-y-2">
+                {sortedCaptains.map((captain, index) => (
+                  <SortableCaptainItem
+                    key={captain.id}
+                    captain={captain}
+                    index={index}
+                    isEditable={isEditable}
+                    isFirst={index === 0}
+                    isLast={index === sortedCaptains.length - 1}
+                    isReordering={reorderCaptains.isPending}
+                    isDeleting={deleteCaptain.isPending}
+                    onMoveUp={handleMoveUp}
+                    onMoveDown={handleMoveDown}
+                    onDelete={handleDeleteCaptain}
+                    onColorChange={handleColorChange}
+                    onTeamNameBlur={handleTeamNameBlur}
+                    onEditPhoto={setEditingTeamPhotoId}
+                  />
+                ))}
+              </ul>
+            </SortableList>
           )}
 
           {sortedCaptains.length > 0 && sortedCaptains.length < 2 && (

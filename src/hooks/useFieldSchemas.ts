@@ -142,8 +142,34 @@ export function useReorderFieldSchemas() {
 
       return { leagueId }
     },
-    onSuccess: ({ leagueId }) => {
-      queryClient.invalidateQueries({ queryKey: ['league-field-schemas', leagueId] })
+    onMutate: async ({ leagueId, schemaIds }) => {
+      await queryClient.cancelQueries({ queryKey: ['league-field-schemas', leagueId] })
+
+      const previous = queryClient.getQueryData<LeagueFieldSchema[]>([
+        'league-field-schemas',
+        leagueId,
+      ])
+
+      if (previous) {
+        const orderMap = new Map(schemaIds.map((id, i) => [id, i]))
+        const updated = previous
+          .map((s) => {
+            const newOrder = orderMap.get(s.id)
+            return newOrder !== undefined ? { ...s, field_order: newOrder } : s
+          })
+          .sort((a, b) => a.field_order - b.field_order)
+        queryClient.setQueryData(['league-field-schemas', leagueId], updated)
+      }
+
+      return { previous, leagueId }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['league-field-schemas', context.leagueId], context.previous)
+      }
+    },
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['league-field-schemas', variables.leagueId] })
     },
   })
 }

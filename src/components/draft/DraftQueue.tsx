@@ -1,21 +1,6 @@
 import { useState, useEffect } from 'react'
-import { ChevronUp, ChevronDown, X, ListOrdered, GripVertical } from 'lucide-react'
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { ChevronUp, ChevronDown, X, ListOrdered } from 'lucide-react'
+import { SortableList, SortableItem, DragHandle } from '@/components/ui/SortableList'
 import { Button } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import {
@@ -61,32 +46,13 @@ function SortableQueueItem({
   onRemove,
   isRemoving,
 }: SortableQueueItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: item.id,
-  })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : undefined,
-  }
-
   return (
-    <li
-      ref={setNodeRef}
-      style={style}
+    <SortableItem
+      id={item.id}
       className="flex items-center gap-2 px-3 py-2 transition-colors hover:bg-accent/50"
     >
       {/* Drag handle */}
-      <button
-        type="button"
-        className="cursor-grab touch-none p-0.5 text-muted-foreground/50 hover:text-muted-foreground active:cursor-grabbing"
-        aria-label="Drag to reorder"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="h-4 w-4 flex-shrink-0" />
-      </button>
+      <DragHandle className="text-muted-foreground/50 hover:text-muted-foreground" />
 
       {/* Position number */}
       <span className="w-6 text-center text-sm font-medium text-muted-foreground">{index + 1}</span>
@@ -144,7 +110,7 @@ function SortableQueueItem({
           <X className="h-4 w-4" />
         </Button>
       </div>
-    </li>
+    </SortableItem>
   )
 }
 
@@ -168,23 +134,13 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
   const availablePlayerIds = new Set(availablePlayers.map((p) => p.id))
   const availableQueue = queue.filter((q) => availablePlayerIds.has(q.player_id))
 
-  // Drag-and-drop sensors (PointerSensor handles both mouse and touch)
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  )
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const oldIndex = availableQueue.findIndex((q) => q.id === active.id)
-    const newIndex = availableQueue.findIndex((q) => q.id === over.id)
-    if (oldIndex === -1 || newIndex === -1) return
+  function handleDragReorder(activeId: string, overId: string) {
+    const newIndex = availableQueue.findIndex((q) => q.id === overId)
+    if (newIndex === -1) return
 
     moveInQueue.mutate({
       captainId: captain.id,
-      queueEntryId: active.id as string,
+      queueEntryId: activeId,
       newPosition: newIndex,
     })
   }
@@ -282,32 +238,23 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
             <p className="mt-1 text-xs">Click the + button on players to add them</p>
           </div>
         ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={availableQueue.map((q) => q.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <ul className="divide-y divide-border">
-                {availableQueue.map((item, index) => (
-                  <SortableQueueItem
-                    key={item.id}
-                    item={item}
-                    index={index}
-                    isFirst={index === 0}
-                    isLast={index === availableQueue.length - 1}
-                    onMoveUp={handleMoveUp}
-                    onMoveDown={handleMoveDown}
-                    onRemove={handleRemove}
-                    isRemoving={removeFromQueue.isPending}
-                  />
-                ))}
-              </ul>
-            </SortableContext>
-          </DndContext>
+          <SortableList items={availableQueue.map((q) => q.id)} onReorder={handleDragReorder}>
+            <ul className="divide-y divide-border">
+              {availableQueue.map((item, index) => (
+                <SortableQueueItem
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  isFirst={index === 0}
+                  isLast={index === availableQueue.length - 1}
+                  onMoveUp={handleMoveUp}
+                  onMoveDown={handleMoveDown}
+                  onRemove={handleRemove}
+                  isRemoving={removeFromQueue.isPending}
+                />
+              ))}
+            </ul>
+          </SortableList>
         )}
       </div>
 

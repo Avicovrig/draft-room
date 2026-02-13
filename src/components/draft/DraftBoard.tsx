@@ -6,6 +6,7 @@ import { useAutoPick } from '@/hooks/useAutoPick'
 import { KeyboardShortcutsModal } from '@/components/ui/KeyboardShortcutsModal'
 import { PickTimer } from './PickTimer'
 import { PlayerPool, type SortOption } from './PlayerPool'
+import { SORTABLE_FIELD_TYPES } from '@/lib/playerFilters'
 import { TeamRoster } from './TeamRoster'
 import { DraftControls } from './DraftControls'
 import { DraftQueue } from './DraftQueue'
@@ -24,6 +25,13 @@ import type {
   PlayerCustomField,
   LeagueFieldSchema,
 } from '@/lib/types'
+
+interface PersistedPoolState {
+  search: string
+  sortBy: SortOption
+  sortDirection: 'asc' | 'desc'
+  filters: Record<string, string>
+}
 
 interface DraftBoardProps {
   league: LeagueFullPublic
@@ -66,9 +74,99 @@ export function DraftBoard({
 }: DraftBoardProps) {
   const [isPicking, setIsPicking] = useState(false)
   const [isPlayerPoolExpanded, setIsPlayerPoolExpanded] = useState(false)
-  const [poolSearch, setPoolSearch] = useState('')
-  const [poolSortBy, setPoolSortBy] = useState<SortOption>('default')
-  const [poolFilters, setPoolFilters] = useState<Record<string, string>>({})
+
+  // SessionStorage-backed pool state
+  const storageKey = `draft-pool-state:${league.id}`
+  const [poolSearch, setPoolSearch] = useState<string>(() => {
+    try {
+      const saved = sessionStorage.getItem(storageKey)
+      if (saved) return (JSON.parse(saved) as PersistedPoolState).search ?? ''
+    } catch {
+      /* private browsing */
+    }
+    return ''
+  })
+  const [poolSortBy, setPoolSortByRaw] = useState<SortOption>(() => {
+    try {
+      const saved = sessionStorage.getItem(storageKey)
+      if (saved) return (JSON.parse(saved) as PersistedPoolState).sortBy ?? 'default'
+    } catch {
+      /* private browsing */
+    }
+    return 'default'
+  })
+  const [poolSortDirection, setPoolSortDirection] = useState<'asc' | 'desc'>(() => {
+    try {
+      const saved = sessionStorage.getItem(storageKey)
+      if (saved) return (JSON.parse(saved) as PersistedPoolState).sortDirection ?? 'asc'
+    } catch {
+      /* private browsing */
+    }
+    return 'asc'
+  })
+  const [poolFilters, setPoolFilters] = useState<Record<string, string>>(() => {
+    try {
+      const saved = sessionStorage.getItem(storageKey)
+      if (saved) return (JSON.parse(saved) as PersistedPoolState).filters ?? {}
+    } catch {
+      /* private browsing */
+    }
+    return {}
+  })
+
+  // Reset direction to asc when switching away from field sort
+  const setPoolSortBy = useCallback((sort: SortOption) => {
+    setPoolSortByRaw(sort)
+    if (!sort.startsWith('field:')) {
+      setPoolSortDirection('asc')
+    }
+  }, [])
+
+  // Persist pool state to sessionStorage
+  useEffect(() => {
+    try {
+      const state: PersistedPoolState = {
+        search: poolSearch,
+        sortBy: poolSortBy,
+        sortDirection: poolSortDirection,
+        filters: poolFilters,
+      }
+      sessionStorage.setItem(storageKey, JSON.stringify(state))
+    } catch {
+      /* private browsing */
+    }
+  }, [storageKey, poolSearch, poolSortBy, poolSortDirection, poolFilters])
+
+  // Clean up stale filters/sort when field schemas change
+  useEffect(() => {
+    if (fieldSchemas.length === 0) return
+    const schemaIds = new Set(fieldSchemas.map((s) => s.id))
+
+    // Remove filter keys referencing deleted schemas
+    setPoolFilters((prev) => {
+      const cleaned: Record<string, string> = {}
+      let changed = false
+      for (const [key, val] of Object.entries(prev)) {
+        if (schemaIds.has(key)) {
+          cleaned[key] = val
+        } else {
+          changed = true
+        }
+      }
+      return changed ? cleaned : prev
+    })
+
+    // Reset sort if it points to a removed or non-sortable field
+    if (poolSortBy.startsWith('field:')) {
+      const schemaId = poolSortBy.slice(6)
+      const schema = fieldSchemas.find((s) => s.id === schemaId)
+      if (!schema || !SORTABLE_FIELD_TYPES.has(schema.field_type)) {
+        setPoolSortByRaw('default')
+        setPoolSortDirection('asc')
+      }
+    }
+  }, [fieldSchemas, poolSortBy])
+
   const handleFilterChange = useCallback((schemaId: string, value: string) => {
     setPoolFilters((prev) => {
       if (value) {
@@ -403,6 +501,8 @@ export function DraftBoard({
               onSearchChange={setPoolSearch}
               sortBy={poolSortBy}
               onSortChange={setPoolSortBy}
+              sortDirection={poolSortDirection}
+              onSortDirectionChange={setPoolSortDirection}
               searchInputRef={searchInputRef}
               notes={notesOwnerId ? notes : undefined}
               onNoteChange={notesOwnerId ? setNote : undefined}
@@ -510,6 +610,8 @@ export function DraftBoard({
                 onSearchChange={setPoolSearch}
                 sortBy={poolSortBy}
                 onSortChange={setPoolSortBy}
+                sortDirection={poolSortDirection}
+                onSortDirectionChange={setPoolSortDirection}
                 notes={notesOwnerId ? notes : undefined}
                 onNoteChange={notesOwnerId ? setNote : undefined}
                 fieldSchemas={fieldSchemas}

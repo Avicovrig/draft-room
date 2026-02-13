@@ -1,10 +1,23 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
-import { Search, ArrowUpDown, Filter, X } from 'lucide-react'
+import {
+  Search,
+  ArrowUpDown,
+  ArrowUpNarrowWide,
+  ArrowDownNarrowWide,
+  Filter,
+  X,
+} from 'lucide-react'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { PlayerPoolItem } from './PlayerPoolItem'
 import { cn } from '@/lib/utils'
+import {
+  matchesNumberFilter,
+  matchesDateFilter,
+  isFilterActive,
+  SORTABLE_FIELD_TYPES,
+} from '@/lib/playerFilters'
 import type { PlayerPublic, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 
 export type SortOption = 'default' | 'name-asc' | 'name-desc' | `field:${string}`
@@ -75,6 +88,8 @@ interface PlayerPoolProps {
   filters?: Record<string, string>
   onFilterChange?: (schemaId: string, value: string) => void
   onClearFilters?: () => void
+  sortDirection?: 'asc' | 'desc'
+  onSortDirectionChange?: (dir: 'asc' | 'desc') => void
 }
 
 export function PlayerPool({
@@ -98,14 +113,22 @@ export function PlayerPool({
   filters = {},
   onFilterChange,
   onClearFilters,
+  sortDirection: controlledSortDirection,
+  onSortDirectionChange,
 }: PlayerPoolProps) {
   const [localSearch, setLocalSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewingPlayer, setViewingPlayer] = useState<PlayerPublic | null>(null)
   const [localSortBy, setLocalSortBy] = useState<SortOption>('default')
+  const [localSortDirection, setLocalSortDirection] = useState<'asc' | 'desc'>('asc')
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
-  const activeFilterCount = Object.values(filters).filter((v) => v.trim()).length
+  const activeFilterCount = useMemo(() => {
+    return Object.entries(filters).filter(([schemaId, v]) => {
+      const schema = fieldSchemas.find((s) => s.id === schemaId)
+      return isFilterActive(schema?.field_type ?? 'text', v)
+    }).length
+  }, [filters, fieldSchemas])
 
   const searchRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -115,14 +138,27 @@ export function PlayerPool({
   const setSearch = onSearchChange ?? setLocalSearch
   const sortBy = controlledSortBy ?? localSortBy
   const setSortBy = onSortChange ?? setLocalSortBy
+  const sortDirection = controlledSortDirection ?? localSortDirection
+  const setSortDirection = onSortDirectionChange ?? setLocalSortDirection
 
   const sortOptions = useMemo(() => {
-    if (fieldSchemas.length === 0) return BASE_SORT_OPTIONS
-    const fieldOptions = [...fieldSchemas]
+    const sortableSchemas = fieldSchemas.filter((s) => SORTABLE_FIELD_TYPES.has(s.field_type))
+    if (sortableSchemas.length === 0) return BASE_SORT_OPTIONS
+    const fieldOptions = [...sortableSchemas]
       .sort((a, b) => a.field_order - b.field_order)
       .map((s) => ({ value: `field:${s.id}` as SortOption, label: s.field_name }))
     return { base: BASE_SORT_OPTIONS, fields: fieldOptions }
   }, [fieldSchemas])
+
+  // Reset sortBy if current selection references a text-type or deleted schema
+  useEffect(() => {
+    if (!sortBy.startsWith('field:')) return
+    const schemaId = sortBy.slice(6)
+    const schema = fieldSchemas.find((s) => s.id === schemaId)
+    if (!schema || !SORTABLE_FIELD_TYPES.has(schema.field_type)) {
+      setSortBy('default')
+    }
+  }, [sortBy, fieldSchemas, setSortBy])
 
   // Clear selected player if they're no longer in the available list (e.g., drafted by another client)
   useEffect(() => {
@@ -138,10 +174,20 @@ export function PlayerPool({
         .filter((p) => {
           if (activeFilterCount === 0) return true
           const playerFields = customFieldsMap[p.id] || []
-          return Object.entries(filters).every(([schemaId, filterText]) => {
-            if (!filterText.trim()) return true
+          return Object.entries(filters).every(([schemaId, filterValue]) => {
+            const schema = fieldSchemas.find((s) => s.id === schemaId)
+            if (!isFilterActive(schema?.field_type ?? 'text', filterValue)) return true
             const field = playerFields.find((f) => f.schema_id === schemaId)
-            return field?.field_value?.toLowerCase().includes(filterText.toLowerCase())
+            switch (schema?.field_type) {
+              case 'number':
+                return matchesNumberFilter(field?.field_value, filterValue)
+              case 'date':
+                return matchesDateFilter(field?.field_value, filterValue)
+              default:
+                return (
+                  field?.field_value?.toLowerCase().includes(filterValue.toLowerCase()) ?? false
+                )
+            }
           })
         })
         .sort((a, b) => {
@@ -165,12 +211,22 @@ export function PlayerPool({
               const bFields = customFieldsMap[b.id] || []
               const aVal = aFields.find((f) => f.schema_id === schemaId)?.field_value ?? undefined
               const bVal = bFields.find((f) => f.schema_id === schemaId)?.field_value ?? undefined
-              const cmp = compareFieldValues(aVal, bVal, schema?.field_type || 'text')
+              const dir = sortDirection === 'desc' ? -1 : 1
+              const cmp = compareFieldValues(aVal, bVal, schema?.field_type || 'text') * dir
               return cmp !== 0 ? cmp : a.name.localeCompare(b.name)
             }
           }
         }),
-    [players, search, sortBy, filters, activeFilterCount, customFieldsMap, fieldSchemas]
+    [
+      players,
+      search,
+      sortBy,
+      sortDirection,
+      filters,
+      activeFilterCount,
+      customFieldsMap,
+      fieldSchemas,
+    ]
   )
 
   function handlePick() {
@@ -270,6 +326,21 @@ export function PlayerPool({
           </select>
           <ArrowUpDown className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         </div>
+        {sortBy.startsWith('field:') && (
+          <button
+            type="button"
+            onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+            className="flex-shrink-0 h-10 rounded-md border border-input px-2 text-sm hover:bg-accent"
+            title={sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
+            aria-label={sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
+          >
+            {sortDirection === 'asc' ? (
+              <ArrowUpNarrowWide className="h-4 w-4" />
+            ) : (
+              <ArrowDownNarrowWide className="h-4 w-4" />
+            )}
+          </button>
+        )}
         {fieldSchemas.length > 0 && onFilterChange && (
           <button
             type="button"
@@ -321,7 +392,19 @@ export function PlayerPool({
                   >
                     {schema.field_name}
                   </label>
-                  {schema.field_type === 'dropdown' ? (
+                  {schema.field_type === 'number' ? (
+                    <NumberFilterInput
+                      value={filters[schema.id] || ''}
+                      onChange={(v) => onFilterChange(schema.id, v)}
+                      unit={schema.field_options?.unit as string | undefined}
+                    />
+                  ) : schema.field_type === 'date' ? (
+                    <DateFilterInput
+                      value={filters[schema.id] || ''}
+                      onChange={(v) => onFilterChange(schema.id, v)}
+                      includeTime={!!schema.field_options?.includeTime}
+                    />
+                  ) : schema.field_type === 'dropdown' ? (
                     <select
                       value={filters[schema.id] || ''}
                       onChange={(e) => onFilterChange(schema.id, e.target.value)}
@@ -451,6 +534,190 @@ export function PlayerPool({
           note={notes[viewingPlayer.id]}
           onClose={() => setViewingPlayer(null)}
         />
+      )}
+    </div>
+  )
+}
+
+// ── Filter sub-components ────────────────────────────────────────────
+
+const selectClass =
+  'h-7 rounded border border-input bg-background px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring'
+const inputClass =
+  'h-7 rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring'
+
+type NumberOp = 'eq' | 'gt' | 'lt' | 'range'
+
+function NumberFilterInput({
+  value,
+  onChange,
+  unit,
+}: {
+  value: string
+  onChange: (v: string) => void
+  unit?: string
+}) {
+  const colonIdx = value.indexOf(':')
+  const op = (colonIdx !== -1 ? value.slice(0, colonIdx) : 'eq') as NumberOp
+  const rest = colonIdx !== -1 ? value.slice(colonIdx + 1) : ''
+
+  let val1 = ''
+  let val2 = ''
+  if (op === 'range') {
+    const pipeIdx = rest.indexOf('|')
+    if (pipeIdx !== -1) {
+      val1 = rest.slice(0, pipeIdx)
+      val2 = rest.slice(pipeIdx + 1)
+    } else {
+      val1 = rest
+    }
+  } else {
+    val1 = rest
+  }
+
+  function encode(newOp: NumberOp, v1: string, v2: string) {
+    if (!v1 && !v2) {
+      // Keep the operator selected but no value yet
+      onChange(newOp === 'range' ? `${newOp}:${v1}|${v2}` : `${newOp}:`)
+      return
+    }
+    if (newOp === 'range') {
+      onChange(`${newOp}:${v1}|${v2}`)
+    } else {
+      onChange(`${newOp}:${v1}`)
+    }
+  }
+
+  return (
+    <div className="flex flex-1 items-center gap-1">
+      <select
+        value={op}
+        onChange={(e) => {
+          const newOp = e.target.value as NumberOp
+          encode(newOp, val1, newOp === 'range' ? val2 : '')
+        }}
+        className={cn(selectClass, 'w-16 shrink-0')}
+      >
+        <option value="eq">=</option>
+        <option value="gt">&gt;</option>
+        <option value="lt">&lt;</option>
+        <option value="range">Range</option>
+      </select>
+      <input
+        type="number"
+        placeholder={op === 'range' ? 'Min' : 'Value'}
+        value={val1}
+        onChange={(e) => encode(op, e.target.value, val2)}
+        className={cn(inputClass, 'flex-1 min-w-0')}
+      />
+      {op === 'range' && (
+        <>
+          <span className="text-xs text-muted-foreground">–</span>
+          <input
+            type="number"
+            placeholder="Max"
+            value={val2}
+            onChange={(e) => encode(op, val1, e.target.value)}
+            className={cn(inputClass, 'flex-1 min-w-0')}
+          />
+        </>
+      )}
+      {unit && <span className="shrink-0 text-xs text-muted-foreground">{unit}</span>}
+      {(val1 || val2) && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+type DateOp = 'after' | 'before' | 'range'
+
+function DateFilterInput({
+  value,
+  onChange,
+  includeTime,
+}: {
+  value: string
+  onChange: (v: string) => void
+  includeTime: boolean
+}) {
+  const colonIdx = value.indexOf(':')
+  const op = (colonIdx !== -1 ? value.slice(0, colonIdx) : 'after') as DateOp
+  const rest = colonIdx !== -1 ? value.slice(colonIdx + 1) : ''
+
+  let val1 = ''
+  let val2 = ''
+  if (op === 'range') {
+    const pipeIdx = rest.indexOf('|')
+    if (pipeIdx !== -1) {
+      val1 = rest.slice(0, pipeIdx)
+      val2 = rest.slice(pipeIdx + 1)
+    } else {
+      val1 = rest
+    }
+  } else {
+    val1 = rest
+  }
+
+  const dateType = includeTime ? 'datetime-local' : 'date'
+
+  function encode(newOp: DateOp, v1: string, v2: string) {
+    if (!v1 && !v2) {
+      onChange(newOp === 'range' ? `${newOp}:|` : `${newOp}:`)
+      return
+    }
+    if (newOp === 'range') {
+      onChange(`${newOp}:${v1}|${v2}`)
+    } else {
+      onChange(`${newOp}:${v1}`)
+    }
+  }
+
+  return (
+    <div className="flex flex-1 items-center gap-1">
+      <select
+        value={op}
+        onChange={(e) => {
+          const newOp = e.target.value as DateOp
+          encode(newOp, val1, newOp === 'range' ? val2 : '')
+        }}
+        className={cn(selectClass, 'w-18 shrink-0')}
+      >
+        <option value="after">After</option>
+        <option value="before">Before</option>
+        <option value="range">Range</option>
+      </select>
+      <input
+        type={dateType}
+        value={val1}
+        onChange={(e) => encode(op, e.target.value, val2)}
+        className={cn(inputClass, 'flex-1 min-w-0')}
+      />
+      {op === 'range' && (
+        <>
+          <span className="text-xs text-muted-foreground">–</span>
+          <input
+            type={dateType}
+            value={val2}
+            onChange={(e) => encode(op, val1, e.target.value)}
+            className={cn(inputClass, 'flex-1 min-w-0')}
+          />
+        </>
+      )}
+      {(val1 || val2) && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-3 w-3" />
+        </button>
       )}
     </div>
   )
