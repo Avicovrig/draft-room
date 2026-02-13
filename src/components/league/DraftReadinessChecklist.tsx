@@ -104,7 +104,7 @@ export function DraftReadinessChecklist({
 
   return (
     <div
-      className={`mt-4 rounded-lg border p-4 ${
+      className={`mt-4 rounded-lg border p-3 sm:p-4 ${
         allBlockingPass
           ? 'border-green-200 bg-green-50/50 dark:border-green-900/50 dark:bg-green-950/20'
           : 'border-border bg-card'
@@ -123,10 +123,15 @@ export function DraftReadinessChecklist({
         {items.map((item) => {
           const Icon = statusIcon[item.status]
           return (
-            <div key={item.id} className="flex items-center gap-2 text-sm">
-              <Icon className={`h-4 w-4 shrink-0 ${statusColor[item.status]}`} />
-              <span className="font-medium">{item.label}</span>
-              <span className="ml-auto text-muted-foreground">{item.detail}</span>
+            <div
+              key={item.id}
+              className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 text-sm"
+            >
+              <div className="flex items-center gap-2">
+                <Icon className={`h-4 w-4 shrink-0 ${statusColor[item.status]}`} />
+                <span className="font-medium">{item.label}</span>
+              </div>
+              <span className="ml-6 sm:ml-auto text-muted-foreground">{item.detail}</span>
             </div>
           )
         })}

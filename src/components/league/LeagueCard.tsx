@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Settings, Play, Users, Copy, Crown, Clock } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { CopyLeagueModal } from '@/components/league/CopyLeagueModal'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 import type { LeagueWithCounts } from '@/lib/types'
 
 interface LeagueCardProps {
@@ -10,24 +11,8 @@ interface LeagueCardProps {
   index?: number
 }
 
-const statusColors = {
-  not_started: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400',
-  in_progress: 'bg-green-500/10 text-green-600 dark:text-green-400',
-  paused: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  completed: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-}
-
-const statusLabels = {
-  not_started: 'Not Started',
-  in_progress: 'In Progress',
-  paused: 'Paused',
-  completed: 'Completed',
-}
-
 export function LeagueCard({ league, index = 0 }: LeagueCardProps) {
   const [showCopyModal, setShowCopyModal] = useState(false)
-  const statusColor = statusColors[league.status]
-  const statusLabel = statusLabels[league.status]
 
   return (
     <>
@@ -58,11 +43,7 @@ export function LeagueCard({ league, index = 0 }: LeagueCardProps) {
                 >
                   <Copy className="h-4 w-4" />
                 </button>
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor}`}
-                >
-                  {statusLabel}
-                </span>
+                <StatusBadge status={league.status} />
               </div>
             </div>
           </CardHeader>

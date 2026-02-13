@@ -83,7 +83,7 @@ export function TeamRoster({
           <div
             key={captain.id}
             className={cn(
-              'rounded-lg border border-l-4 p-4 transition-all',
+              'rounded-lg border border-l-4 p-3 sm:p-4 transition-all',
               isCurrentTurn && 'border-primary ring-2 ring-primary/20',
               isHighlighted && !isCurrentTurn && 'border-yellow-500 bg-yellow-500/5',
               !isCurrentTurn && !isHighlighted && 'border-border'
@@ -92,7 +92,7 @@ export function TeamRoster({
               borderLeftColor: captain.team_color || undefined,
             }}
           >
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-2 sm:mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 {captain.team_photo_url ? (
                   <img
@@ -122,7 +122,7 @@ export function TeamRoster({
             </div>
 
             {isCurrentTurn && (
-              <div className="mb-3 rounded bg-primary/10 px-2 py-1 text-center text-xs font-medium text-primary">
+              <div className="mb-2 sm:mb-3 rounded bg-primary/10 px-2 py-1 text-center text-xs font-medium text-primary">
                 Now Picking
               </div>
             )}
@@ -139,7 +139,7 @@ export function TeamRoster({
                     leagueId,
                   })
                 }
-                className="mb-3 flex items-center gap-2"
+                className="mb-2 sm:mb-3 flex items-center gap-2"
               >
                 <div
                   className={cn(

@@ -3,23 +3,50 @@ import { Link } from 'react-router-dom'
 import { Plus, Trophy } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { LeagueCard } from '@/components/league/LeagueCard'
-import { LeagueCardSkeleton } from '@/components/ui/Skeleton'
+import { LeagueListItem } from '@/components/league/LeagueListItem'
+import { LeagueCardSkeleton, LeagueListItemSkeleton } from '@/components/ui/Skeleton'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
+import { FilterPills } from '@/components/ui/FilterPills'
+import { ViewToggle } from '@/components/ui/ViewToggle'
+import { statusConfig } from '@/lib/statusConfig'
 import { useAuth } from '@/context/AuthContext'
 import { useLeagues } from '@/hooks/useLeagues'
-import { cn } from '@/lib/utils'
+import type { LeagueStatus } from '@/lib/types'
 
-const statusLabels: Record<string, string> = {
-  not_started: 'Not Started',
-  in_progress: 'In Progress',
-  paused: 'Paused',
-  completed: 'Completed',
+type StatusFilter = 'all' | LeagueStatus
+
+const filterOptions: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'not_started', label: statusConfig.not_started.label },
+  { value: 'in_progress', label: statusConfig.in_progress.label },
+  { value: 'paused', label: statusConfig.paused.label },
+  { value: 'completed', label: statusConfig.completed.label },
+]
+
+function getStoredView(): 'grid' | 'list' {
+  try {
+    const stored = localStorage.getItem('draft-room-dashboard-view')
+    if (stored === 'grid' || stored === 'list') return stored
+  } catch {
+    // localStorage unavailable
+  }
+  return 'grid'
 }
 
 export function Dashboard() {
   const { user } = useAuth()
   const { data: leagues, isLoading, error, refetch } = useLeagues()
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [view, setView] = useState<'grid' | 'list'>(getStoredView)
+
+  function handleViewChange(v: 'grid' | 'list') {
+    setView(v)
+    try {
+      localStorage.setItem('draft-room-dashboard-view', v)
+    } catch {
+      // localStorage unavailable
+    }
+  }
 
   const filteredLeagues = leagues
     ? statusFilter === 'all'
@@ -31,52 +58,49 @@ export function Dashboard() {
     <div className="min-h-screen">
       <Header />
       <main className="container mx-auto px-4 py-6 sm:p-8">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold">Your Leagues</h1>
             <p className="mt-1 text-muted-foreground">Logged in as {user?.email}</p>
           </div>
-          <Link
-            to="/league/new"
-            className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-          >
-            <Plus className="mr-2 h-4 w-4 flex-shrink-0" />
-            Create League
-          </Link>
+          <div className="flex items-center gap-2">
+            <ViewToggle view={view} onViewChange={handleViewChange} />
+            <Link
+              to="/league/new"
+              className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+            >
+              <Plus className="mr-2 h-4 w-4 flex-shrink-0" />
+              Create League
+            </Link>
+          </div>
         </div>
 
         {leagues && leagues.length > 0 && (
-          <div
-            role="group"
-            aria-label="Filter by status"
-            className="mt-6 flex gap-2 overflow-x-auto"
-          >
-            {['all', 'not_started', 'in_progress', 'paused', 'completed'].map((status) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => setStatusFilter(status)}
-                aria-pressed={statusFilter === status}
-                className={cn(
-                  'rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
-                  statusFilter === status
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {status === 'all' ? 'All' : statusLabels[status]}
-              </button>
-            ))}
+          <div className="mt-6">
+            <FilterPills
+              options={filterOptions}
+              selected={statusFilter}
+              onChange={setStatusFilter}
+              ariaLabel="Filter by status"
+            />
           </div>
         )}
 
         <div className="mt-6">
           {isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <LeagueCardSkeleton key={i} />
-              ))}
-            </div>
+            view === 'grid' ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[1, 2, 3].map((i) => (
+                  <LeagueCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-border">
+                {[1, 2, 3].map((i) => (
+                  <LeagueListItemSkeleton key={i} />
+                ))}
+              </div>
+            )
           ) : error ? (
             <ErrorAlert
               message="Failed to load leagues. Please try again."
@@ -84,14 +108,22 @@ export function Dashboard() {
             />
           ) : leagues && leagues.length > 0 ? (
             filteredLeagues.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredLeagues.map((league, i) => (
-                  <LeagueCard key={league.id} league={league} index={i} />
-                ))}
-              </div>
+              view === 'grid' ? (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredLeagues.map((league, i) => (
+                    <LeagueCard key={league.id} league={league} index={i} />
+                  ))}
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-lg border border-border">
+                  {filteredLeagues.map((league, i) => (
+                    <LeagueListItem key={league.id} league={league} index={i} />
+                  ))}
+                </div>
+              )
             ) : (
               <div className="py-12 text-center text-muted-foreground">
-                No {statusLabels[statusFilter]?.toLowerCase()} leagues
+                No {statusConfig[statusFilter as LeagueStatus]?.label.toLowerCase()} leagues
               </div>
             )
           ) : (

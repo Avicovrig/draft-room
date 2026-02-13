@@ -63,7 +63,7 @@ export function DraftControls({
 
   if (status === 'completed') {
     return (
-      <div className="rounded-lg bg-green-500/10 p-4 text-center text-green-600 dark:text-green-400">
+      <div className="rounded-lg bg-green-500/10 p-3 sm:p-4 text-center text-green-600 dark:text-green-400">
         Draft Complete!
       </div>
     )
@@ -100,12 +100,12 @@ export function DraftControls({
 
   if (status === 'paused') {
     return (
-      <div className="space-y-4">
-        <div className="rounded-lg bg-yellow-500/10 p-4 text-center text-yellow-600 dark:text-yellow-400">
+      <div className="space-y-3 sm:space-y-4">
+        <div className="rounded-lg bg-yellow-500/10 p-3 sm:p-4 text-center text-yellow-600 dark:text-yellow-400">
           Draft Paused
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Button onClick={() => handleAction(onResume)} loading={isLoading} className="flex-1">
             <Play className="mr-2 h-4 w-4" />
             Resume Draft
@@ -188,23 +188,17 @@ export function DraftControls({
         onClick={() => handleAction(onPause)}
         loading={isLoading}
         variant="outline"
-        size="lg"
         className="flex-1"
       >
-        <Pause className="mr-2 h-5 w-5" />
+        <Pause className="mr-2 h-4 w-4" />
         Pause Draft
       </Button>
       {showUndoConfirm ? (
         <div className="flex gap-2">
-          <Button variant="destructive" size="lg" onClick={handleUndo} loading={isLoading}>
+          <Button variant="destructive" onClick={handleUndo} loading={isLoading}>
             Confirm Undo
           </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => setShowUndoConfirm(false)}
-            disabled={isLoading}
-          >
+          <Button variant="outline" onClick={() => setShowUndoConfirm(false)} disabled={isLoading}>
             Cancel
           </Button>
         </div>
@@ -213,7 +207,6 @@ export function DraftControls({
           onClick={() => setShowUndoConfirm(true)}
           disabled={isLoading || !hasPicks}
           variant="outline"
-          size="lg"
           title="Undo last pick"
         >
           <Undo2 className="mr-2 h-4 w-4" />

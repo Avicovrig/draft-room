@@ -42,7 +42,7 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-8">
+    <div className="flex min-h-screen items-center justify-center p-4 sm:p-8">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Log In</h1>

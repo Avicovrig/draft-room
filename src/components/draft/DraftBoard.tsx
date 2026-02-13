@@ -44,6 +44,7 @@ interface DraftBoardProps {
   isManager: boolean
   viewingAsCaptain?: CaptainPublic
   captainToken?: string
+  spectatorToken?: string
   onStartDraft: () => Promise<void>
   onPauseDraft: () => Promise<void>
   onResumeDraft: () => Promise<void>
@@ -64,6 +65,7 @@ export function DraftBoard({
   isManager,
   viewingAsCaptain,
   captainToken,
+  spectatorToken,
   onStartDraft,
   onPauseDraft,
   onResumeDraft,
@@ -187,6 +189,8 @@ export function DraftBoard({
   const { addToast } = useToast()
 
   // Auto-pick logic (timer expiry + auto-pick trigger)
+  // Any connected client (manager, captain, or spectator) can trigger auto-pick.
+  // The edge function validates timer expiry server-side and uses expectedPickIndex for idempotency.
   const { handleTimerExpire, showAutoPickFlash } = useAutoPick({
     leagueId: league.id,
     leagueStatus: league.status,
@@ -194,8 +198,7 @@ export function DraftBoard({
     currentCaptain,
     availablePlayerCount: availablePlayers.length,
     captainToken,
-    isManager,
-    viewingAsCaptain,
+    spectatorToken,
   })
   const { user } = useAuth()
 
@@ -225,16 +228,21 @@ export function DraftBoard({
     )
   }
 
-  // Show refresh hint only when data is actually stale (no successful fetch in 15+ seconds)
-  // This avoids false alarms when realtime is down but polling keeps data fresh
+  // Show refresh hint only when data is actually stale.
+  // During active draft, no data changes are expected while the pick timer counts down,
+  // so use timer duration + 10s as the threshold to avoid false "connection" warnings.
   useEffect(() => {
     if (league.status !== 'in_progress') {
       setShowRefreshHint(false)
       return
     }
+    const staleMs =
+      league.time_limit_seconds > 0
+        ? Math.max((league.time_limit_seconds + 10) * 1000, 15000)
+        : 15000
     let wasStale = false
     const checkStaleness = () => {
-      const isStale = Date.now() - dataUpdatedAt > 15000
+      const isStale = Date.now() - dataUpdatedAt > staleMs
       if (isStale && !wasStale) {
         trackCount('realtime.stale_data_warning')
       }
@@ -244,7 +252,7 @@ export function DraftBoard({
     checkStaleness()
     const interval = setInterval(checkStaleness, 5000)
     return () => clearInterval(interval)
-  }, [league.status, dataUpdatedAt])
+  }, [league.status, league.time_limit_seconds, dataUpdatedAt])
 
   const isActive = league.status === 'in_progress'
   const currentRound = getCurrentRound(league.current_pick_index, league.captains.length)
@@ -345,11 +353,11 @@ export function DraftBoard({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Draft Status Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">
+          <h2 className="text-xl sm:text-2xl font-bold">
             {league.status === 'completed'
               ? 'Draft Complete'
               : league.status === 'not_started'
@@ -455,11 +463,11 @@ export function DraftBoard({
 
       {/* Timer, Player Pool, and Queue */}
       <div className={`grid gap-6 ${viewingAsCaptain ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
-        <Card className="relative lg:col-span-1 sticky top-[57px] z-10 lg:static lg:z-auto">
-          <CardHeader>
-            <CardTitle>Timer</CardTitle>
+        <Card className="relative lg:col-span-1 sticky top-[57px] z-10 lg:static lg:z-auto min-w-0">
+          <CardHeader className="p-0 sm:p-6">
+            <CardTitle className="hidden sm:block">Timer</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 py-2 sm:p-6 sm:pt-0">
             {showAutoPickFlash && (
               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
                 <Zap className="h-12 w-12 text-yellow-500 animate-scale-in" />
@@ -469,12 +477,36 @@ export function DraftBoard({
               currentPickStartedAt={league.current_pick_started_at}
               timeLimitSeconds={league.time_limit_seconds}
               isActive={isActive}
-              onExpire={isManager || viewingAsCaptain ? handleTimerExpire : undefined}
+              onExpire={handleTimerExpire}
             />
+            {/* Inline current picker info on mobile */}
+            {isActive && currentCaptain && (
+              <div className="mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground sm:hidden">
+                {currentCaptain.team_photo_url ? (
+                  <img
+                    src={currentCaptain.team_photo_url}
+                    alt=""
+                    className="h-5 w-5 rounded object-cover flex-shrink-0"
+                  />
+                ) : currentCaptain.team_color ? (
+                  <span
+                    className="h-3 w-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: currentCaptain.team_color }}
+                  />
+                ) : null}
+                <span className="font-medium text-foreground truncate">
+                  {currentCaptain.team_name || currentCaptain.name}
+                </span>
+                <span className="shrink-0">
+                  &middot; Pick {league.current_pick_index + 1} of{' '}
+                  {availablePlayers.length + league.draft_picks.length}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card className={viewingAsCaptain ? 'lg:col-span-2' : 'lg:col-span-2'}>
+        <Card className={`min-w-0 ${viewingAsCaptain ? 'lg:col-span-2' : 'lg:col-span-2'}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle>{canPick ? 'Select a Player' : 'Available Players'}</CardTitle>
             <button
@@ -516,7 +548,7 @@ export function DraftBoard({
 
         {/* Draft Queue (Captain view only) */}
         {viewingAsCaptain && (
-          <Card className="lg:col-span-1">
+          <Card className="lg:col-span-1 min-w-0">
             <CardHeader>
               <CardTitle>My Queue</CardTitle>
             </CardHeader>

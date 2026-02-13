@@ -71,9 +71,9 @@ export function PickTimer({
       <div
         key={isLow && !isCritical ? shakeKey : undefined}
         className={cn(
-          'text-5xl font-bold tabular-nums transition-all',
+          'text-3xl sm:text-5xl font-bold tabular-nums transition-all',
           isExpired && 'text-destructive',
-          isCritical && !isExpired && 'text-6xl text-red-500 animate-pulse-fast',
+          isCritical && !isExpired && 'text-4xl sm:text-6xl text-red-500 animate-pulse-fast',
           isLow && !isCritical && !isExpired && 'text-yellow-500 animate-shake'
         )}
       >
@@ -83,7 +83,7 @@ export function PickTimer({
       {/* Progress bar */}
       <div
         className={cn(
-          'mt-4 h-2 w-full overflow-hidden rounded-full bg-muted',
+          'mt-2 sm:mt-4 h-1.5 sm:h-2 w-full overflow-hidden rounded-full bg-muted',
           isCritical && !isExpired && 'animate-glow'
         )}
       >
@@ -99,7 +99,7 @@ export function PickTimer({
         />
       </div>
 
-      <p className="mt-2 text-sm text-muted-foreground">
+      <p className="mt-0.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
         {isExpired
           ? 'Time expired - auto-picking...'
           : isActive

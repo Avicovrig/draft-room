@@ -42,7 +42,7 @@ export function DraftView() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 py-4 sm:py-8">
           <div className="flex items-center justify-center py-12">
             <div className="text-muted-foreground">Loading draft...</div>
           </div>
@@ -55,7 +55,7 @@ export function DraftView() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 py-4 sm:py-8">
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center text-destructive">
             {error?.message || 'League not found'}
           </div>
@@ -72,8 +72,8 @@ export function DraftView() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-6">
+      <main className="container mx-auto px-4 py-4 sm:py-8">
+        <div className="mb-4 sm:mb-6">
           <Breadcrumb
             items={[
               { label: 'Dashboard', href: '/dashboard' },

@@ -47,7 +47,7 @@ export function Signup() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-8">
+      <div className="flex min-h-screen items-center justify-center p-4 sm:p-8">
         <div className="w-full max-w-sm space-y-6 text-center">
           <h1 className="text-2xl font-bold">Check Your Email</h1>
           <p className="text-muted-foreground">
@@ -62,7 +62,7 @@ export function Signup() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-8">
+    <div className="flex min-h-screen items-center justify-center p-4 sm:p-8">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Sign Up</h1>

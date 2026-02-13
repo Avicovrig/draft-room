@@ -12,8 +12,7 @@ interface UseAutoPickOptions {
   currentCaptain: CaptainPublic | undefined
   availablePlayerCount: number
   captainToken?: string
-  isManager: boolean
-  viewingAsCaptain?: CaptainPublic
+  spectatorToken?: string
 }
 
 export function useAutoPick({
@@ -23,8 +22,7 @@ export function useAutoPick({
   currentCaptain,
   availablePlayerCount,
   captainToken,
-  isManager,
-  viewingAsCaptain,
+  spectatorToken,
 }: UseAutoPickOptions) {
   const [showAutoPickFlash, setShowAutoPickFlash] = useState(false)
   const isAutoPickingRef = useRef(false)
@@ -59,6 +57,7 @@ export function useAutoPick({
           leagueId,
           expectedPickIndex: currentIdx,
           captainToken,
+          spectatorToken,
         },
       })
 
@@ -105,16 +104,15 @@ export function useAutoPick({
     } finally {
       isAutoPickingRef.current = false
     }
-  }, [currentCaptain, leagueId, captainToken, addToast, queryClient])
+  }, [currentCaptain, leagueId, captainToken, spectatorToken, addToast, queryClient])
 
   // Trigger immediate auto-pick if current captain has auto_pick_enabled
   // This runs when:
   // 1. Pick index changes (new turn) and new captain has auto-pick enabled
   // 2. Current captain enables auto-pick during their turn
-  // Only managers and captains trigger this - spectators don't make API calls
+  // Any connected client (manager, captain, or spectator) can trigger this.
+  // The edge function validates auth via captain token, spectator token, or manager JWT.
   useEffect(() => {
-    // Only managers and captains should trigger auto-pick
-    if (!isManager && !viewingAsCaptain) return
     // Only when draft is in progress
     if (leagueStatus !== 'in_progress') return
     // Only if there's a current captain with auto-pick enabled
@@ -139,8 +137,6 @@ export function useAutoPick({
 
     return () => clearTimeout(timeoutId)
   }, [
-    isManager,
-    viewingAsCaptain,
     leagueStatus,
     currentPickIndex,
     currentCaptain?.id,

@@ -278,8 +278,8 @@ export function PlayerPool({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-4 flex items-center gap-2">
-        <div className="relative flex-1">
+      <div className="mb-4 space-y-2">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             ref={(el) => {
@@ -294,76 +294,78 @@ export function PlayerPool({
             className="pl-9"
           />
         </div>
-        <div className="relative flex-shrink-0">
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="h-10 appearance-none rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            title="Sort players"
-          >
-            {Array.isArray(sortOptions) ? (
-              sortOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))
-            ) : (
-              <>
-                {sortOptions.base.map((opt) => (
+        <div className="flex items-center gap-2">
+          <div className="relative flex-shrink-0">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="h-10 appearance-none rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              title="Sort players"
+            >
+              {Array.isArray(sortOptions) ? (
+                sortOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
-                ))}
-                <optgroup label="Sort by field">
-                  {sortOptions.fields.map((opt) => (
+                ))
+              ) : (
+                <>
+                  {sortOptions.base.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
                   ))}
-                </optgroup>
-              </>
-            )}
-          </select>
-          <ArrowUpDown className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <optgroup label="Sort by field">
+                    {sortOptions.fields.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                </>
+              )}
+            </select>
+            <ArrowUpDown className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
+          {sortBy.startsWith('field:') && (
+            <button
+              type="button"
+              onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+              className="flex-shrink-0 h-10 rounded-md border border-input px-2 text-sm hover:bg-accent"
+              title={sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
+              aria-label={sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
+            >
+              {sortDirection === 'asc' ? (
+                <ArrowUpNarrowWide className="h-4 w-4" />
+              ) : (
+                <ArrowDownNarrowWide className="h-4 w-4" />
+              )}
+            </button>
+          )}
+          {fieldSchemas.length > 0 && onFilterChange && (
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn(
+                'relative flex-shrink-0 h-10 rounded-md border border-input px-2.5 text-sm hover:bg-accent',
+                showFilters && 'bg-accent'
+              )}
+              title="Filter by fields"
+              aria-label={
+                activeFilterCount > 0
+                  ? `Filter by fields (${activeFilterCount} active)`
+                  : 'Filter by fields'
+              }
+            >
+              <Filter className="h-4 w-4" />
+              {activeFilterCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
-        {sortBy.startsWith('field:') && (
-          <button
-            type="button"
-            onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-            className="flex-shrink-0 h-10 rounded-md border border-input px-2 text-sm hover:bg-accent"
-            title={sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
-            aria-label={sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'}
-          >
-            {sortDirection === 'asc' ? (
-              <ArrowUpNarrowWide className="h-4 w-4" />
-            ) : (
-              <ArrowDownNarrowWide className="h-4 w-4" />
-            )}
-          </button>
-        )}
-        {fieldSchemas.length > 0 && onFilterChange && (
-          <button
-            type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className={cn(
-              'relative flex-shrink-0 h-10 rounded-md border border-input px-2.5 text-sm hover:bg-accent',
-              showFilters && 'bg-accent'
-            )}
-            title="Filter by fields"
-            aria-label={
-              activeFilterCount > 0
-                ? `Filter by fields (${activeFilterCount} active)`
-                : 'Filter by fields'
-            }
-          >
-            <Filter className="h-4 w-4" />
-            {activeFilterCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-        )}
       </div>
 
       {/* Filter Panel */}
@@ -385,9 +387,12 @@ export function PlayerPool({
             {fieldSchemas
               .sort((a, b) => a.field_order - b.field_order)
               .map((schema) => (
-                <div key={schema.id} className="flex items-center gap-2">
+                <div
+                  key={schema.id}
+                  className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2"
+                >
                   <label
-                    className="w-24 shrink-0 truncate text-xs text-muted-foreground"
+                    className="shrink-0 truncate text-xs text-muted-foreground sm:w-24"
                     title={schema.field_name}
                   >
                     {schema.field_name}

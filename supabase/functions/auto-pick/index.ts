@@ -104,7 +104,8 @@ Deno.serve(async (req) => {
   try {
     const supabaseAdmin = createAdminClient()
 
-    const { leagueId, expectedPickIndex, captainToken }: AutoPickRequest = await req.json()
+    const { leagueId, expectedPickIndex, captainToken, spectatorToken }: AutoPickRequest =
+      await req.json()
 
     if (!leagueId) {
       return errorResponse('leagueId is required', 400, req)
@@ -123,7 +124,7 @@ Deno.serve(async (req) => {
     const { data: league, error: leagueError } = await supabaseAdmin
       .from('leagues')
       .select(
-        'id, status, draft_type, current_pick_index, current_pick_started_at, time_limit_seconds, captains(id, name, draft_position, player_id, access_token, auto_pick_enabled, consecutive_timeout_picks), players(id, name, drafted_by_captain_id)'
+        'id, status, draft_type, current_pick_index, current_pick_started_at, time_limit_seconds, spectator_token, captains(id, name, draft_position, player_id, access_token, auto_pick_enabled, consecutive_timeout_picks), players(id, name, drafted_by_captain_id)'
       )
       .eq('id', leagueId)
       .single()
@@ -161,10 +162,26 @@ Deno.serve(async (req) => {
     // Timer-expiry calls (captain didn't have auto-pick on) increment the timeout counter.
     const captainHadAutoPickEnabled = currentCaptain?.auto_pick_enabled ?? false
 
-    // Auth: captain token OR manager JWT required
-    if (captainToken) {
-      if (!currentCaptain || !timingSafeEqual(currentCaptain.access_token, captainToken)) {
+    // Auth: server callback secret, any captain token, spectator token, OR manager JWT.
+    // Any connected client can trigger auto-pick — the function validates timer expiry
+    // server-side and uses expectedPickIndex for idempotency.
+    // Server-side callers (QStash scheduled callbacks, pg_cron) use x-cron-secret header.
+    const cronSecret = req.headers.get('x-cron-secret')
+    if (cronSecret) {
+      const expectedSecret = Deno.env.get('AUTO_PICK_CRON_SECRET')
+      if (!expectedSecret || !timingSafeEqual(cronSecret, expectedSecret)) {
+        return errorResponse('Invalid callback secret', 403, req)
+      }
+    } else if (captainToken) {
+      const validCaptain = league.captains.find((c: Captain) =>
+        timingSafeEqual(c.access_token, captainToken)
+      )
+      if (!validCaptain) {
         return errorResponse('Invalid captain token', 403, req)
+      }
+    } else if (spectatorToken) {
+      if (!league.spectator_token || !timingSafeEqual(league.spectator_token, spectatorToken)) {
+        return errorResponse('Invalid spectator token', 403, req)
       }
     } else {
       const authResult = await authenticateManager(req, leagueId, supabaseAdmin)

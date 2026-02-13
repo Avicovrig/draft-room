@@ -38,7 +38,7 @@ Draft Room is a custom league draft application. League managers can create leag
 All draft-critical mutations go through Deno edge functions in `supabase/functions/` that use `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS:
 
 - **`make-pick`** - Captain or manager makes a pick. Requires captain token OR manager JWT. Validates turn order, player availability. Handles race conditions via unique constraints on `pick_number` and `(league_id, player_id)`. Rolls back pick/player writes if later steps fail.
-- **`auto-pick`** - Called on timer expiry or when captain has `auto_pick_enabled`. Requires captain token OR manager JWT. Picks from captain's draft queue first, falls back to random. Has 2-second grace period on timer validation. Uses `expectedPickIndex` for idempotency. Rolls back on partial failure.
+- **`auto-pick`** - Called on timer expiry or when captain has `auto_pick_enabled`. Requires any captain token from the league, spectator token, OR manager JWT (any connected client can trigger). Picks from captain's draft queue first, falls back to random. Has 2-second grace period on timer validation. Uses `expectedPickIndex` for idempotency. Rolls back on partial failure.
 - **`toggle-auto-pick`** - Toggles a captain's auto-pick setting. Requires captain token OR manager JWT. Validates captain belongs to the specified league.
 - **`update-player-profile`** - Player self-service profile updates via edit token. Validates required schema fields, rejects HTML in field names/values.
 - **`update-captain-color`** - Updates a captain's team color, team name, and team photo. Requires captain token OR manager JWT.
@@ -74,12 +74,16 @@ The `useDraft` hook (`src/hooks/useDraft.ts`) is the central draft state manager
 Core draft order logic lives in `src/lib/draft.ts`:
 - **Snake**: Order reverses each round `[1,2,3,4,4,3,2,1,1,2,3,4,...]`
 - **Round Robin**: Same order every round `[1,2,3,4,1,2,3,4,...]`
-- Same logic is duplicated in edge functions (`make-pick`, `auto-pick`) for server-side validation — changes must be made in both places
+- Same logic is duplicated in edge functions (`make-pick`, `auto-pick`) and in the `process_expired_timers()` pg_cron function (migration 019) — changes must be made in all three places
 - `getAvailablePlayers()` in `src/lib/draft.ts` filters out drafted and captain-linked players — also duplicated in edge functions (with cross-reference comments)
 
 ### Timer System
 
-Server-authoritative: `leagues.current_pick_started_at` is the source of truth. All clients compute remaining time as `time_limit_seconds - elapsed`. When timer hits zero, client waits 2 seconds then calls the `auto-pick` edge function. The edge function validates the timer server-side (with matching 2s grace period). Only managers and captains trigger auto-pick calls — spectators never make API calls.
+Server-authoritative: `leagues.current_pick_started_at` is the source of truth. All clients compute remaining time as `time_limit_seconds - elapsed`. When timer hits zero, any connected client (manager, captain, or spectator) calls the `auto-pick` edge function. The edge function validates the timer server-side (with 2s grace period) and uses `expectedPickIndex` for idempotency so multiple clients calling simultaneously is safe.
+
+**Server-side timer (QStash)**: When a pick timer starts, a database trigger (`schedule_auto_pick_timer`, migration 020) schedules an Upstash QStash HTTP callback for `time_limit_seconds + 2s` later. QStash calls the auto-pick edge function with `expectedPickIndex` for idempotency and `x-cron-secret` for auth. If a captain already picked, the callback harmlessly returns "Pick already made". This provides precise server-side timer enforcement independent of connected clients. Requires vault secrets: `qstash_token`, `auto_pick_function_url`, `auto_pick_cron_secret`.
+
+**Server-side fallback (pg_cron)**: Backup for QStash failures and auto-pick captain handling. `process_expired_timers()` runs every minute via `pg_cron` (migration 019), detects expired timers, and makes picks directly in SQL. For auto-pick captains, triggers after 10 seconds; for normal captains, after `time_limit_seconds + 5s` grace.
 
 ### Database Schema
 
@@ -87,7 +91,7 @@ Eight tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_p
 
 **Important**: `useLeague` selects explicit columns (not `*`) from related tables to minimize payload and because token columns are not accessible. When adding new columns to the schema, they must also be added to the select in `src/hooks/useLeagues.ts`.
 
-Migrations are in `supabase/migrations/` (001-018), applied sequentially.
+Migrations are in `supabase/migrations/` (001-020), applied sequentially.
 
 ### Draft State Machine
 
@@ -189,6 +193,11 @@ Build-time env vars (set in CI/Vercel, not in `.env` files):
 
 ## Supabase Setup
 
-1. Run migrations from `supabase/migrations/` in order (001-018)
+1. Run migrations from `supabase/migrations/` in order (001-020)
 2. Deploy all 8 edge functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`, `copy-league`
 3. Enable realtime on tables: `leagues`, `players`, `draft_picks`, `captains`
+4. Set up QStash for server-side timer enforcement:
+   - Create Upstash account (free tier: 500 messages/day)
+   - Insert vault secrets: `qstash_token`, `auto_pick_function_url`, `auto_pick_cron_secret`
+   - Set edge function secret: `supabase secrets set AUTO_PICK_CRON_SECRET=<value>`
+   - See migration 020 comments for detailed steps

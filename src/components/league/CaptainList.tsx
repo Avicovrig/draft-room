@@ -67,10 +67,10 @@ function SortableCaptainItem({
       className="space-y-2 rounded-lg border border-border p-3"
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {isEditable && <DragHandle />}
           {isEditable && (
-            <div className="flex flex-col">
+            <div className="hidden sm:flex flex-col">
               <button
                 type="button"
                 onClick={() => onMoveUp(index)}
@@ -119,7 +119,7 @@ function SortableCaptainItem({
             <button
               type="button"
               onClick={() => onEditPhoto(captain.id)}
-              className="flex-shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="hidden sm:flex flex-shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
               title={captain.team_photo_url ? 'Change team photo' : 'Upload team photo'}
             >
               <Camera className="h-4 w-4" />

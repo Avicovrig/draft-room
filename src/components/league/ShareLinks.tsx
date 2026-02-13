@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { Copy, ExternalLink, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Label } from '@/components/ui/Label'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import type { LeagueFullPublic, LeagueTokens } from '@/lib/types'
 
@@ -62,32 +60,24 @@ export function ShareLinks({ league, tokens }: ShareLinksProps) {
             not make picks.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Spectator URL</Label>
-            <div className="flex gap-2">
-              <Input value={spectatorUrl} readOnly className="font-mono text-xs sm:text-sm" />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => copyToClipboard(spectatorUrl, 'spectator')}
-                aria-label="Copy spectator link"
-              >
-                {copiedId === 'spectator' ? (
-                  <Check className="h-4 w-4 text-green-500" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => openInNewTab(spectatorUrl)}
-                aria-label="Open spectator link in new tab"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            </div>
+        <CardContent>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => copyToClipboard(spectatorUrl, 'spectator')}
+            >
+              {copiedId === 'spectator' ? (
+                <Check className="mr-1.5 h-4 w-4 text-green-500" />
+              ) : (
+                <Copy className="mr-1.5 h-4 w-4" />
+              )}
+              Copy Link
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => openInNewTab(spectatorUrl)}>
+              <ExternalLink className="mr-1.5 h-4 w-4" />
+              Open
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -107,7 +97,7 @@ export function ShareLinks({ league, tokens }: ShareLinksProps) {
               Add captains to generate their draft links.
             </p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {sortedCaptains.map((captain) => {
                 const tokenEntry = tokens.captains.find((c) => c.id === captain.id)
                 const captainUrl = tokenEntry
@@ -116,34 +106,35 @@ export function ShareLinks({ league, tokens }: ShareLinksProps) {
                 const captainId = `captain-${captain.id}`
 
                 return (
-                  <div key={captain.id} className="space-y-2">
-                    <Label>
+                  <div key={captain.id} className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium">
                       {captain.name}
-                      <span className="ml-2 text-muted-foreground">
-                        (Pick #{captain.draft_position})
+                      <span className="ml-1.5 text-muted-foreground font-normal">
+                        #{captain.draft_position}
                       </span>
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input value={captainUrl} readOnly className="font-mono text-xs sm:text-sm" />
+                    </span>
+                    <div className="flex gap-2 ml-auto">
                       <Button
                         variant="outline"
-                        size="icon"
+                        size="sm"
                         onClick={() => copyToClipboard(captainUrl, captainId)}
                         aria-label={`Copy link for ${captain.name}`}
                       >
                         {copiedId === captainId ? (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <Check className="mr-1.5 h-4 w-4 text-green-500" />
                         ) : (
-                          <Copy className="h-4 w-4" />
+                          <Copy className="mr-1.5 h-4 w-4" />
                         )}
+                        Copy Link
                       </Button>
                       <Button
                         variant="outline"
-                        size="icon"
+                        size="sm"
                         onClick={() => openInNewTab(captainUrl)}
                         aria-label={`Open link for ${captain.name} in new tab`}
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        <ExternalLink className="mr-1.5 h-4 w-4" />
+                        Open
                       </Button>
                     </div>
                   </div>

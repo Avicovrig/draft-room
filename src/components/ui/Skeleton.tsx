@@ -66,3 +66,23 @@ export function LeagueCardSkeleton() {
     </div>
   )
 }
+
+export function LeagueListItemSkeleton() {
+  return (
+    <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-3 sm:gap-4">
+      <Skeleton className="h-2 w-2 rounded-full" />
+      <div className="min-w-0 flex-1">
+        <Skeleton className="mb-1 h-5 w-1/3" />
+        <Skeleton className="h-3 w-16" />
+      </div>
+      <div className="hidden gap-4 sm:flex">
+        <Skeleton className="h-4 w-8" />
+        <Skeleton className="h-4 w-8" />
+        <Skeleton className="h-4 w-8" />
+      </div>
+      <Skeleton className="hidden h-5 w-20 rounded-full sm:block" />
+      <Skeleton className="h-7 w-7 rounded-md" />
+      <Skeleton className="h-4 w-4" />
+    </div>
+  )
+}

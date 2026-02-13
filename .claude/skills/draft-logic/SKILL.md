@@ -1,28 +1,29 @@
 ---
 name: draft-logic
-description: "GUARDRAIL: Draft logic is duplicated between src/lib/draft.ts and edge functions (make-pick, auto-pick). Changes MUST be made in both places."
+description: "GUARDRAIL: Draft logic is duplicated between src/lib/draft.ts, edge functions (make-pick, auto-pick), and pg_cron (migration 019). Changes MUST be made in all three places."
 ---
 
 # Draft Logic Guardrail
 
 ## ⚠️ WARNING: DUPLICATED CODE
 
-Draft logic exists in TWO places that MUST stay in sync:
+Draft logic exists in THREE places that MUST stay in sync:
 
-| Logic | Frontend | Edge Functions (shared) | Edge Function call sites |
-|-------|----------|------------------------|--------------------------|
-| Pick order (snake/round robin) | `src/lib/draft.ts` — `getPickOrder()`, `getCaptainAtPick()` | `_shared/draftOrder.ts` — `getCurrentCaptainId()` | `make-pick` (line 23), `auto-pick` (line 153) |
-| Available players filter | `src/lib/draft.ts` — `getAvailablePlayers()` | `_shared/draftOrder.ts` — `getAvailablePlayersServer()` | `make-pick` (lines 40-62 count, 141-143 reject), `auto-pick` (line 181) |
-| Timer validation | `src/components/draft/PickTimer.tsx` | Inline in `auto-pick/index.ts` | `auto-pick` (timer check + 2s grace) |
+| Logic | Frontend | Edge Functions (shared) | pg_cron fallback |
+|-------|----------|------------------------|------------------|
+| Pick order (snake/round robin) | `src/lib/draft.ts` — `getPickOrder()`, `getCaptainAtPick()` | `_shared/draftOrder.ts` — `getCurrentCaptainId()` | `process_expired_timers()` in migration 019 |
+| Available players filter | `src/lib/draft.ts` — `getAvailablePlayers()` | `_shared/draftOrder.ts` — `getAvailablePlayersServer()` | `process_expired_timers()` in migration 019 |
+| Timer validation | `src/components/draft/PickTimer.tsx` | Inline in `auto-pick/index.ts` | `process_expired_timers()` (5s grace for timer, 10s for auto-pick captains) |
 
 ## When Modifying Draft Logic, ALWAYS:
 
 1. Change `src/lib/draft.ts` (frontend)
 2. Change `_shared/draftOrder.ts` (shared edge function logic)
 3. Check call sites in `make-pick/index.ts` and `auto-pick/index.ts` for inline logic (e.g., `countRemainingPlayers`, captain-player rejection)
-4. Run `npm test` to verify frontend tests pass
-5. Deploy changed edge functions to QA and test
-6. Look for `// NOTE: Keep in sync with ...` comments — check the referenced location
+4. Update `process_expired_timers()` in `supabase/migrations/019_auto_pick_cron.sql` (or create a new migration with `CREATE OR REPLACE FUNCTION`)
+5. Run `npm test` to verify frontend tests pass
+6. Deploy changed edge functions to QA and test
+7. Look for `// NOTE: Keep in sync with ...` comments — check the referenced location
 
 ---
 
@@ -66,7 +67,8 @@ Captain-linked players: players whose `id` matches some captain's `player_id`. T
 - **Client waits 2 seconds** after timer hits zero, then calls `auto-pick` edge function
 - **Server validates**: `elapsed >= time_limit_seconds - GRACE_PERIOD_SECONDS` (2s)
 - These 2-second values MUST stay in sync between client and server
-- Only managers and captains trigger auto-pick calls — spectators NEVER make API calls
+- **Any connected client** (manager, captain, or spectator) triggers auto-pick calls
+- **pg_cron fallback**: If ALL clients disconnect, `process_expired_timers()` runs every minute and makes picks directly in SQL
 
 ## Draft State Machine
 
@@ -78,12 +80,9 @@ PAUSED      → NOT_STARTED  (restart draft — deletes all picks)
 IN_PROGRESS → COMPLETED    (all available players drafted)
 ```
 
-## Spectator Safety
+## Auto-Pick Triggering
 
-Spectators should NEVER trigger API calls. Guard auto-pick effects and `onExpire` callbacks with:
-```typescript
-if (isManager || viewingAsCaptain) { /* make API call */ }
-```
+Any connected client (manager, captain, or spectator) can trigger auto-pick calls. The edge function authenticates via any captain token from the league, spectator token, or manager JWT. The `useAutoPick` hook handles this — all clients fire `handleTimerExpire()` on timer expiry.
 
 ## Cross-Reference Comments
 

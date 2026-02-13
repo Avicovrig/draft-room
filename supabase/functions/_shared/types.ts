@@ -65,6 +65,7 @@ export interface AutoPickRequest {
   leagueId: string
   expectedPickIndex?: number
   captainToken?: string
+  spectatorToken?: string
 }
 
 export interface ToggleAutoPickRequest {

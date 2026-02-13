@@ -431,18 +431,18 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAdd} className="space-y-3">
+              <div>
+                <Label htmlFor="new-field-name" className="mb-1 text-xs text-muted-foreground">
+                  Field name
+                </Label>
+                <Input
+                  id="new-field-name"
+                  placeholder="e.g. Position, Height"
+                  value={addForm.name}
+                  onChange={(e) => setAddForm((prev) => ({ ...prev, name: e.target.value }))}
+                />
+              </div>
               <div className="flex flex-wrap items-end gap-2">
-                <div className="min-w-0 flex-1">
-                  <Label htmlFor="new-field-name" className="mb-1 text-xs text-muted-foreground">
-                    Field name
-                  </Label>
-                  <Input
-                    id="new-field-name"
-                    placeholder="e.g. Position, Height"
-                    value={addForm.name}
-                    onChange={(e) => setAddForm((prev) => ({ ...prev, name: e.target.value }))}
-                  />
-                </div>
                 <div className="w-36">
                   <Label htmlFor="new-field-type" className="mb-1 text-xs text-muted-foreground">
                     Type
@@ -484,19 +484,21 @@ export function FieldSchemaList({ league }: FieldSchemaListProps) {
                 </Button>
               </div>
 
-              <FieldOptionsEditor
-                type={addForm.type}
-                unit={addForm.unit}
-                onUnitChange={(v) => setAddForm((prev) => ({ ...prev, unit: v }))}
-                includeTime={addForm.includeTime}
-                onIncludeTimeChange={(v) => setAddForm((prev) => ({ ...prev, includeTime: v }))}
-                dropdownOptions={addForm.dropdownOptions}
-                onDropdownOptionsChange={(v) =>
-                  setAddForm((prev) => ({ ...prev, dropdownOptions: v }))
-                }
-                defaultValue={addForm.defaultValue}
-                onDefaultValueChange={(v) => setAddForm((prev) => ({ ...prev, defaultValue: v }))}
-              />
+              {addForm.type === 'dropdown' && (
+                <FieldOptionsEditor
+                  type={addForm.type}
+                  unit={addForm.unit}
+                  onUnitChange={(v) => setAddForm((prev) => ({ ...prev, unit: v }))}
+                  includeTime={addForm.includeTime}
+                  onIncludeTimeChange={(v) => setAddForm((prev) => ({ ...prev, includeTime: v }))}
+                  dropdownOptions={addForm.dropdownOptions}
+                  onDropdownOptionsChange={(v) =>
+                    setAddForm((prev) => ({ ...prev, dropdownOptions: v }))
+                  }
+                  defaultValue={addForm.defaultValue}
+                  onDefaultValueChange={(v) => setAddForm((prev) => ({ ...prev, defaultValue: v }))}
+                />
+              )}
             </form>
           </CardContent>
         </Card>

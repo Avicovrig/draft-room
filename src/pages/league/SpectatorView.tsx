@@ -44,7 +44,7 @@ export function SpectatorView() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 py-4 sm:py-8">
           <div className="flex items-center justify-center py-12">
             <div className="text-muted-foreground">Loading draft...</div>
           </div>
@@ -57,7 +57,7 @@ export function SpectatorView() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 py-4 sm:py-8">
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center text-destructive">
             {error?.message || 'League not found'}
           </div>
@@ -71,7 +71,7 @@ export function SpectatorView() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-4 py-4 sm:py-8">
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center text-destructive">
             Invalid or missing spectator access token
           </div>
@@ -83,8 +83,8 @@ export function SpectatorView() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-6">
+      <main className="container mx-auto px-4 py-4 sm:py-8">
+        <div className="mb-4 sm:mb-6">
           <Breadcrumb items={[{ label: league.name }, { label: 'Spectator' }]} />
           <h1 className="text-3xl font-bold">{league.name}</h1>
           <p className="text-muted-foreground">Spectator View</p>
@@ -100,6 +100,7 @@ export function SpectatorView() {
           fieldSchemas={fieldSchemas}
           canPick={false}
           isManager={false}
+          spectatorToken={token ?? undefined}
           onStartDraft={startDraft}
           onPauseDraft={pauseDraft}
           onResumeDraft={resumeDraft}
