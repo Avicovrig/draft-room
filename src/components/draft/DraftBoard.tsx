@@ -4,6 +4,7 @@ import { useModalFocus } from '@/hooks/useModalFocus'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useAutoPick } from '@/hooks/useAutoPick'
 import { KeyboardShortcutsModal } from '@/components/ui/KeyboardShortcutsModal'
+import { FilterPills } from '@/components/ui/FilterPills'
 import { PickTimer } from './PickTimer'
 import { PlayerPool, type SortOption } from './PlayerPool'
 import { SORTABLE_FIELD_TYPES } from '@/lib/playerFilters'
@@ -54,6 +55,8 @@ interface DraftBoardProps {
   onMakePick: (playerId: string, captainId: string, captainToken?: string) => Promise<void>
 }
 
+type PanelTab = 'pool' | 'queue'
+
 export function DraftBoard({
   league,
   currentCaptain,
@@ -75,7 +78,31 @@ export function DraftBoard({
   onMakePick,
 }: DraftBoardProps) {
   const [isPicking, setIsPicking] = useState(false)
-  const [isPlayerPoolExpanded, setIsPlayerPoolExpanded] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [expandedPanel, setExpandedPanel] = useState<PanelTab>('pool')
+
+  // Panel toggle state (captain view only), persisted to sessionStorage
+  const panelStorageKey = `draft-panel:${league.id}`
+  const [activePanel, setActivePanelRaw] = useState<PanelTab>(() => {
+    try {
+      const saved = sessionStorage.getItem(panelStorageKey)
+      if (saved === 'pool' || saved === 'queue') return saved
+    } catch {
+      /* private browsing */
+    }
+    return 'pool'
+  })
+  const setActivePanel = useCallback(
+    (tab: PanelTab) => {
+      setActivePanelRaw(tab)
+      try {
+        sessionStorage.setItem(panelStorageKey, tab)
+      } catch {
+        /* private browsing */
+      }
+    },
+    [panelStorageKey]
+  )
 
   // SessionStorage-backed pool state
   const storageKey = `draft-pool-state:${league.id}`
@@ -212,6 +239,12 @@ export function DraftBoard({
 
   // Set of player IDs in the captain's queue
   const queuedPlayerIds = useMemo(() => new Set(queueData.map((q) => q.player_id)), [queueData])
+
+  // Count of available queue entries (for tab label)
+  const availableQueueCount = useMemo(() => {
+    const availableIds = new Set(availablePlayers.map((p) => p.id))
+    return queueData.filter((q) => availableIds.has(q.player_id)).length
+  }, [queueData, availablePlayers])
 
   function handleAddToQueue(playerId: string) {
     if (!viewingAsCaptain) return
@@ -366,6 +399,21 @@ export function DraftBoard({
     }
   }
 
+  // Panel tab options for captain view
+  const panelOptions = useMemo(
+    () => [
+      {
+        value: 'pool' as PanelTab,
+        label: canPick ? 'Select a Player' : 'Available Players',
+      },
+      {
+        value: 'queue' as PanelTab,
+        label: `My Queue${availableQueueCount > 0 ? ` (${availableQueueCount})` : ''}`,
+      },
+    ],
+    [canPick, availableQueueCount]
+  )
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Screen reader announcements for draft picks */}
@@ -480,8 +528,8 @@ export function DraftBoard({
         </div>
       )}
 
-      {/* Timer, Player Pool, and Queue */}
-      <div className={`grid gap-6 ${viewingAsCaptain ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+      {/* Timer and Player Pool / Queue */}
+      <div className="grid gap-6 lg:grid-cols-3">
         <Card className="relative lg:col-span-1 sticky top-[57px] z-10 lg:static lg:z-auto min-w-0">
           <CardHeader className="p-0 sm:p-6">
             <CardTitle className="hidden sm:block">Timer</CardTitle>
@@ -525,62 +573,70 @@ export function DraftBoard({
           </CardContent>
         </Card>
 
-        <Card className={`min-w-0 ${viewingAsCaptain ? 'lg:col-span-2' : 'lg:col-span-2'}`}>
+        <Card className="min-w-0 lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>{canPick ? 'Select a Player' : 'Available Players'}</CardTitle>
+            {viewingAsCaptain ? (
+              <FilterPills
+                options={panelOptions}
+                selected={activePanel}
+                onChange={setActivePanel}
+                ariaLabel="Player pool or draft queue"
+              />
+            ) : (
+              <CardTitle>{canPick ? 'Select a Player' : 'Available Players'}</CardTitle>
+            )}
             <button
               type="button"
-              onClick={() => setIsPlayerPoolExpanded(true)}
+              onClick={() => {
+                setExpandedPanel(viewingAsCaptain ? activePanel : 'pool')
+                setIsExpanded(true)
+              }}
               className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
-              title="Expand player list"
-              aria-label="Expand player list"
+              title="Expand view"
+              aria-label="Expand view"
             >
               <Maximize2 className="h-4 w-4" />
             </button>
           </CardHeader>
           <CardContent className="h-[400px] sm:h-[300px]">
-            <PlayerPool
-              players={availablePlayers}
-              customFieldsMap={customFieldsMap}
-              canPick={canPick && isActive}
-              onPick={handlePick}
-              isPicking={isPicking}
-              onAddToQueue={viewingAsCaptain ? handleAddToQueue : undefined}
-              queuedPlayerIds={queuedPlayerIds}
-              isAddingToQueue={addToQueue.isPending}
-              search={poolSearch}
-              onSearchChange={setPoolSearch}
-              sortBy={poolSortBy}
-              onSortChange={setPoolSortBy}
-              sortDirection={poolSortDirection}
-              onSortDirectionChange={setPoolSortDirection}
-              searchInputRef={searchInputRef}
-              notes={notesOwnerId ? notes : undefined}
-              onNoteChange={notesOwnerId ? setNote : undefined}
-              fieldSchemas={fieldSchemas}
-              filters={poolFilters}
-              onFilterChange={handleFilterChange}
-              onClearFilters={handleClearFilters}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Draft Queue (Captain view only) */}
-        {viewingAsCaptain && (
-          <Card className="lg:col-span-1 min-w-0">
-            <CardHeader>
-              <CardTitle>My Queue</CardTitle>
-            </CardHeader>
-            <CardContent className="h-[400px] sm:h-[300px]">
+            {activePanel === 'pool' || !viewingAsCaptain ? (
+              <PlayerPool
+                players={availablePlayers}
+                customFieldsMap={customFieldsMap}
+                canPick={canPick && isActive}
+                onPick={handlePick}
+                isPicking={isPicking}
+                onAddToQueue={viewingAsCaptain ? handleAddToQueue : undefined}
+                queuedPlayerIds={queuedPlayerIds}
+                isAddingToQueue={addToQueue.isPending}
+                search={poolSearch}
+                onSearchChange={setPoolSearch}
+                sortBy={poolSortBy}
+                onSortChange={setPoolSortBy}
+                sortDirection={poolSortDirection}
+                onSortDirectionChange={setPoolSortDirection}
+                searchInputRef={searchInputRef}
+                notes={notesOwnerId ? notes : undefined}
+                onNoteChange={notesOwnerId ? setNote : undefined}
+                fieldSchemas={fieldSchemas}
+                filters={poolFilters}
+                onFilterChange={handleFilterChange}
+                onClearFilters={handleClearFilters}
+              />
+            ) : (
               <DraftQueue
                 captain={viewingAsCaptain}
                 availablePlayers={availablePlayers}
                 leagueId={league.id}
                 captainToken={captainToken}
+                customFieldsMap={customFieldsMap}
+                fieldSchemas={fieldSchemas}
+                notes={notesOwnerId ? notes : undefined}
+                onNoteChange={notesOwnerId ? setNote : undefined}
               />
-            </CardContent>
-          </Card>
-        )}
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Manager Controls */}
@@ -627,64 +683,81 @@ export function DraftBoard({
       {/* Keyboard Shortcuts Modal */}
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
-      {/* Expanded Player Pool Modal */}
-      {isPlayerPoolExpanded && (
-        <ExpandedPoolModal onClose={() => setIsPlayerPoolExpanded(false)}>
+      {/* Expanded Pool / Queue Modal */}
+      {isExpanded && (
+        <ExpandedModal onClose={() => setIsExpanded(false)}>
           <Card className="flex h-[90vh] w-full max-w-4xl flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 flex-shrink-0">
-              <CardTitle>{canPick ? 'Select a Player' : 'Available Players'}</CardTitle>
+              {viewingAsCaptain ? (
+                <FilterPills
+                  options={panelOptions}
+                  selected={expandedPanel}
+                  onChange={setExpandedPanel}
+                  ariaLabel="Player pool or draft queue"
+                />
+              ) : (
+                <CardTitle>{canPick ? 'Select a Player' : 'Available Players'}</CardTitle>
+              )}
               <button
                 type="button"
-                onClick={() => setIsPlayerPoolExpanded(false)}
+                onClick={() => setIsExpanded(false)}
                 className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
-                title="Collapse player list"
-                aria-label="Collapse player list"
+                title="Collapse"
+                aria-label="Collapse"
               >
                 <Minimize2 className="h-4 w-4" />
               </button>
             </CardHeader>
             <CardContent className="flex-1 overflow-hidden">
-              <PlayerPool
-                players={availablePlayers}
-                customFieldsMap={customFieldsMap}
-                canPick={canPick && isActive}
-                onPick={(playerId) => {
-                  handlePick(playerId)
-                  setIsPlayerPoolExpanded(false)
-                }}
-                isPicking={isPicking}
-                showExpandedDetails={true}
-                onAddToQueue={viewingAsCaptain ? handleAddToQueue : undefined}
-                queuedPlayerIds={queuedPlayerIds}
-                isAddingToQueue={addToQueue.isPending}
-                search={poolSearch}
-                onSearchChange={setPoolSearch}
-                sortBy={poolSortBy}
-                onSortChange={setPoolSortBy}
-                sortDirection={poolSortDirection}
-                onSortDirectionChange={setPoolSortDirection}
-                notes={notesOwnerId ? notes : undefined}
-                onNoteChange={notesOwnerId ? setNote : undefined}
-                fieldSchemas={fieldSchemas}
-                filters={poolFilters}
-                onFilterChange={handleFilterChange}
-                onClearFilters={handleClearFilters}
-              />
+              {expandedPanel === 'pool' || !viewingAsCaptain ? (
+                <PlayerPool
+                  players={availablePlayers}
+                  customFieldsMap={customFieldsMap}
+                  canPick={canPick && isActive}
+                  onPick={(playerId) => {
+                    handlePick(playerId)
+                    setIsExpanded(false)
+                  }}
+                  isPicking={isPicking}
+                  showExpandedDetails={true}
+                  onAddToQueue={viewingAsCaptain ? handleAddToQueue : undefined}
+                  queuedPlayerIds={queuedPlayerIds}
+                  isAddingToQueue={addToQueue.isPending}
+                  search={poolSearch}
+                  onSearchChange={setPoolSearch}
+                  sortBy={poolSortBy}
+                  onSortChange={setPoolSortBy}
+                  sortDirection={poolSortDirection}
+                  onSortDirectionChange={setPoolSortDirection}
+                  notes={notesOwnerId ? notes : undefined}
+                  onNoteChange={notesOwnerId ? setNote : undefined}
+                  fieldSchemas={fieldSchemas}
+                  filters={poolFilters}
+                  onFilterChange={handleFilterChange}
+                  onClearFilters={handleClearFilters}
+                />
+              ) : (
+                <DraftQueue
+                  captain={viewingAsCaptain}
+                  availablePlayers={availablePlayers}
+                  leagueId={league.id}
+                  captainToken={captainToken}
+                  customFieldsMap={customFieldsMap}
+                  fieldSchemas={fieldSchemas}
+                  notes={notesOwnerId ? notes : undefined}
+                  onNoteChange={notesOwnerId ? setNote : undefined}
+                  showExpandedDetails={true}
+                />
+              )}
             </CardContent>
           </Card>
-        </ExpandedPoolModal>
+        </ExpandedModal>
       )}
     </div>
   )
 }
 
-function ExpandedPoolModal({
-  children,
-  onClose,
-}: {
-  children: React.ReactNode
-  onClose: () => void
-}) {
+function ExpandedModal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   const { overlayProps } = useModalFocus({ onClose })
 
   return (

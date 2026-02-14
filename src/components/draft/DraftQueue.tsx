@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { ChevronUp, ChevronDown, X, ListOrdered } from 'lucide-react'
+import { ChevronUp, ChevronDown, X, ListOrdered, User, StickyNote } from 'lucide-react'
 import { SortableList, SortableItem, DragHandle } from '@/components/ui/SortableList'
 import { Button } from '@/components/ui/Button'
+import { PlayerProfileModal } from '@/components/player/PlayerProfileModal'
 import { useToast } from '@/components/ui/Toast'
 import {
   useDraftQueue,
@@ -9,7 +10,7 @@ import {
   useMoveInQueue,
   useToggleAutoPick,
 } from '@/hooks/useDraftQueue'
-import type { CaptainPublic, PlayerPublic } from '@/lib/types'
+import type { CaptainPublic, PlayerPublic, PlayerCustomField, LeagueFieldSchema } from '@/lib/types'
 import { getInitials } from '@/lib/utils'
 
 interface DraftQueueProps {
@@ -17,6 +18,11 @@ interface DraftQueueProps {
   availablePlayers: PlayerPublic[]
   leagueId: string
   captainToken?: string
+  customFieldsMap?: Record<string, PlayerCustomField[]>
+  fieldSchemas?: LeagueFieldSchema[]
+  notes?: Record<string, string>
+  onNoteChange?: (playerId: string, note: string) => void
+  showExpandedDetails?: boolean
 }
 
 interface QueueEntry {
@@ -34,6 +40,13 @@ interface SortableQueueItemProps {
   onMoveDown: (index: number) => void
   onRemove: (id: string) => void
   isRemoving: boolean
+  onViewProfile: (player: PlayerPublic) => void
+  customFields?: PlayerCustomField[]
+  note?: string
+  isEditingNote: boolean
+  onToggleNote: () => void
+  onNoteChange?: (playerId: string, note: string) => void
+  showExpandedDetails: boolean
 }
 
 function SortableQueueItem({
@@ -45,81 +58,191 @@ function SortableQueueItem({
   onMoveDown,
   onRemove,
   isRemoving,
+  onViewProfile,
+  customFields = [],
+  note,
+  isEditingNote,
+  onToggleNote,
+  onNoteChange,
+  showExpandedDetails,
 }: SortableQueueItemProps) {
+  const hasExpandableContent = item.player.bio || customFields.length > 0
+
   return (
-    <SortableItem
-      id={item.id}
-      className="flex items-center gap-2 px-3 py-2 transition-colors hover:bg-accent/50"
-    >
-      {/* Drag handle */}
-      <DragHandle className="text-muted-foreground/50 hover:text-muted-foreground" />
+    <SortableItem id={item.id} className="transition-colors hover:bg-accent/50">
+      <div className="flex items-center gap-2 px-3 py-2">
+        {/* Drag handle */}
+        <DragHandle className="text-muted-foreground/50 hover:text-muted-foreground" />
 
-      {/* Position number */}
-      <span className="w-6 text-center text-sm font-medium text-muted-foreground">{index + 1}</span>
+        {/* Position number */}
+        <span className="w-6 text-center text-sm font-medium text-muted-foreground">
+          {index + 1}
+        </span>
 
-      {/* Player info */}
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        {item.player.profile_picture_url ? (
-          <img
-            src={item.player.profile_picture_url}
-            alt={item.player.name}
-            loading="lazy"
-            className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-            {getInitials(item.player.name)}
-          </div>
+        {/* Player info with profile picture */}
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => onViewProfile(item.player)}
+          className="flex-shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          {item.player.profile_picture_url ? (
+            <img
+              src={item.player.profile_picture_url}
+              alt={item.player.name}
+              loading="lazy"
+              className="h-11 w-11 flex-shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
+              {getInitials(item.player.name)}
+            </div>
+          )}
+        </button>
+
+        <span className="min-w-0 flex-1 truncate text-sm">{item.player.name}</span>
+
+        {/* View Profile Button */}
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => onViewProfile(item.player)}
+          className="flex-shrink-0 p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
+          title="View full profile"
+        >
+          <User className="h-4 w-4" />
+        </button>
+
+        {/* Note Button */}
+        {onNoteChange && (
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={onToggleNote}
+            className={
+              note
+                ? 'flex-shrink-0 p-1.5 rounded-md text-yellow-600 dark:text-yellow-400'
+                : 'flex-shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent'
+            }
+            title={note ? 'Edit note' : 'Add note'}
+          >
+            <StickyNote className="h-4 w-4" />
+          </button>
         )}
-        <span className="truncate text-sm">{item.player.name}</span>
+
+        {/* Move buttons */}
+        <div className="flex items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => onMoveUp(index)}
+            disabled={isFirst}
+            title="Move up"
+            aria-label="Move up"
+          >
+            <ChevronUp className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => onMoveDown(index)}
+            disabled={isLast}
+            title="Move down"
+            aria-label="Move down"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+            onClick={() => onRemove(item.id)}
+            disabled={isRemoving}
+            title="Remove from queue"
+            aria-label="Remove from queue"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Move buttons */}
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => onMoveUp(index)}
-          disabled={isFirst}
-          title="Move up"
-          aria-label="Move up"
-        >
-          <ChevronUp className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => onMoveDown(index)}
-          disabled={isLast}
-          title="Move down"
-          aria-label="Move down"
-        >
-          <ChevronDown className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-          onClick={() => onRemove(item.id)}
-          disabled={isRemoving}
-          title="Remove from queue"
-          aria-label="Remove from queue"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
+      {/* Inline Note Editor */}
+      {isEditingNote && onNoteChange && (
+        <div className="border-t border-border/50 bg-yellow-50/50 px-4 py-2 dark:bg-yellow-950/20">
+          <label htmlFor={`queue-note-${item.player.id}`} className="sr-only">
+            Note about {item.player.name}
+          </label>
+          <textarea
+            id={`queue-note-${item.player.id}`}
+            autoFocus
+            rows={2}
+            placeholder="Add a note about this player..."
+            value={note || ''}
+            onChange={(e) => onNoteChange(item.player.id, e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.stopPropagation()
+                onToggleNote()
+              }
+            }}
+            className="w-full resize-none rounded border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+      )}
+
+      {/* Note Preview (when not editing, in expanded mode) */}
+      {showExpandedDetails && note && !isEditingNote && (
+        <div className="border-t border-border/50 bg-yellow-50/50 px-4 py-2 dark:bg-yellow-950/20">
+          <p className="text-sm text-yellow-700 dark:text-yellow-300 line-clamp-2">
+            <StickyNote className="mr-1 inline h-3 w-3" />
+            {note}
+          </p>
+        </div>
+      )}
+
+      {/* Expanded Content (bio + custom fields) */}
+      {showExpandedDetails && hasExpandableContent && (
+        <div className="border-t border-border/50 bg-muted/30 px-4 py-3 pl-6">
+          {item.player.bio && (
+            <p className="mb-2 text-sm text-muted-foreground line-clamp-3">{item.player.bio}</p>
+          )}
+          {customFields.length > 0 && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              {customFields.map((field) => (
+                <span key={field.id}>
+                  <span className="text-muted-foreground">{field.field_name}:</span>{' '}
+                  {field.field_value || '-'}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </SortableItem>
   )
 }
 
-export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }: DraftQueueProps) {
+export function DraftQueue({
+  captain,
+  availablePlayers,
+  leagueId,
+  captainToken,
+  customFieldsMap = {},
+  fieldSchemas = [],
+  notes = {},
+  onNoteChange,
+  showExpandedDetails = false,
+}: DraftQueueProps) {
   const { data: queue = [], isLoading } = useDraftQueue(captain.id)
   const removeFromQueue = useRemoveFromQueue()
   const moveInQueue = useMoveInQueue()
   const toggleAutoPick = useToggleAutoPick()
   const { addToast } = useToast()
+
+  const [viewingPlayer, setViewingPlayer] = useState<PlayerPublic | null>(null)
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
 
   // Local state for optimistic UI updates
   const [isAutoPickEnabled, setIsAutoPickEnabled] = useState(captain.auto_pick_enabled)
@@ -259,6 +382,15 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
                   onMoveDown={handleMoveDown}
                   onRemove={handleRemove}
                   isRemoving={removeFromQueue.isPending}
+                  onViewProfile={setViewingPlayer}
+                  customFields={customFieldsMap[item.player_id]}
+                  note={notes[item.player_id]}
+                  isEditingNote={editingNoteId === item.player_id}
+                  onToggleNote={() =>
+                    setEditingNoteId(editingNoteId === item.player_id ? null : item.player_id)
+                  }
+                  onNoteChange={onNoteChange}
+                  showExpandedDetails={showExpandedDetails}
                 />
               ))}
             </ul>
@@ -271,6 +403,17 @@ export function DraftQueue({ captain, availablePlayers, leagueId, captainToken }
         <div className="mt-2 text-center text-xs text-muted-foreground">
           {availableQueue.length} player{availableQueue.length !== 1 ? 's' : ''} in queue
         </div>
+      )}
+
+      {/* Player Profile Modal */}
+      {viewingPlayer && (
+        <PlayerProfileModal
+          player={viewingPlayer}
+          customFields={customFieldsMap[viewingPlayer.id] || []}
+          fieldSchemas={fieldSchemas}
+          note={notes[viewingPlayer.id]}
+          onClose={() => setViewingPlayer(null)}
+        />
       )}
     </div>
   )
