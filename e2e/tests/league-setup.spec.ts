@@ -172,12 +172,12 @@ test.describe.serial('League Setup', () => {
     await managePage.createNonPlayerCaptainButton.click()
     await managePage.captainNameInput.fill('Team Alpha')
     await managePage.addButton.click()
-    await expect(managePage.tabPanel.getByText('Team Alpha')).toBeVisible()
+    await expect(managePage.tabPanel.getByText('Team Alpha', { exact: true })).toBeVisible()
 
     // Create Non-Player Captain: Team Beta
     await managePage.captainNameInput.fill('Team Beta')
     await managePage.addButton.click()
-    await expect(managePage.tabPanel.getByText('Team Beta')).toBeVisible()
+    await expect(managePage.tabPanel.getByText('Team Beta', { exact: true })).toBeVisible()
 
     // Select from Players: Alice
     await managePage.selectFromPlayersButton.click()
