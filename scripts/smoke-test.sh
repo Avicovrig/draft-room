@@ -46,6 +46,9 @@ echo ""
 echo "=== Draft Room Smoke Tests ($ENV) ==="
 echo ""
 
+# All 9 edge functions
+EDGE_FUNCTIONS="make-pick auto-pick toggle-auto-pick update-player-profile update-captain-color restart-draft undo-pick copy-league manage-draft-queue"
+
 # --- 1. Frontend loads ---
 echo "Frontend:"
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL")
@@ -54,6 +57,19 @@ if [ "$HTTP_CODE" = "200" ]; then
 else
   fail "Frontend returns HTTP $HTTP_CODE (expected 200)"
 fi
+
+# --- 1b. Security headers ---
+echo ""
+echo "Security headers:"
+HEADER_RESP=$(curl -s -D - -o /dev/null "$FRONTEND_URL" 2>&1)
+
+for HEADER_NAME in "x-frame-options" "x-content-type-options" "strict-transport-security" "content-security-policy"; do
+  if echo "$HEADER_RESP" | grep -qi "^$HEADER_NAME:"; then
+    pass "$HEADER_NAME present"
+  else
+    fail "$HEADER_NAME missing"
+  fi
+done
 
 # --- 2. Token columns blocked ---
 echo ""
@@ -147,15 +163,34 @@ else
   fail "validate_player_edit_token unexpected response" "$PLAYER_INVALID"
 fi
 
+# get_league_tokens requires authenticated manager — must not expose tokens to anon
+TOKENS_BODY=$(eval "curl -s '$REST_URL/rpc/get_league_tokens' $AUTH_HEADERS -H 'Content-Type: application/json' -d '{\"p_league_id\":\"00000000-0000-0000-0000-000000000000\"}'")
+if echo "$TOKENS_BODY" | grep -qi "access_token\|spectator_token\|edit_token"; then
+  fail "get_league_tokens EXPOSED tokens to anon" "$TOKENS_BODY"
+else
+  pass "get_league_tokens blocks unauthenticated access"
+fi
+
 # --- 5. CORS ---
 echo ""
 echo "CORS headers:"
 
-CORS_ALLOWED=$(curl -s -o /dev/null -w "%{http_code}" -X OPTIONS "$SUPABASE_URL/functions/v1/make-pick" -H "Origin: https://draft-room-eta.vercel.app" -H "Access-Control-Request-Method: POST")
+# Test with the current environment's frontend origin
+CORS_ALLOWED=$(curl -s -o /dev/null -w "%{http_code}" -X OPTIONS "$SUPABASE_URL/functions/v1/make-pick" -H "Origin: $FRONTEND_URL" -H "Access-Control-Request-Method: POST")
 if [ "$CORS_ALLOWED" = "204" ]; then
-  pass "CORS preflight returns 204 for allowed origin"
+  pass "CORS preflight returns 204 for $ENV origin"
 else
-  fail "CORS preflight returned $CORS_ALLOWED for allowed origin"
+  fail "CORS preflight returned $CORS_ALLOWED for $ENV origin ($FRONTEND_URL)"
+fi
+
+# Always test prod origin too (it should always be allowed)
+if [ "$ENV" = "qa" ]; then
+  CORS_PROD=$(curl -s -o /dev/null -w "%{http_code}" -X OPTIONS "$SUPABASE_URL/functions/v1/make-pick" -H "Origin: https://draft-room-eta.vercel.app" -H "Access-Control-Request-Method: POST")
+  if [ "$CORS_PROD" = "204" ]; then
+    pass "CORS preflight returns 204 for prod origin"
+  else
+    fail "CORS preflight returned $CORS_PROD for prod origin"
+  fi
 fi
 
 CORS_ORIGIN=$(curl -s -D - -o /dev/null -X OPTIONS "$SUPABASE_URL/functions/v1/make-pick" -H "Origin: https://evil-site.com" -H "Access-Control-Request-Method: POST" 2>&1 | grep -i "access-control-allow-origin" || echo "")
@@ -165,7 +200,20 @@ else
   pass "CORS blocks unknown origins"
 fi
 
-# --- 6. Edge function UUID validation ---
+# --- 6. Edge function liveness (all 9 functions) ---
+echo ""
+echo "Edge function liveness:"
+
+for FN in $EDGE_FUNCTIONS; do
+  FN_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X OPTIONS "$SUPABASE_URL/functions/v1/$FN" -H "Origin: $FRONTEND_URL" -H "Access-Control-Request-Method: POST")
+  if [ "$FN_CODE" = "204" ]; then
+    pass "$FN deployed (OPTIONS 204)"
+  else
+    fail "$FN returned HTTP $FN_CODE (expected 204)"
+  fi
+done
+
+# --- 7. Edge function request validation ---
 echo ""
 echo "Edge function validation:"
 
@@ -174,6 +222,22 @@ if echo "$UUID_RESP" | grep -qi "invalid.*uuid\|invalid.*id\|invalid.*field\|inv
   pass "Edge function rejects invalid UUIDs"
 else
   fail "Edge function UUID validation" "$UUID_RESP"
+fi
+
+# Content-Type enforcement (requireJson rejects non-JSON with 415)
+CT_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$SUPABASE_URL/functions/v1/make-pick" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $ANON_KEY" -H "Content-Type: text/plain" -H "Origin: $FRONTEND_URL" -d 'not json')
+if [ "$CT_CODE" = "415" ]; then
+  pass "Edge function rejects non-JSON Content-Type (415)"
+else
+  fail "Edge function Content-Type enforcement returned $CT_CODE (expected 415)"
+fi
+
+# HTTP method enforcement (requirePost rejects GET with 405)
+METHOD_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$SUPABASE_URL/functions/v1/make-pick" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $ANON_KEY" -H "Origin: $FRONTEND_URL")
+if [ "$METHOD_CODE" = "405" ]; then
+  pass "Edge function rejects GET method (405)"
+else
+  fail "Edge function method enforcement returned $METHOD_CODE (expected 405)"
 fi
 
 # --- Summary ---
