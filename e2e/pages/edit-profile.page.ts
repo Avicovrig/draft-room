@@ -16,7 +16,7 @@ export class EditProfilePage {
   }
 
   get saveButton() {
-    return this.page.getByRole('button', { name: /Save Profile/ })
+    return this.page.getByRole('button', { name: 'Save' })
   }
 
   get cancelButton() {
@@ -25,5 +25,9 @@ export class EditProfilePage {
 
   get successMessage() {
     return this.page.getByText('Your profile has been saved!')
+  }
+
+  get editAgainButton() {
+    return this.page.getByRole('button', { name: 'Edit Again' })
   }
 }

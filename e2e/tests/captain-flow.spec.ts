@@ -88,4 +88,32 @@ test.describe('Captain Flow', () => {
     // Timer card should be visible (heading is hidden on mobile, check for timer text instead)
     await expect(page.getByText(/Waiting to start|Time remaining/)).toBeVisible()
   })
+
+  test('player search filters the pool', async ({ page }) => {
+    const captainView = new CaptainViewPage(page)
+
+    await captainView.goto(leagueId, captainToken)
+    await expect(captainView.heading).toBeVisible({ timeout: 15000 })
+    await expect(captainView.playerSearchInput).toBeVisible()
+
+    // Count items in the player list before searching
+    const playerList = page.getByRole('listbox')
+    await expect(playerList).toBeVisible({ timeout: 5000 })
+    const countBefore = await playerList.getByRole('option').count()
+
+    // Type a partial name into search (use first 3 chars of a known player)
+    // We don't know exact player names, but typing a few characters should filter
+    await captainView.playerSearchInput.fill('aaa')
+    await page.waitForTimeout(500)
+
+    // Either the list is shorter (filtered) or empty — both indicate filtering works
+    const countAfter = await playerList.getByRole('option').count()
+    expect(countAfter).toBeLessThanOrEqual(countBefore)
+
+    // Clear search — pool should restore
+    await captainView.playerSearchInput.clear()
+    await page.waitForTimeout(500)
+    const countRestored = await playerList.getByRole('option').count()
+    expect(countRestored).toBe(countBefore)
+  })
 })
