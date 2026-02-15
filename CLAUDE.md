@@ -20,6 +20,9 @@ Draft Room is a custom league draft application. League managers can create leag
 - `npm run test:coverage` - Run tests with coverage report
 - `npm test -- draft.test.ts` - Run a single test file by name
 - `npm test -- --grep "snake draft"` - Run tests matching a pattern
+- `npm run test:e2e` - Run E2E tests (Playwright, headless against QA)
+- `npm run test:e2e:ui` - Open Playwright interactive UI mode
+- `npm run test:e2e:headed` - Run E2E tests in headed browser
 - `./scripts/deploy-functions.sh [qa|prod]` - Deploy only changed edge functions (use `--all` to force all)
 - `./scripts/smoke-test.sh [qa|prod]` - Post-deployment verification
 
@@ -153,7 +156,9 @@ Dev docs are gitignored (`dev/active/`) — they're local working files, not com
 - **Draft logic is duplicated** in `src/lib/draft.ts` and edge functions (`make-pick`, `auto-pick`). Shared helpers are in `supabase/functions/_shared/draftOrder.ts`. Tests cover both the frontend version and the shared helpers (via re-implementation). When modifying draft logic, update both locations and verify tests still pass.
 - **Coverage thresholds**: 80% for statements, branches, functions, and lines (enforced in `vitest.config.ts`). Applies to `src/lib/` files. Edge function shared files are excluded from v8 coverage metrics but tested via re-implementation.
 - **Pre-commit hook**: Husky runs `lint-staged` (ESLint with `--max-warnings 0` + Prettier on staged `.ts`/`.tsx` files — any warning blocks the commit). The full test suite runs in CI, not locally.
-- **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) on every push to `main` and on PRs. Three jobs: `lint-and-typecheck` (ESLint + `tsc -b`), `test` (coverage), then `build` (depends on both; uses dummy env vars since it only checks compilation).
+- **E2E tests**: Playwright (`playwright.config.ts`), tests in `e2e/tests/`. Run with `npm run test:e2e` (headless), `npm run test:e2e:ui` (UI mode), or `npm run test:e2e:headed` (headed). Tests run against the QA deployment by default. Config loads `.env.qa` for local runs. Page objects in `e2e/pages/`, fixtures in `e2e/fixtures.ts`, token helper in `e2e/helpers/tokens.ts`. Global setup authenticates as QA manager and saves `storageState` for reuse. Two projects: `chromium` (desktop) and `mobile-chrome` (Pixel 5).
+- **E2E test data**: Token-based tests (captain, spectator) fetch tokens dynamically via `get_league_tokens` RPC from existing QA seed data. Manager tests (league creation, draft) create their own test data. Tests filter for non-completed leagues since completed leagues redirect to summary.
+- **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) on every push to `main` and on PRs. Four jobs: `lint-and-typecheck` (ESLint + `tsc -b`), `test` (coverage), `build` (depends on both; uses dummy env vars since it only checks compilation), then `e2e` (Playwright against QA, chromium only, uploads artifacts on failure).
 - **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability. QA defaults to the stable Vercel branch alias URL.
 - **Keep CLAUDE.md updated**: When adding or modifying tests, implementing best practices, or changing conventions, update this file to reflect the changes.
 

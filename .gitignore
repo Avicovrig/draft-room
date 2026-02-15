@@ -20,6 +20,12 @@ dev/active/
 # Deploy markers (local state)
 .last-deploy-functions-*
 
+# Playwright
+e2e/.auth/
+test-results/
+playwright-report/
+blob-report/
+
 # Logs
 logs
 *.log

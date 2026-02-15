@@ -13,11 +13,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "eslint --max-warnings 0",
+      "eslint --max-warnings 0 --no-warn-ignored",
       "prettier --write"
     ]
   },
@@ -46,6 +49,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.58.2",
     "@sentry/vite-plugin": "^4.9.1",
     "@tailwindcss/vite": "^4.1.18",
     "@types/file-saver": "^2.0.7",
