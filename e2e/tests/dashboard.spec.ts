@@ -21,6 +21,29 @@ test.describe('Dashboard', () => {
     )
   })
 
+  test('searches leagues by name', async ({ managerPage }) => {
+    const dashboard = new DashboardPage(managerPage)
+
+    await dashboard.goto()
+    await expect(dashboard.heading).toBeVisible()
+
+    // Wait for known seed leagues to load
+    await expect(dashboard.leagueCard('Kickball Casual')).toBeVisible({ timeout: 10000 })
+
+    // Search for a known seed league
+    await dashboard.searchInput.fill('Kickball')
+
+    // Verify matching league is visible
+    await expect(dashboard.leagueCard('Kickball Casual')).toBeVisible()
+
+    // Verify non-matching league is hidden
+    await expect(dashboard.leagueCard('Basketball League 2026')).toBeHidden()
+
+    // Clear search — all leagues restored
+    await dashboard.searchInput.clear()
+    await expect(dashboard.leagueCard('Basketball League 2026')).toBeVisible({ timeout: 5000 })
+  })
+
   test('filters leagues by status', async ({ managerPage }) => {
     const dashboard = new DashboardPage(managerPage)
 

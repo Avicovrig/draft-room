@@ -15,6 +15,10 @@ export class DashboardPage {
     return this.page.getByRole('link', { name: /Create League/ })
   }
 
+  get searchInput() {
+    return this.page.getByPlaceholder('Search leagues...')
+  }
+
   filterByStatus(status: 'All' | 'Not Started' | 'In Progress' | 'Paused' | 'Completed') {
     return this.page.getByRole('button', { name: status })
   }

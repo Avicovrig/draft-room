@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Trophy } from 'lucide-react'
+import { Plus, Search, Trophy } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { LeagueCard } from '@/components/league/LeagueCard'
 import { LeagueListItem } from '@/components/league/LeagueListItem'
 import { LeagueCardSkeleton, LeagueListItemSkeleton } from '@/components/ui/Skeleton'
 import { ErrorAlert } from '@/components/ui/ErrorAlert'
 import { FilterPills } from '@/components/ui/FilterPills'
+import { Input } from '@/components/ui/Input'
 import { ViewToggle } from '@/components/ui/ViewToggle'
 import { statusConfig } from '@/lib/statusConfig'
 import { useAuth } from '@/context/AuthContext'
@@ -37,6 +38,7 @@ export function Dashboard() {
   const { user } = useAuth()
   const { data: leagues, isLoading, error, refetch } = useLeagues()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [view, setView] = useState<'grid' | 'list'>(getStoredView)
 
   function handleViewChange(v: 'grid' | 'list') {
@@ -49,9 +51,9 @@ export function Dashboard() {
   }
 
   const filteredLeagues = leagues
-    ? statusFilter === 'all'
-      ? leagues
-      : leagues.filter((l) => l.status === statusFilter)
+    ? leagues
+        .filter((l) => statusFilter === 'all' || l.status === statusFilter)
+        .filter((l) => l.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : []
 
   return (
@@ -76,7 +78,16 @@ export function Dashboard() {
         </div>
 
         {leagues && leagues.length > 0 && (
-          <div className="mt-6">
+          <div className="mt-6 space-y-4">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search leagues..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <FilterPills
               options={filterOptions}
               selected={statusFilter}
@@ -123,7 +134,9 @@ export function Dashboard() {
               )
             ) : (
               <div className="py-12 text-center text-muted-foreground">
-                No {statusConfig[statusFilter as LeagueStatus]?.label.toLowerCase()} leagues
+                {searchQuery
+                  ? `No leagues matching "${searchQuery}"`
+                  : `No ${statusConfig[statusFilter as LeagueStatus]?.label.toLowerCase()} leagues`}
               </div>
             )
           ) : (
