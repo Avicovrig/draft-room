@@ -30,7 +30,7 @@ test.describe.serial('Draft Lifecycle', () => {
     for (const name of ['Player A', 'Player B', 'Player C', 'Player D']) {
       await managePage.playerNameInput.fill(name)
       await managePage.addButton.click()
-      await expect(managePage.tabPanel.getByText(name)).toBeVisible()
+      await expect(managePage.tabPanel.getByText(name, { exact: true })).toBeVisible()
     }
 
     // Add 2 non-player captains
@@ -39,7 +39,7 @@ test.describe.serial('Draft Lifecycle', () => {
     for (const name of ['Captain One', 'Captain Two']) {
       await managePage.captainNameInput.fill(name)
       await managePage.addButton.click()
-      await expect(managePage.tabPanel.getByText(name)).toBeVisible()
+      await expect(managePage.tabPanel.getByText(name, { exact: true })).toBeVisible()
     }
 
     leagueUrl = managerPage.url()

@@ -188,7 +188,7 @@ test.describe.serial('League Setup', () => {
     await expect(selectDropdown).toBeEnabled()
     await selectDropdown.selectOption({ label: 'Alice' })
     await managePage.tabPanel.getByRole('button', { name: 'Add' }).click()
-    await expect(managePage.tabPanel.getByText('Alice')).toBeVisible()
+    await expect(managePage.tabPanel.getByText('Alice', { exact: true })).toBeVisible()
 
     // Verify 3 captains listed
     await expect(managePage.tabPanel.getByText('Draft Order (3 Captains)')).toBeVisible()

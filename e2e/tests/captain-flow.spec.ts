@@ -48,29 +48,26 @@ test.describe('Captain Flow', () => {
     // Captain name should appear in the breadcrumb
     await expect(page.getByText(`Captain: ${captainName}`)).toBeVisible()
 
-    // Team settings are shown inline — team color and team name fields visible
-    await expect(page.getByText('Team color')).toBeVisible()
-    await expect(page.getByText('Team name')).toBeVisible()
+    // Team Settings button should be visible (opens modal with team color/name/photo)
+    await expect(page.getByRole('button', { name: 'Team Settings' })).toBeVisible()
   })
 
-  test('captain view shows inline team settings', async ({ page }) => {
+  test('captain view opens team settings modal', async ({ page }) => {
     const captainView = new CaptainViewPage(page)
 
     await captainView.goto(leagueId, captainToken)
     await expect(captainView.heading).toBeVisible({ timeout: 15000 })
 
-    // Team name input should be editable
-    const teamNameInput = page.locator('input').filter({ hasText: '' }).nth(0)
-    await expect(page.getByText('Team name')).toBeVisible()
+    // Open the team settings modal
+    await page.getByRole('button', { name: 'Team Settings' }).click()
 
-    // Color palette should be visible
+    // Verify modal content
     await expect(page.getByText('Team color')).toBeVisible()
-
-    // Team photo upload should be available
+    await expect(page.getByText('Team name')).toBeVisible()
     await expect(page.getByText('Team photo')).toBeVisible()
   })
 
-  test('captain view shows player pool and queue panel', async ({ page }) => {
+  test('captain view shows player pool and queue tab', async ({ page }) => {
     const captainView = new CaptainViewPage(page)
 
     await captainView.goto(leagueId, captainToken)
@@ -79,8 +76,11 @@ test.describe('Captain Flow', () => {
     // Player pool should be visible with search
     await expect(captainView.playerSearchInput).toBeVisible()
 
-    // My Queue panel should be visible as a separate section (3-column layout on desktop)
-    await expect(page.getByText('My Queue')).toBeVisible()
+    // My Queue tab should be visible (as a FilterPills option)
+    await expect(page.getByRole('button', { name: /My Queue/ })).toBeVisible()
+
+    // Switch to queue tab to verify queue panel content
+    await page.getByRole('button', { name: /My Queue/ }).click()
 
     // Auto-pick toggle should be visible in the queue panel
     await expect(page.getByText('Auto-pick')).toBeVisible()
