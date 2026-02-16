@@ -93,9 +93,9 @@ Server-authoritative: `leagues.current_pick_started_at` is the source of truth. 
 
 Eight tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_picks`, `captain_draft_queues`, `league_field_schemas`, `audit_logs`. Full schema in `docs/architecture.md`. Types in `src/lib/types.ts` mirror the DB schema with `Database` interface and convenience aliases (`League`, `Captain`, `Player`, etc.). Public variants (`CaptainPublic`, `PlayerPublic`, `LeaguePublic`, `LeagueFullPublic`) omit token columns and are used throughout the frontend.
 
-**Important**: `useLeague` selects explicit columns (not `*`) from related tables to minimize payload and because token columns are not accessible. When adding new columns to the schema, they must also be added to the select in `src/hooks/useLeagues.ts`.
+**Important**: `useLeague` selects explicit columns (not `*`) from related tables to minimize payload and because token columns are not accessible. Column lists are defined in `src/lib/queryColumns.ts` (`LEAGUE_COLUMNS`, `CAPTAIN_COLUMNS`, `PLAYER_COLUMNS`) and shared by all hooks. When adding new columns to the schema, update the constants there.
 
-Migrations are in `supabase/migrations/` (001-024), applied sequentially.
+Migrations are in `supabase/migrations/` (001-025), applied sequentially.
 
 ### Draft State Machine
 
@@ -198,10 +198,11 @@ Build-time env vars (set in CI/Vercel, not in `.env` files):
 - **`team_color` CSS injection (M-22)**: Colors are rendered via `style={{ backgroundColor: captain.team_color }}`. Not exploitable via CSS `style` attribute (no script execution). Colors are validated server-side in edge functions (`isValidHexColor`), and client-side input comes from `<input type="color">`.
 - **`console.error` in ErrorBoundary (M-43)**: `componentDidCatch` logs errors via `console.error`. This is appropriate for production error tracking and matches React's own behavior.
 - **ESLint unused `_` variables**: `varsIgnorePattern: '^_'` is configured in ESLint. The `_` prefix convention is used for intentionally unused destructuring targets (e.g., `const { [key]: _, ...rest } = obj`).
+- **Auto-pick returns 200 for race conditions**: `auto-pick` intentionally returns HTTP 200 (not 409) when a pick was already made. Multiple clients (manager, captains, spectators, QStash) calling auto-pick simultaneously is expected behavior — the first succeeds, others get `200 + {error: 'Pick already made'}`. The frontend checks `response.data.error` for these expected messages. `make-pick` uses 409 because it's human-initiated and should surface the conflict.
 
 ## Supabase Setup
 
-1. Run migrations from `supabase/migrations/` in order (001-024)
+1. Run migrations from `supabase/migrations/` in order (001-025)
 2. Deploy all 9 edge functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`, `copy-league`, `manage-draft-queue`
 3. Enable realtime on tables: `leagues`, `players`, `draft_picks`, `captains`
 4. Set up QStash for server-side timer enforcement:
