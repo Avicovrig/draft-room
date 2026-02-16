@@ -167,7 +167,7 @@ Dev docs are gitignored (`dev/active/`) — they're local working files, not com
 
 ## Error Monitoring (Sentry)
 
-Sentry captures frontend errors, performance data, and session replays (on error). Configured in `src/lib/sentry.ts`, imported first in `main.tsx`. Disabled in local dev (`enabled: import.meta.env.PROD`).
+Sentry captures frontend errors, performance data, and session replays (on error). Configured in `src/lib/sentry.ts`, imported first in `main.tsx`. Enabled for production and QA deployed builds; disabled in local dev (`import.meta.env.DEV`). Environment tag (`import.meta.env.MODE`) lets you filter by `production` or `qa` in the Sentry dashboard.
 
 - React 19 error handlers (`onUncaughtError`, `onCaughtError`, `onRecoverableError`) report to Sentry via `Sentry.reactErrorHandler()` in `main.tsx`
 - `ErrorBoundary.componentDidCatch` also calls `Sentry.captureException()`
