@@ -98,8 +98,8 @@ export function DraftControls({
             onClick={() => handleAction(onResume)}
             loading={isLoading}
             size="sm"
-            title="Resume draft"
-            aria-label="Resume draft"
+            title="Resume Draft"
+            aria-label="Resume Draft"
           >
             <Play className="h-3.5 w-3.5" />
           </Button>
@@ -149,8 +149,8 @@ export function DraftControls({
               onClick={() => setShowRestartConfirm(true)}
               disabled={isLoading}
               size="sm"
-              title="Restart draft"
-              aria-label="Restart draft"
+              title="Restart"
+              aria-label="Restart"
             >
               <RotateCcw className="h-3.5 w-3.5" />
             </Button>
@@ -167,8 +167,8 @@ export function DraftControls({
           loading={isLoading}
           variant="outline"
           size="sm"
-          title="Pause draft"
-          aria-label="Pause draft"
+          title="Pause Draft"
+          aria-label="Pause Draft"
         >
           <Pause className="h-3.5 w-3.5" />
         </Button>
@@ -192,8 +192,8 @@ export function DraftControls({
             onClick={() => setShowUndoConfirm(true)}
             disabled={isLoading || !hasPicks}
             size="sm"
-            title="Undo last pick"
-            aria-label="Undo last pick"
+            title="Undo Pick"
+            aria-label="Undo Pick"
           >
             <Undo2 className="h-3.5 w-3.5" />
           </Button>
