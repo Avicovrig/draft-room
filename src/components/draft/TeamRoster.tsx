@@ -106,6 +106,7 @@ export function TeamRoster({
                   <img
                     src={captain.team_photo_url}
                     alt={captain.team_name || captain.name}
+                    loading="lazy"
                     className="h-7 w-7 rounded object-cover flex-shrink-0"
                   />
                 ) : (

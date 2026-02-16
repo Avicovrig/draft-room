@@ -250,56 +250,14 @@ export interface Database {
   }
 }
 
-// Convenience type aliases
+// Convenience type aliases (Row types used throughout the app)
 export type League = Database['public']['Tables']['leagues']['Row']
-export type LeagueInsert = Database['public']['Tables']['leagues']['Insert']
-export type LeagueUpdate = Database['public']['Tables']['leagues']['Update']
-
 export type Captain = Database['public']['Tables']['captains']['Row']
-export type CaptainInsert = Database['public']['Tables']['captains']['Insert']
-export type CaptainUpdate = Database['public']['Tables']['captains']['Update']
-
 export type Player = Database['public']['Tables']['players']['Row']
-export type PlayerInsert = Database['public']['Tables']['players']['Insert']
-export type PlayerUpdate = Database['public']['Tables']['players']['Update']
-
 export type DraftPick = Database['public']['Tables']['draft_picks']['Row']
-export type DraftPickInsert = Database['public']['Tables']['draft_picks']['Insert']
-export type DraftPickUpdate = Database['public']['Tables']['draft_picks']['Update']
-
 export type PlayerCustomField = Database['public']['Tables']['player_custom_fields']['Row']
-export type PlayerCustomFieldInsert = Database['public']['Tables']['player_custom_fields']['Insert']
-export type PlayerCustomFieldUpdate = Database['public']['Tables']['player_custom_fields']['Update']
-
 export type CaptainDraftQueue = Database['public']['Tables']['captain_draft_queues']['Row']
-export type CaptainDraftQueueInsert = Database['public']['Tables']['captain_draft_queues']['Insert']
-export type CaptainDraftQueueUpdate = Database['public']['Tables']['captain_draft_queues']['Update']
-
 export type LeagueFieldSchema = Database['public']['Tables']['league_field_schemas']['Row']
-export type LeagueFieldSchemaInsert = Database['public']['Tables']['league_field_schemas']['Insert']
-
-// Extended types with relations
-export interface LeagueWithCaptains extends League {
-  captains: Captain[]
-}
-
-export interface LeagueWithPlayers extends League {
-  players: Player[]
-}
-
-export interface LeagueFull extends League {
-  captains: Captain[]
-  players: Player[]
-  draft_picks: DraftPick[]
-}
-
-export interface CaptainWithPlayers extends Captain {
-  players: Player[]
-}
-
-export interface PlayerWithCustomFields extends Player {
-  custom_fields: PlayerCustomField[]
-}
 
 // Public types without sensitive token columns (used by frontend queries)
 export type CaptainPublic = Omit<Captain, 'access_token'>

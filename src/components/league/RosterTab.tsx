@@ -152,6 +152,7 @@ function SortableCaptainItem({
             <img
               src={captain.team_photo_url}
               alt=""
+              loading="lazy"
               className="h-8 w-8 flex-shrink-0 rounded object-cover"
             />
           )}

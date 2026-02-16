@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { blobToBase64 } from '@/lib/utils'
 import { DEFAULT_CAPTAIN_COLORS } from '@/lib/colors'
 import { CAPTAIN_COLUMNS } from '@/lib/queryColumns'
+import { shuffleArray } from '@/lib/utils'
 import type { CaptainPublic, LeagueFullPublic, PlayerPublic } from '@/lib/types'
 
 interface CreateCaptainInput {
@@ -301,13 +302,7 @@ export function useAssignRandomCaptains() {
         .eq('league_id', leagueId)
       if (deleteError) throw deleteError
 
-      // Fisher-Yates shuffle for uniform randomness
-      const shuffled = [...playerIds]
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-      }
-      const selectedIds = shuffled.slice(0, count)
+      const selectedIds = shuffleArray(playerIds).slice(0, count)
 
       // Get player names
       const { data: players } = await supabase
