@@ -2,10 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { blobToBase64 } from '@/lib/utils'
 import { DEFAULT_CAPTAIN_COLORS } from '@/lib/colors'
+import { CAPTAIN_COLUMNS } from '@/lib/queryColumns'
 import type { CaptainPublic, LeagueFullPublic, PlayerPublic } from '@/lib/types'
-
-const CAPTAIN_COLUMNS =
-  'id, league_id, name, is_participant, draft_position, player_id, auto_pick_enabled, team_color, team_name, team_photo_url, created_at'
 
 interface CreateCaptainInput {
   league_id: string

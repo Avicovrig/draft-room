@@ -1,9 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { PLAYER_COLUMNS } from '@/lib/queryColumns'
 import type { PlayerPublic } from '@/lib/types'
-
-const PLAYER_COLUMNS =
-  'id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at'
 
 interface CreatePlayerInput {
   league_id: string

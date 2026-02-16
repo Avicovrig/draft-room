@@ -1,13 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { PLAYER_COLUMNS } from '@/lib/queryColumns'
 import type {
   PlayerPublic,
   PlayerPublicWithCustomFields,
   ValidatedPlayerProfile,
 } from '@/lib/types'
-
-const PLAYER_COLUMNS =
-  'id, league_id, name, drafted_by_captain_id, draft_pick_number, bio, profile_picture_url, created_at'
 
 export function usePlayerProfile(playerId: string | undefined) {
   return useQuery({
