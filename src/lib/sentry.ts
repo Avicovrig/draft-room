@@ -6,7 +6,14 @@ Sentry.init({
   enabled:
     !import.meta.env.DEV &&
     (import.meta.env.MODE === 'production' || import.meta.env.MODE === 'qa'),
-  integrations: [Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
+  integrations: [
+    Sentry.browserTracingIntegration(),
+    Sentry.replayIntegration({
+      maskAllText: false,
+      maskAllInputs: false,
+      blockAllMedia: false,
+    }),
+  ],
   tracesSampleRate: import.meta.env.MODE === 'production' ? 0.2 : 1.0,
   tracePropagationTargets: [/^\//],
   replaysSessionSampleRate: 0,
