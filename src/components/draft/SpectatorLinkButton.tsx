@@ -33,7 +33,7 @@ export function SpectatorLinkButton({ leagueId, spectatorToken }: SpectatorLinkB
       aria-label="Copy spectator link"
     >
       {copied ? (
-        <Check className="mr-1.5 h-4 w-4 text-green-500" />
+        <Check className="mr-1.5 h-4 w-4 text-green-500 dark:text-green-400" />
       ) : (
         <Share2 className="mr-1.5 h-4 w-4" />
       )}

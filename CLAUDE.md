@@ -32,7 +32,7 @@ Draft Room is a custom league draft application. League managers can create leag
 
 - **Routing**: React Router v7, configured in `App.tsx`. Protected routes use `<ProtectedRoute>` wrapper (requires Supabase auth). Token-based routes (captain, spectator, player edit) have no auth.
 - **State**: TanStack Query for all server state. Hooks in `src/hooks/` wrap Supabase queries as TanStack Query hooks (`useQuery`/`useMutation`). React Context only for auth (`AuthContext`) and theme (`ThemeContext`).
-- **Styling**: Tailwind v4 with CSS variables defined in `index.css`. Components follow shadcn/ui patterns using `class-variance-authority` for variants. Use `cn()` from `@/lib/utils` for conditional classNames.
+- **Styling**: Tailwind v4 with CSS variables defined in `index.css`. `@custom-variant dark` configured for class-based dark mode — required because ThemeContext toggles `.dark` on `<html>` (without it, `dark:` utilities only respond to `@media prefers-color-scheme`). Components follow shadcn/ui patterns using `class-variance-authority` for variants. Use `cn()` from `@/lib/utils` for conditional classNames.
 - **Path aliases**: `@/*` maps to `src/*` (configured in `tsconfig.app.json` and `vite.config.ts`)
 - **Forms**: React Hook Form + Zod validation
 

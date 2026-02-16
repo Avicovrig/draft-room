@@ -104,18 +104,22 @@ export function DraftReadinessChecklist({
 
   return (
     <div
-      className={`mt-4 rounded-lg border p-3 sm:p-4 ${
+      className={`mt-4 rounded-lg border bg-card p-3 sm:p-4 ${
         allBlockingPass
-          ? 'border-green-200 bg-green-50/50 dark:border-green-900/50 dark:bg-green-950/20'
-          : 'border-border bg-card'
+          ? 'border-green-300 dark:border-green-800/50'
+          : 'border-red-300 dark:border-red-800/50'
       }`}
     >
       <div className="mb-2 flex items-center gap-2">
         <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium">Draft Readiness</span>
-        {allBlockingPass && (
+        {allBlockingPass ? (
           <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
             Ready
+          </span>
+        ) : (
+          <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+            Not Ready
           </span>
         )}
       </div>

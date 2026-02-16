@@ -81,7 +81,7 @@ export function ImportPreview({ players, onToggleRow }: ImportPreviewProps) {
                 </td>
                 <td className="px-3 py-2">
                   {player.isValid ? (
-                    <span className="flex items-center gap-1 text-green-600">
+                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
                       <CheckCircle2 className="h-3 w-3" />
                       Valid
                     </span>
