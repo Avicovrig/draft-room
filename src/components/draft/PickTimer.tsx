@@ -9,6 +9,7 @@ interface PickTimerProps {
   timeLimitSeconds: number
   isActive: boolean
   onExpire?: () => void
+  compact?: boolean
 }
 
 export function PickTimer({
@@ -16,6 +17,7 @@ export function PickTimer({
   timeLimitSeconds,
   isActive,
   onExpire,
+  compact = false,
 }: PickTimerProps) {
   const { remainingTime, isExpired } = useTimer(
     currentPickStartedAt,
@@ -71,41 +73,51 @@ export function PickTimer({
       <div
         key={isLow && !isCritical ? shakeKey : undefined}
         className={cn(
-          'text-3xl sm:text-5xl font-bold tabular-nums transition-all',
+          'font-bold tabular-nums transition-all',
+          compact ? 'text-2xl' : 'text-3xl sm:text-5xl',
           isExpired && 'text-destructive',
-          isCritical && !isExpired && 'text-4xl sm:text-6xl text-red-500 animate-pulse-fast',
+          isCritical &&
+            !isExpired &&
+            (compact
+              ? 'text-red-500 animate-pulse-fast'
+              : 'text-4xl sm:text-6xl text-red-500 animate-pulse-fast'),
           isLow && !isCritical && !isExpired && 'text-yellow-500 animate-shake'
         )}
       >
         {isExpired ? '0:00' : formatTime(remainingTime)}
       </div>
 
-      {/* Progress bar */}
-      <div
-        className={cn(
-          'mt-2 sm:mt-4 h-1.5 sm:h-2 w-full overflow-hidden rounded-full bg-muted',
-          isCritical && !isExpired && 'animate-glow'
-        )}
-      >
+      {/* Progress bar — hidden in compact mode */}
+      {!compact && (
         <div
           className={cn(
-            'h-full transition-all duration-100',
-            isExpired && 'bg-destructive',
-            isCritical && !isExpired && 'bg-red-500',
-            isLow && !isCritical && !isExpired && 'bg-yellow-500',
-            !isLow && 'bg-primary'
+            'mt-2 sm:mt-4 h-1.5 sm:h-2 w-full overflow-hidden rounded-full bg-muted',
+            isCritical && !isExpired && 'animate-glow'
           )}
-          style={{ width: `${Math.max(0, percentage)}%` }}
-        />
-      </div>
+        >
+          <div
+            className={cn(
+              'h-full transition-all duration-100',
+              isExpired && 'bg-destructive',
+              isCritical && !isExpired && 'bg-red-500',
+              isLow && !isCritical && !isExpired && 'bg-yellow-500',
+              !isLow && 'bg-primary'
+            )}
+            style={{ width: `${Math.max(0, percentage)}%` }}
+          />
+        </div>
+      )}
 
-      <p className="mt-0.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
-        {isExpired
-          ? 'Time expired - auto-picking...'
-          : isActive
-            ? 'Time remaining to pick'
-            : 'Waiting to start'}
-      </p>
+      {/* Status text — hidden in compact mode */}
+      {!compact && (
+        <p className="mt-0.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
+          {isExpired
+            ? 'Time expired - auto-picking...'
+            : isActive
+              ? 'Time remaining to pick'
+              : 'Waiting to start'}
+        </p>
+      )}
     </div>
   )
 }

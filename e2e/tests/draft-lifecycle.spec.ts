@@ -59,9 +59,8 @@ test.describe.serial('Draft Lifecycle', () => {
 
     // Draft page shows "Ready to Draft" initially
     await expect(managerPage.getByText('Ready to Draft')).toBeVisible({ timeout: 10000 })
-    await expect(managerPage.getByText('Draft Controls')).toBeVisible()
 
-    // Click "Start Draft" in Draft Controls
+    // Click "Start Draft" in the command bar
     const startButton = managerPage.getByRole('button', { name: 'Start Draft' })
     await expect(startButton).toBeEnabled()
     await startButton.click()

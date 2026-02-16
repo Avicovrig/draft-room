@@ -1,15 +1,14 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { Bell, Maximize2, Minimize2, WifiOff, X, Zap } from 'lucide-react'
+import { Bell, Maximize2, Minimize2, WifiOff, X } from 'lucide-react'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useAutoPick } from '@/hooks/useAutoPick'
 import { KeyboardShortcutsModal } from '@/components/ui/KeyboardShortcutsModal'
 import { FilterPills } from '@/components/ui/FilterPills'
-import { PickTimer } from './PickTimer'
 import { PlayerPool, type SortOption } from './PlayerPool'
 import { SORTABLE_FIELD_TYPES } from '@/lib/playerFilters'
 import { TeamRoster } from './TeamRoster'
-import { DraftControls } from './DraftControls'
+import { DraftCommandBar } from './DraftCommandBar'
 import { DraftQueue } from './DraftQueue'
 import { ScheduledCountdown } from './ScheduledCountdown'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -415,15 +414,15 @@ export function DraftBoard({
   )
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4">
       {/* Screen reader announcements for draft picks */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {pickAnnouncement}
       </div>
 
-      {/* Draft Status Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+      {/* Top section: Status header + Command bar */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-xl sm:text-2xl font-bold">
             {league.status === 'completed'
               ? 'Draft Complete'
@@ -466,18 +465,29 @@ export function DraftBoard({
           {league.status === 'not_started' && league.scheduled_start_at && (
             <ScheduledCountdown scheduledTime={league.scheduled_start_at} className="mt-1" />
           )}
-        </div>
-
-        <div className="text-right">
-          <div className="text-sm text-muted-foreground">
+          <div className="mt-1 text-sm text-muted-foreground">
             Pick {league.current_pick_index + 1} of{' '}
             {availablePlayers.length + league.draft_picks.length}
+            <span className="mx-1.5">&middot;</span>
+            {availablePlayers.length} remaining
           </div>
-          <div className="text-sm text-muted-foreground">
-            {availablePlayers.length} players remaining
-          </div>
-          {/* Connection status is now handled by the staleness-based banner below */}
         </div>
+
+        {/* Command bar: compact timer + manager controls */}
+        <DraftCommandBar
+          league={league}
+          currentCaptain={currentCaptain}
+          availablePlayerCount={availablePlayers.length}
+          canStartDraft={canStartDraft}
+          isManager={isManager}
+          showAutoPickFlash={showAutoPickFlash}
+          onStartDraft={onStartDraft}
+          onPauseDraft={onPauseDraft}
+          onResumeDraft={onResumeDraft}
+          onRestartDraft={onRestartDraft}
+          onUndoLastPick={onUndoLastPick}
+          onTimerExpire={handleTimerExpire}
+        />
       </div>
 
       {/* Stale data banner — only shown when both realtime and polling fail */}
@@ -528,157 +538,97 @@ export function DraftBoard({
         </div>
       )}
 
-      {/* Timer and Player Pool / Queue */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="relative lg:col-span-1 sticky top-[57px] z-10 lg:static lg:z-auto min-w-0">
-          <CardHeader className="p-0 sm:p-6">
-            <CardTitle className="hidden sm:block">Timer</CardTitle>
-          </CardHeader>
-          <CardContent className="px-2 py-2 sm:p-6 sm:pt-0">
-            {showAutoPickFlash && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                <Zap className="h-12 w-12 text-yellow-500 animate-scale-in" />
-              </div>
-            )}
-            <PickTimer
-              currentPickStartedAt={league.current_pick_started_at}
-              timeLimitSeconds={league.time_limit_seconds}
-              isActive={isActive}
-              onExpire={handleTimerExpire}
-            />
-            {/* Inline current picker info on mobile */}
-            {isActive && currentCaptain && (
-              <div className="mt-2 flex items-center justify-center gap-2 text-sm text-muted-foreground sm:hidden">
-                {currentCaptain.team_photo_url ? (
-                  <img
-                    src={currentCaptain.team_photo_url}
-                    alt=""
-                    className="h-5 w-5 rounded object-cover flex-shrink-0"
-                  />
-                ) : currentCaptain.team_color ? (
-                  <span
-                    className="h-3 w-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: currentCaptain.team_color }}
-                  />
-                ) : null}
-                <span className="font-medium text-foreground truncate">
-                  {currentCaptain.team_name || currentCaptain.name}
-                </span>
-                <span className="shrink-0">
-                  &middot; Pick {league.current_pick_index + 1} of{' '}
-                  {availablePlayers.length + league.draft_picks.length}
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0 lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            {viewingAsCaptain ? (
-              <FilterPills
-                options={panelOptions}
-                selected={activePanel}
-                onChange={setActivePanel}
-                ariaLabel="Player pool or draft queue"
-              />
-            ) : (
-              <CardTitle>{canPick ? 'Select a Player' : 'Available Players'}</CardTitle>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                setExpandedPanel(viewingAsCaptain ? activePanel : 'pool')
-                setIsExpanded(true)
-              }}
-              className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
-              title="Expand view"
-              aria-label="Expand view"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </button>
-          </CardHeader>
-          <CardContent className="h-[400px] sm:h-[300px]">
-            {activePanel === 'pool' || !viewingAsCaptain ? (
-              <PlayerPool
-                players={availablePlayers}
+      {/* Main content: Teams sidebar (left) + Player pool/queue (right) */}
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+        {/* Teams sidebar — desktop: left, fixed width, scrollable */}
+        <div className="order-2 lg:order-1 lg:w-80 lg:shrink-0">
+          <Card className="lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto">
+            <CardHeader className="py-3 lg:sticky lg:top-0 lg:z-10 lg:bg-card">
+              <CardTitle>Teams</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TeamRoster
+                captains={league.captains}
+                players={league.players}
+                currentCaptainId={currentCaptain?.id}
+                highlightCaptainId={viewingAsCaptain?.id}
                 customFieldsMap={customFieldsMap}
-                canPick={canPick && isActive}
-                onPick={handlePick}
-                isPicking={isPicking}
-                onAddToQueue={viewingAsCaptain ? handleAddToQueue : undefined}
-                queuedPlayerIds={queuedPlayerIds}
-                isAddingToQueue={addToQueue.isPending}
-                search={poolSearch}
-                onSearchChange={setPoolSearch}
-                sortBy={poolSortBy}
-                onSortChange={setPoolSortBy}
-                sortDirection={poolSortDirection}
-                onSortDirectionChange={setPoolSortDirection}
-                searchInputRef={searchInputRef}
-                notes={notesOwnerId ? notes : undefined}
-                onNoteChange={notesOwnerId ? setNote : undefined}
-                fieldSchemas={fieldSchemas}
-                filters={poolFilters}
-                onFilterChange={handleFilterChange}
-                onClearFilters={handleClearFilters}
-              />
-            ) : (
-              <DraftQueue
-                captain={viewingAsCaptain}
-                availablePlayers={availablePlayers}
+                isManager={isManager}
                 leagueId={league.id}
-                captainToken={captainToken}
-                customFieldsMap={customFieldsMap}
-                fieldSchemas={fieldSchemas}
-                notes={notesOwnerId ? notes : undefined}
-                onNoteChange={notesOwnerId ? setNote : undefined}
+                layout="stack"
               />
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Player pool/queue — takes remaining space */}
+        <div className="order-1 lg:order-2 flex-1 min-w-0">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              {viewingAsCaptain ? (
+                <FilterPills
+                  options={panelOptions}
+                  selected={activePanel}
+                  onChange={setActivePanel}
+                  ariaLabel="Player pool or draft queue"
+                />
+              ) : (
+                <CardTitle>{canPick ? 'Select a Player' : 'Available Players'}</CardTitle>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setExpandedPanel(viewingAsCaptain ? activePanel : 'pool')
+                  setIsExpanded(true)
+                }}
+                className="p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-accent"
+                title="Expand view"
+                aria-label="Expand view"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </button>
+            </CardHeader>
+            <CardContent className="h-[500px] lg:h-[calc(100vh-14rem)]">
+              {activePanel === 'pool' || !viewingAsCaptain ? (
+                <PlayerPool
+                  players={availablePlayers}
+                  customFieldsMap={customFieldsMap}
+                  canPick={canPick && isActive}
+                  onPick={handlePick}
+                  isPicking={isPicking}
+                  onAddToQueue={viewingAsCaptain ? handleAddToQueue : undefined}
+                  queuedPlayerIds={queuedPlayerIds}
+                  isAddingToQueue={addToQueue.isPending}
+                  search={poolSearch}
+                  onSearchChange={setPoolSearch}
+                  sortBy={poolSortBy}
+                  onSortChange={setPoolSortBy}
+                  sortDirection={poolSortDirection}
+                  onSortDirectionChange={setPoolSortDirection}
+                  searchInputRef={searchInputRef}
+                  notes={notesOwnerId ? notes : undefined}
+                  onNoteChange={notesOwnerId ? setNote : undefined}
+                  fieldSchemas={fieldSchemas}
+                  filters={poolFilters}
+                  onFilterChange={handleFilterChange}
+                  onClearFilters={handleClearFilters}
+                />
+              ) : (
+                <DraftQueue
+                  captain={viewingAsCaptain}
+                  availablePlayers={availablePlayers}
+                  leagueId={league.id}
+                  captainToken={captainToken}
+                  customFieldsMap={customFieldsMap}
+                  fieldSchemas={fieldSchemas}
+                  notes={notesOwnerId ? notes : undefined}
+                  onNoteChange={notesOwnerId ? setNote : undefined}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      {/* Manager Controls */}
-      {isManager && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Draft Controls</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DraftControls
-              status={league.status}
-              canStart={canStartDraft}
-              captainCount={league.captains.length}
-              playerCount={availablePlayers.length}
-              hasPicks={league.draft_picks.length > 0}
-              onStart={onStartDraft}
-              onPause={onPauseDraft}
-              onResume={onResumeDraft}
-              onRestart={onRestartDraft}
-              onUndo={onUndoLastPick}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Team Rosters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Teams</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TeamRoster
-            captains={league.captains}
-            players={league.players}
-            currentCaptainId={currentCaptain?.id}
-            highlightCaptainId={viewingAsCaptain?.id}
-            customFieldsMap={customFieldsMap}
-            isManager={isManager}
-            leagueId={league.id}
-          />
-        </CardContent>
-      </Card>
 
       {/* Keyboard Shortcuts Modal */}
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}

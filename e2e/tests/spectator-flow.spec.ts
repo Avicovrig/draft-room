@@ -48,8 +48,9 @@ test.describe('Spectator Flow', () => {
     // Teams section should be visible
     await expect(page.getByText('Teams')).toBeVisible()
 
-    // Draft Controls section should NOT be visible (not a manager)
-    await expect(page.getByText('Draft Controls')).not.toBeVisible()
+    // Manager-only controls should NOT be visible (not a manager)
+    await expect(page.getByRole('button', { name: 'Start Draft' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: /Pause/ })).not.toBeVisible()
 
     // Queue panel should NOT be visible (not a captain)
     await expect(page.getByText('My Queue')).not.toBeVisible()

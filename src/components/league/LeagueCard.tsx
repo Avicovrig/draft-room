@@ -23,13 +23,13 @@ export function LeagueCard({ league, index = 0 }: LeagueCardProps) {
         >
           <CardHeader>
             <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="text-lg">{league.name}</CardTitle>
+              <div className="min-w-0">
+                <CardTitle className="truncate text-lg">{league.name}</CardTitle>
                 <CardDescription className="mt-1">
                   {league.draft_type === 'snake' ? 'Snake Draft' : 'Round Robin'}
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   onClick={(e) => {

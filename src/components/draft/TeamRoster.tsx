@@ -23,6 +23,7 @@ interface TeamRosterProps {
   customFieldsMap?: Record<string, PlayerCustomField[]>
   isManager?: boolean
   leagueId?: string
+  layout?: 'grid' | 'stack'
 }
 
 export function TeamRoster({
@@ -33,6 +34,7 @@ export function TeamRoster({
   customFieldsMap = {},
   isManager = false,
   leagueId,
+  layout = 'grid',
 }: TeamRosterProps) {
   const [viewingPlayer, setViewingPlayer] = useState<PlayerPublic | null>(null)
   const toggleAutoPick = useToggleAutoPick()
@@ -72,7 +74,12 @@ export function TeamRoster({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div
+      className={cn(
+        'grid gap-4',
+        layout === 'stack' ? 'grid-cols-1' : 'sm:grid-cols-2 lg:grid-cols-4'
+      )}
+    >
       {sortedCaptains.map((captain) => {
         const teamPlayers = getPlayersForCaptain(captain.id)
         const isCurrentTurn = captain.id === currentCaptainId
@@ -83,7 +90,8 @@ export function TeamRoster({
           <div
             key={captain.id}
             className={cn(
-              'rounded-lg border border-l-4 p-3 sm:p-4 transition-all',
+              'rounded-lg border border-l-4 transition-all',
+              layout === 'stack' ? 'p-2.5' : 'p-3 sm:p-4',
               isCurrentTurn && 'border-primary ring-2 ring-primary/20',
               isHighlighted && !isCurrentTurn && 'border-yellow-500 bg-yellow-500/5',
               !isCurrentTurn && !isHighlighted && 'border-border'

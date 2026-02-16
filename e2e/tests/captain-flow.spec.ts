@@ -85,8 +85,8 @@ test.describe('Captain Flow', () => {
     // Auto-pick toggle should be visible in the queue panel
     await expect(page.getByText('Auto-pick')).toBeVisible()
 
-    // Timer card should be visible (heading is hidden on mobile, check for timer text instead)
-    await expect(page.getByText(/Waiting to start|Time remaining/)).toBeVisible()
+    // Timer should be visible in the command bar (compact mode hides status text, check for time display)
+    await expect(page.getByRole('status')).toBeVisible()
   })
 
   test('player search filters the pool', async ({ page }) => {

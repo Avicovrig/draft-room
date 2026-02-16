@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Play, Pause, RotateCcw, Undo2 } from 'lucide-react'
+import { Play, Pause, RotateCcw, Undo2, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import type { LeagueStatus } from '@/lib/types'
 
@@ -14,6 +14,7 @@ interface DraftControlsProps {
   onResume: () => Promise<void>
   onRestart: () => Promise<void>
   onUndo: () => Promise<void>
+  compact?: boolean
 }
 
 export function DraftControls({
@@ -27,6 +28,7 @@ export function DraftControls({
   onResume,
   onRestart,
   onUndo,
+  compact = false,
 }: DraftControlsProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [showRestartConfirm, setShowRestartConfirm] = useState(false)
@@ -61,6 +63,146 @@ export function DraftControls({
     }
   }
 
+  // --- Compact mode ---
+  if (compact) {
+    if (status === 'completed') {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-1 text-xs font-medium text-green-600 dark:text-green-400">
+          <Check className="h-3.5 w-3.5" />
+          Complete
+        </span>
+      )
+    }
+
+    if (status === 'not_started') {
+      return (
+        <Button
+          onClick={() => handleAction(onStart)}
+          disabled={!canStart}
+          loading={isLoading}
+          size="sm"
+        >
+          <Play className="mr-1.5 h-3.5 w-3.5" />
+          Start Draft
+        </Button>
+      )
+    }
+
+    if (status === 'paused') {
+      return (
+        <div className="flex items-center gap-1.5">
+          <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-xs font-medium text-yellow-600 dark:text-yellow-400">
+            Paused
+          </span>
+          <Button
+            onClick={() => handleAction(onResume)}
+            loading={isLoading}
+            size="sm"
+            title="Resume draft"
+            aria-label="Resume draft"
+          >
+            <Play className="h-3.5 w-3.5" />
+          </Button>
+          {showUndoConfirm ? (
+            <>
+              <Button variant="destructive" onClick={handleUndo} loading={isLoading} size="sm">
+                Confirm Undo
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowUndoConfirm(false)}
+                disabled={isLoading}
+                size="sm"
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => setShowUndoConfirm(true)}
+              disabled={isLoading || !hasPicks}
+              size="sm"
+              title="Undo last pick"
+              aria-label="Undo last pick"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {showRestartConfirm ? (
+            <>
+              <Button variant="destructive" onClick={handleRestart} loading={isLoading} size="sm">
+                Confirm Restart
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowRestartConfirm(false)}
+                disabled={isLoading}
+                size="sm"
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => setShowRestartConfirm(true)}
+              disabled={isLoading}
+              size="sm"
+              title="Restart draft"
+              aria-label="Restart draft"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      )
+    }
+
+    // in_progress (compact)
+    return (
+      <div className="flex items-center gap-1.5">
+        <Button
+          onClick={() => handleAction(onPause)}
+          loading={isLoading}
+          variant="outline"
+          size="sm"
+          title="Pause draft"
+          aria-label="Pause draft"
+        >
+          <Pause className="h-3.5 w-3.5" />
+        </Button>
+        {showUndoConfirm ? (
+          <>
+            <Button variant="destructive" onClick={handleUndo} loading={isLoading} size="sm">
+              Confirm Undo
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowUndoConfirm(false)}
+              disabled={isLoading}
+              size="sm"
+            >
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="outline"
+            onClick={() => setShowUndoConfirm(true)}
+            disabled={isLoading || !hasPicks}
+            size="sm"
+            title="Undo last pick"
+            aria-label="Undo last pick"
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+    )
+  }
+
+  // --- Full mode ---
   if (status === 'completed') {
     return (
       <div className="rounded-lg bg-green-500/10 p-3 sm:p-4 text-center text-green-600 dark:text-green-400">
