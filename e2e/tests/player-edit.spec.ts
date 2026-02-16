@@ -63,6 +63,9 @@ test.describe('Player Edit Profile', () => {
     await editPage.bioInput.clear()
     await editPage.bioInput.fill(`E2E test bio ${ts}`)
 
+    // Fill any empty required schema fields so validation passes
+    await editPage.fillRequiredFields()
+
     // Click Save
     await editPage.saveButton.click()
 
@@ -83,6 +86,7 @@ test.describe('Player Edit Profile', () => {
     // Set a known bio value, save, then verify Edit Again restores it
     await editPage.bioInput.clear()
     await editPage.bioInput.fill(bioText)
+    await editPage.fillRequiredFields()
     await editPage.saveButton.click()
     await expect(editPage.successMessage).toBeVisible({ timeout: 10000 })
 
