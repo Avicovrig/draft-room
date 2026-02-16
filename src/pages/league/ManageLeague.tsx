@@ -1,6 +1,6 @@
 import { useState, Suspense } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Settings, Users, Crown, Share2, Play, Trash2, ListChecks, Copy } from 'lucide-react'
+import { Settings, Users, Play, Trash2, Copy } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Button } from '@/components/ui/Button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
@@ -11,32 +11,21 @@ import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
 import { DraftReadinessChecklist } from '@/components/league/DraftReadinessChecklist'
 import { CopyLeagueModal } from '@/components/league/CopyLeagueModal'
+import { FieldSchemaModal } from '@/components/league/FieldSchemaModal'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 import { getAvailablePlayers } from '@/lib/draft'
 import { lazyWithRetry } from '@/lib/lazyWithRetry'
 
-const PlayerList = lazyWithRetry(
-  () => import('@/components/league/PlayerList').then((m) => ({ default: m.PlayerList })),
-  'PlayerList'
-)
-const CaptainList = lazyWithRetry(
-  () => import('@/components/league/CaptainList').then((m) => ({ default: m.CaptainList })),
-  'CaptainList'
-)
-const FieldSchemaList = lazyWithRetry(
-  () => import('@/components/league/FieldSchemaList').then((m) => ({ default: m.FieldSchemaList })),
-  'FieldSchemaList'
+const RosterTab = lazyWithRetry(
+  () => import('@/components/league/RosterTab').then((m) => ({ default: m.RosterTab })),
+  'RosterTab'
 )
 const LeagueSettings = lazyWithRetry(
   () => import('@/components/league/LeagueSettings').then((m) => ({ default: m.LeagueSettings })),
   'LeagueSettings'
 )
-const ShareLinks = lazyWithRetry(
-  () => import('@/components/league/ShareLinks').then((m) => ({ default: m.ShareLinks })),
-  'ShareLinks'
-)
 
-type Tab = 'settings' | 'players' | 'captains' | 'fields' | 'share'
+type Tab = 'roster' | 'settings'
 
 export function ManageLeague() {
   const { id } = useParams<{ id: string }>()
@@ -46,9 +35,10 @@ export function ManageLeague() {
   const { data: fieldSchemas = [] } = useLeagueFieldSchemas(id)
   const { data: tokens } = useLeagueTokens(id)
   const deleteLeague = useDeleteLeague()
-  const [activeTab, setActiveTab] = useState<Tab>('players')
+  const [activeTab, setActiveTab] = useState<Tab>('roster')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showCopyModal, setShowCopyModal] = useState(false)
+  const [showFieldsModal, setShowFieldsModal] = useState(false)
 
   async function handleDelete() {
     if (!id) return
@@ -90,11 +80,8 @@ export function ManageLeague() {
     availablePlayers.length >= league.captains.length
 
   const tabs = [
-    { id: 'players' as const, label: 'Players', icon: Users, count: league.players.length },
-    { id: 'captains' as const, label: 'Captains', icon: Crown, count: league.captains.length },
-    { id: 'fields' as const, label: 'Fields', icon: ListChecks },
+    { id: 'roster' as const, label: 'Roster', icon: Users, count: league.players.length },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
-    { id: 'share' as const, label: 'Share', icon: Share2 },
   ]
 
   return (
@@ -173,14 +160,21 @@ export function ManageLeague() {
         {/* Tab Content */}
         <div role="tabpanel" id={`tabpanel-${activeTab}`} aria-labelledby={activeTab}>
           <Suspense fallback={<TabSkeleton />}>
-            {activeTab === 'players' && (
-              <PlayerList league={league} customFieldsMap={customFieldsMap} tokens={tokens} />
+            {activeTab === 'roster' && (
+              <RosterTab
+                league={league}
+                customFieldsMap={customFieldsMap}
+                tokens={tokens}
+                fieldSchemas={fieldSchemas}
+              />
             )}
-            {activeTab === 'captains' && <CaptainList league={league} />}
-            {activeTab === 'fields' && <FieldSchemaList league={league} />}
             {activeTab === 'settings' && (
               <>
-                <LeagueSettings league={league} />
+                <LeagueSettings
+                  league={league}
+                  onOpenFieldSchemas={() => setShowFieldsModal(true)}
+                  fieldSchemaCount={fieldSchemas.length}
+                />
                 <Card className="mt-8">
                   <CardHeader>
                     <CardTitle>Copy League</CardTitle>
@@ -237,9 +231,15 @@ export function ManageLeague() {
                 )}
               </>
             )}
-            {activeTab === 'share' && <ShareLinks league={league} tokens={tokens} />}
           </Suspense>
         </div>
+
+        {/* Field Schema Modal (outside tabs) */}
+        <FieldSchemaModal
+          league={league}
+          isOpen={showFieldsModal}
+          onClose={() => setShowFieldsModal(false)}
+        />
       </main>
     </div>
   )

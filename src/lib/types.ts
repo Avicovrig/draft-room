@@ -330,6 +330,7 @@ export interface LeagueTokens {
 
 export interface ValidatedCaptain extends CaptainPublic {
   linked_player_edit_token: string | null
+  league_spectator_token: string | null
 }
 
 export interface ValidatedPlayerProfile extends PlayerPublicWithCustomFields {

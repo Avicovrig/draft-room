@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Header } from '@/components/layout/Header'
 import { DraftBoard } from '@/components/draft/DraftBoard'
+import { SpectatorLinkButton } from '@/components/draft/SpectatorLinkButton'
 import { useDraft, useSpectatorAccess } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
@@ -86,7 +87,10 @@ export function SpectatorView() {
       <main className="container mx-auto px-4 py-4 sm:py-8">
         <div className="mb-4 sm:mb-6">
           <Breadcrumb items={[{ label: league.name }, { label: 'Spectator' }]} />
-          <h1 className="text-3xl font-bold">{league.name}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">{league.name}</h1>
+            {token && <SpectatorLinkButton leagueId={league.id} spectatorToken={token} />}
+          </div>
           <p className="text-muted-foreground">Spectator View</p>
         </div>
 

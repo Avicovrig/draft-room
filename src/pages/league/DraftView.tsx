@@ -2,9 +2,11 @@ import { useEffect } from 'react'
 import { useParams, Navigate, useNavigate } from 'react-router-dom'
 import { Header } from '@/components/layout/Header'
 import { DraftBoard } from '@/components/draft/DraftBoard'
+import { SpectatorLinkButton } from '@/components/draft/SpectatorLinkButton'
 import { useDraft } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
+import { useLeagueTokens } from '@/hooks/useLeagues'
 import { useAuth } from '@/context/AuthContext'
 import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
@@ -30,6 +32,7 @@ export function DraftView() {
 
   const { data: customFieldsMap } = useLeagueCustomFields(id)
   const { data: fieldSchemas = [] } = useLeagueFieldSchemas(id)
+  const { data: tokens } = useLeagueTokens(id)
 
   // Auto-redirect to summary page when draft completes
   useEffect(() => {
@@ -81,7 +84,12 @@ export function DraftView() {
               { label: 'Draft' },
             ]}
           />
-          <h1 className="text-3xl font-bold">{league.name}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">{league.name}</h1>
+            {tokens?.spectator_token && (
+              <SpectatorLinkButton leagueId={league.id} spectatorToken={tokens.spectator_token} />
+            )}
+          </div>
           <p className="text-muted-foreground">Draft Control Panel</p>
         </div>
 

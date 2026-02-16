@@ -25,22 +25,22 @@ test.describe.serial('Draft Lifecycle', () => {
 
     const managePage = new ManageLeaguePage(managerPage)
 
-    // Add 4 players
-    await managePage.tab('Players').click()
+    // Add 4 players on the Roster tab
+    await managePage.tab('Roster').click()
     for (const name of ['Player A', 'Player B', 'Player C', 'Player D']) {
       await managePage.playerNameInput.fill(name)
       await managePage.addButton.click()
       await expect(managePage.tabPanel.getByText(name, { exact: true })).toBeVisible()
     }
 
-    // Add 2 non-player captains
-    await managePage.tab('Captains').click()
-    await managePage.createNonPlayerCaptainButton.click()
-    for (const name of ['Captain One', 'Captain Two']) {
-      await managePage.captainNameInput.fill(name)
-      await managePage.addButton.click()
-      await expect(managePage.tabPanel.getByText(name, { exact: true })).toBeVisible()
-    }
+    // Add 2 non-player captains (also on Roster tab)
+    await managePage.captainNameInput.fill('Captain One')
+    await managePage.addCaptainButton.click()
+    await expect(managePage.tabPanel.getByText(/Draft Order \(1 Captain/)).toBeVisible()
+
+    await managePage.captainNameInput.fill('Captain Two')
+    await managePage.addCaptainButton.click()
+    await expect(managePage.tabPanel.getByText('Draft Order (2 Captains)')).toBeVisible()
 
     leagueUrl = managerPage.url()
   })

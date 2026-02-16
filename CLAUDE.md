@@ -95,7 +95,7 @@ Eight tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_p
 
 **Important**: `useLeague` selects explicit columns (not `*`) from related tables to minimize payload and because token columns are not accessible. When adding new columns to the schema, they must also be added to the select in `src/hooks/useLeagues.ts`.
 
-Migrations are in `supabase/migrations/` (001-020), applied sequentially.
+Migrations are in `supabase/migrations/` (001-024), applied sequentially.
 
 ### Draft State Machine
 
@@ -157,11 +157,12 @@ Dev docs are gitignored (`dev/active/`) — they're local working files, not com
 - **Coverage thresholds**: 80% for statements, branches, functions, and lines (enforced in `vitest.config.ts`). Applies to `src/lib/` files. Edge function shared files are excluded from v8 coverage metrics but tested via re-implementation.
 - **Pre-commit hook**: Husky runs `lint-staged` (ESLint with `--max-warnings 0` + Prettier on staged `.ts`/`.tsx` files — any warning blocks the commit). The full test suite runs in CI, not locally.
 - **E2E tests**: Playwright (`playwright.config.ts`), 30 tests across 7 files in `e2e/tests/`. Run with `npm run test:e2e` (headless), `npm run test:e2e:ui` (UI mode), or `npm run test:e2e:headed` (headed). Tests run against the QA deployment by default. Config loads `.env.qa` for local runs. Page objects in `e2e/pages/`, fixtures in `e2e/fixtures.ts`, token helper in `e2e/helpers/tokens.ts`. Global setup authenticates as QA manager and saves `storageState` for reuse. Two projects: `chromium` (desktop) and `mobile-chrome` (Pixel 5). 30 tests × 2 projects = 60 test runs.
-- **E2E test files**: `auth.spec.ts` (1 test, login), `league-setup.spec.ts` (12 serial tests, creates 1 league — covers field schemas CRUD, settings, players, captains, reorder, share tab, copy/delete league), `draft-lifecycle.spec.ts` (6 serial tests, creates 1 league — covers start, pick, pause/resume, undo, complete draft + summary), `dashboard.spec.ts` (3 tests, QA seed data — listing, status filters, search by name), `player-edit.spec.ts` (3 tests, QA seed data — load/edit/round-trip via edit token), `captain-flow.spec.ts` (4 tests, QA seed data — identity, team settings, pool/queue, player search), `spectator-flow.spec.ts` (1 test, QA seed data — read-only state).
+- **E2E test files**: `auth.spec.ts` (1 test, login), `league-setup.spec.ts` (12 serial tests, creates 1 league — covers field schemas CRUD via modal, settings, players on Roster tab, make captain via crown button, non-player captains, reorder, captain links, copy/delete league), `draft-lifecycle.spec.ts` (6 serial tests, creates 1 league — covers start, pick, pause/resume, undo, complete draft + summary), `dashboard.spec.ts` (3 tests, QA seed data — listing, status filters, search by name), `player-edit.spec.ts` (3 tests, QA seed data — load/edit/round-trip via edit token), `captain-flow.spec.ts` (4 tests, QA seed data — identity, team settings, pool/queue, player search), `spectator-flow.spec.ts` (1 test, QA seed data — read-only state).
 - **E2E test data**: Token-based tests (captain, spectator, player edit) fetch tokens dynamically via `get_league_tokens` RPC from existing QA seed data. Manager tests (`league-setup`, `draft-lifecycle`) create their own test data via the UI. Only 2 leagues are created per full run. Tests filter for non-completed leagues since completed leagues redirect to summary.
 - **E2E serial tests**: `league-setup.spec.ts` and `draft-lifecycle.spec.ts` use `test.describe.serial()` to run tests in order within one worker. A `let leagueUrl` variable at describe scope persists across tests — the first test creates the league, subsequent tests navigate to the stored URL. Viewport-aware assertions handle mobile vs desktop differences (e.g., move up/down buttons hidden on mobile via `hidden sm:flex`).
 - **CI pipeline**: GitHub Actions (`.github/workflows/ci.yml`) on every push to `main` and on PRs. Four jobs: `lint-and-typecheck` (ESLint + `tsc -b`), `test` (coverage), `build` (depends on both; uses dummy env vars since it only checks compilation), then `e2e` (Playwright against QA, chromium only, uploads artifacts on failure).
 - **Post-deployment smoke tests**: Run `./scripts/smoke-test.sh [qa|prod]` after deployments to verify token security, RPCs, CORS, and frontend availability. QA defaults to the stable Vercel branch alias URL.
+- **Review tests after every code change**: After any code modification, proactively check whether tests need to be added, updated, or removed. Don't wait to be asked.
 - **Keep CLAUDE.md updated**: When adding or modifying tests, implementing best practices, or changing conventions, update this file to reflect the changes.
 
 ## Error Monitoring (Sentry)
@@ -200,7 +201,7 @@ Build-time env vars (set in CI/Vercel, not in `.env` files):
 
 ## Supabase Setup
 
-1. Run migrations from `supabase/migrations/` in order (001-020)
+1. Run migrations from `supabase/migrations/` in order (001-024)
 2. Deploy all 9 edge functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`, `copy-league`, `manage-draft-queue`
 3. Enable realtime on tables: `leagues`, `players`, `draft_picks`, `captains`
 4. Set up QStash for server-side timer enforcement:

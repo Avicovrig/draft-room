@@ -4,6 +4,7 @@ import { Settings } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { DraftBoard } from '@/components/draft/DraftBoard'
 import { Button } from '@/components/ui/Button'
+import { SpectatorLinkButton } from '@/components/draft/SpectatorLinkButton'
 import { TeamSettingsModal } from '@/components/captain/TeamSettingsModal'
 import { useDraft, useCaptainByToken } from '@/hooks/useDraft'
 import { useLeagueCustomFields } from '@/hooks/useCustomFields'
@@ -110,15 +111,18 @@ export function CaptainView() {
             ) : null}
             <span className="font-semibold text-primary">{captain.team_name || captain.name}</span>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowTeamSettings(true)}
-            className="mt-2"
-          >
-            <Settings className="mr-1.5 h-4 w-4" />
-            Team Settings
-          </Button>
+          <div className="mt-2 flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowTeamSettings(true)}>
+              <Settings className="mr-1.5 h-4 w-4" />
+              Team Settings
+            </Button>
+            {captain.league_spectator_token && (
+              <SpectatorLinkButton
+                leagueId={league.id}
+                spectatorToken={captain.league_spectator_token}
+              />
+            )}
+          </div>
         </div>
 
         <DraftBoard

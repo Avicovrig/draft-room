@@ -16,7 +16,7 @@ export class ManageLeaguePage {
   }
 
   // Tabs
-  tab(name: 'Players' | 'Captains' | 'Fields' | 'Settings' | 'Share') {
+  tab(name: 'Roster' | 'Settings') {
     return this.page.getByRole('tab', { name })
   }
 
@@ -24,48 +24,52 @@ export class ManageLeaguePage {
     return this.page.getByRole('tabpanel')
   }
 
-  // Players tab
+  // Roster tab — Players
   get playerNameInput() {
     return this.page.getByPlaceholder('Player name')
   }
 
   get addButton() {
-    return this.page.getByRole('button', { name: 'Add' })
+    return this.page.getByRole('button', { name: 'Add', exact: true })
   }
 
   get addPlayerButton() {
     return this.page.getByRole('button', { name: /Add Player/ })
   }
 
-  // Captains tab
-  get addCaptainButton() {
-    return this.page.getByRole('button', { name: /Add Captain/ })
-  }
-
-  get createNonPlayerCaptainButton() {
-    return this.page.getByRole('button', { name: 'Create Non-Player Captain' })
-  }
-
-  get selectFromPlayersButton() {
-    return this.page.getByRole('button', { name: 'Select from Players' })
+  // Roster tab — Captains
+  makeCaptainButton(playerName: string) {
+    return this.page.getByLabel(`Make ${playerName} a captain`)
   }
 
   get captainNameInput() {
     return this.page.getByPlaceholder('Captain name')
   }
 
-  get selectCaptainPlayer() {
-    // The captain-player dropdown is a native <select> rendered as combobox in ARIA
-    return this.page.getByRole('tabpanel').getByRole('combobox')
+  get addCaptainButton() {
+    return this.page.getByRole('button', { name: 'Add Captain' })
   }
 
-  // Fields tab
+  // Fields (now in modal from Settings tab)
+  get manageFieldsButton() {
+    return this.page.getByRole('button', { name: /Manage Fields/ })
+  }
+
   get fieldNameInput() {
     return this.page.locator('#new-field-name')
   }
 
   get fieldTypeSelect() {
     return this.page.locator('#new-field-type')
+  }
+
+  // The fields modal overlay (for scoping field interactions)
+  get fieldsModal() {
+    return this.page.locator('.fixed').filter({ hasText: 'Custom Fields' })
+  }
+
+  get closeFieldsModalButton() {
+    return this.page.getByLabel('Close custom fields')
   }
 
   // Settings tab
@@ -95,15 +99,6 @@ export class ManageLeaguePage {
 
   get confirmDeleteButton() {
     return this.page.getByRole('button', { name: /Yes, Delete League/ })
-  }
-
-  // Share tab
-  get spectatorLinkCard() {
-    return this.page.getByText('Spectator Link')
-  }
-
-  get captainLinksCard() {
-    return this.page.getByText('Captain Links')
   }
 
   // Copy League modal

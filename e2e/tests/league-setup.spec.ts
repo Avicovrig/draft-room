@@ -35,29 +35,35 @@ test.describe.serial('League Setup', () => {
     await managerPage.goto(leagueUrl)
     await expect(managePage.heading).toBeVisible({ timeout: 10000 })
 
-    await managePage.tab('Fields').click()
+    // Navigate to Settings tab and open the fields modal
+    await managePage.tab('Settings').click()
+    await managePage.manageFieldsButton.click()
+    await expect(managePage.fieldsModal).toBeVisible()
 
     // Add a text field
     await managePage.fieldNameInput.fill('E2E Role')
     await managePage.fieldTypeSelect.selectOption('text')
-    await managePage.tabPanel.getByRole('button', { name: 'Add' }).click()
+    await managePage.fieldsModal.getByRole('button', { name: 'Add' }).click()
 
     // Verify field appears in list with its type badge
-    const roleRow = managePage.tabPanel.locator('li').filter({ hasText: 'E2E Role' })
+    const roleRow = managePage.fieldsModal.locator('li').filter({ hasText: 'E2E Role' })
     await expect(roleRow).toBeVisible()
     await expect(roleRow.getByText('Text', { exact: true })).toBeVisible()
 
     // Add a number field: Height
     await managePage.fieldNameInput.fill('Height')
     await managePage.fieldTypeSelect.selectOption('number')
-    await managePage.tabPanel.getByRole('button', { name: 'Add' }).click()
+    await managePage.fieldsModal.getByRole('button', { name: 'Add' }).click()
 
-    const heightRow = managePage.tabPanel.locator('li').filter({ hasText: 'Height' })
+    const heightRow = managePage.fieldsModal.locator('li').filter({ hasText: 'Height' })
     await expect(heightRow).toBeVisible()
     await expect(heightRow.getByText('Number', { exact: true })).toBeVisible()
 
     // Verify "Fields (2)" count
-    await expect(managePage.tabPanel.getByText('Fields (2)')).toBeVisible()
+    await expect(managePage.fieldsModal.getByText('Fields (2)')).toBeVisible()
+
+    // Close modal
+    await managePage.closeFieldsModalButton.click()
   })
 
   test('edit a field schema', async ({ managerPage }) => {
@@ -65,28 +71,31 @@ test.describe.serial('League Setup', () => {
     await managerPage.goto(leagueUrl)
     await expect(managePage.heading).toBeVisible({ timeout: 10000 })
 
-    await managePage.tab('Fields').click()
-    await expect(managePage.tabPanel.getByText('E2E Role', { exact: true })).toBeVisible()
+    // Open fields modal from Settings
+    await managePage.tab('Settings').click()
+    await managePage.manageFieldsButton.click()
+    await expect(managePage.fieldsModal).toBeVisible()
+    await expect(managePage.fieldsModal.getByText('E2E Role', { exact: true })).toBeVisible()
 
     // Click edit on "E2E Role" field
-    const roleRow = managePage.tabPanel.locator('li').filter({ hasText: 'E2E Role' })
+    const roleRow = managePage.fieldsModal.locator('li').filter({ hasText: 'E2E Role' })
     await roleRow.getByLabel('Edit field').click()
 
-    // After clicking Edit, the li content changes to an edit form.
-    // The "Required" checkbox is within the list's edit panel.
-    // Target the checkbox inside the list area specifically.
-    const editPanel = managePage.tabPanel
+    // Check the "Required" checkbox
+    const editPanel = managePage.fieldsModal
       .getByRole('list')
       .locator('label')
       .filter({ hasText: 'Required' })
     await editPanel.click()
 
     // Save the edit
-    await managePage.tabPanel.getByRole('list').getByRole('button', { name: 'Save' }).click()
+    await managePage.fieldsModal.getByRole('list').getByRole('button', { name: 'Save' }).click()
 
     // After saving, verify "Required" badge appears on E2E Role
-    const updatedRow = managePage.tabPanel.locator('li').filter({ hasText: 'E2E Role' })
+    const updatedRow = managePage.fieldsModal.locator('li').filter({ hasText: 'E2E Role' })
     await expect(updatedRow.getByText('Required')).toBeVisible({ timeout: 5000 })
+
+    await managePage.closeFieldsModalButton.click()
   })
 
   test('delete a field schema', async ({ managerPage }) => {
@@ -94,21 +103,26 @@ test.describe.serial('League Setup', () => {
     await managerPage.goto(leagueUrl)
     await expect(managePage.heading).toBeVisible({ timeout: 10000 })
 
-    await managePage.tab('Fields').click()
-    await expect(managePage.tabPanel.getByText('Height', { exact: true })).toBeVisible()
+    // Open fields modal from Settings
+    await managePage.tab('Settings').click()
+    await managePage.manageFieldsButton.click()
+    await expect(managePage.fieldsModal).toBeVisible()
+    await expect(managePage.fieldsModal.getByText('Height', { exact: true })).toBeVisible()
 
     // Click delete on "Height" field
-    const heightRow = managePage.tabPanel.locator('li').filter({ hasText: 'Height' })
+    const heightRow = managePage.fieldsModal.locator('li').filter({ hasText: 'Height' })
     await heightRow.getByLabel('Delete field').click()
 
-    // Confirm deletion (use exact match to avoid matching the "Delete field" aria-label button)
-    await managePage.tabPanel.getByRole('button', { name: 'Delete', exact: true }).click()
+    // Confirm deletion
+    await managePage.fieldsModal.getByRole('button', { name: 'Delete', exact: true }).click()
 
     // Verify Height is gone
-    await expect(managePage.tabPanel.getByText('Height', { exact: true })).not.toBeVisible()
+    await expect(managePage.fieldsModal.getByText('Height', { exact: true })).not.toBeVisible()
 
     // Verify "Fields (1)" count
-    await expect(managePage.tabPanel.getByText('Fields (1)')).toBeVisible()
+    await expect(managePage.fieldsModal.getByText('Fields (1)')).toBeVisible()
+
+    await managePage.closeFieldsModalButton.click()
   })
 
   test('update league settings', async ({ managerPage }) => {
@@ -133,7 +147,7 @@ test.describe.serial('League Setup', () => {
     await managerPage.goto(leagueUrl)
     await expect(managePage.heading).toBeVisible({ timeout: 10000 })
 
-    await managePage.tab('Players').click()
+    await managePage.tab('Roster').click()
 
     for (const name of ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve']) {
       await managePage.playerNameInput.fill(name)
@@ -147,50 +161,41 @@ test.describe.serial('League Setup', () => {
     await managerPage.goto(leagueUrl)
     await expect(managePage.heading).toBeVisible({ timeout: 10000 })
 
-    await managePage.tab('Players').click()
-    await expect(managePage.tabPanel.getByText('Eve')).toBeVisible()
+    await managePage.tab('Roster').click()
+    await expect(managePage.tabPanel.getByText('Eve', { exact: true })).toBeVisible()
 
     // Find Eve's row and click delete
     const eveRow = managePage.tabPanel.locator('li').filter({ hasText: 'Eve' })
     await eveRow.getByTitle('Delete player').click()
 
     // Verify Eve is removed
-    await expect(managePage.tabPanel.getByText('Eve')).not.toBeVisible()
+    await expect(managePage.tabPanel.getByText('Eve', { exact: true })).not.toBeVisible()
 
     // Verify 4 players remain
     await expect(managePage.tabPanel.getByText('Available Players (4)')).toBeVisible()
   })
 
-  test('add captains (both modes)', async ({ managerPage }) => {
+  test('add captains (make captain + non-player)', async ({ managerPage }) => {
     const managePage = new ManageLeaguePage(managerPage)
     await managerPage.goto(leagueUrl)
     await expect(managePage.heading).toBeVisible({ timeout: 10000 })
 
-    await managePage.tab('Captains').click()
+    await managePage.tab('Roster').click()
 
-    // Create Non-Player Captain: Team Alpha
-    await managePage.createNonPlayerCaptainButton.click()
+    // Add non-player captains: Team Alpha, Team Beta
     await managePage.captainNameInput.fill('Team Alpha')
-    await managePage.addButton.click()
-    await expect(managePage.tabPanel.getByText('Team Alpha', { exact: true })).toBeVisible()
+    await managePage.addCaptainButton.click()
+    // Wait for Draft Order to show 1 captain (name may be truncated on mobile)
+    await expect(managePage.tabPanel.getByText(/Draft Order \(1 Captain/)).toBeVisible()
 
-    // Create Non-Player Captain: Team Beta
     await managePage.captainNameInput.fill('Team Beta')
-    await managePage.addButton.click()
-    await expect(managePage.tabPanel.getByText('Team Beta', { exact: true })).toBeVisible()
+    await managePage.addCaptainButton.click()
+    await expect(managePage.tabPanel.getByText('Draft Order (2 Captains)')).toBeVisible()
 
-    // Select from Players: Alice
-    await managePage.selectFromPlayersButton.click()
+    // Make Alice a captain via crown button
+    await managePage.makeCaptainButton('Alice').click()
 
-    // Wait for the select dropdown to appear and be enabled
-    const selectDropdown = managePage.selectCaptainPlayer
-    await expect(selectDropdown).toBeVisible({ timeout: 5000 })
-    await expect(selectDropdown).toBeEnabled()
-    await selectDropdown.selectOption({ label: 'Alice' })
-    await managePage.tabPanel.getByRole('button', { name: 'Add' }).click()
-    await expect(managePage.tabPanel.getByText('Alice', { exact: true })).toBeVisible()
-
-    // Verify 3 captains listed
+    // Alice should now appear as a captain in the draft order
     await expect(managePage.tabPanel.getByText('Draft Order (3 Captains)')).toBeVisible()
   })
 
@@ -199,48 +204,41 @@ test.describe.serial('League Setup', () => {
     await managerPage.goto(leagueUrl)
     await expect(managePage.heading).toBeVisible({ timeout: 10000 })
 
-    await managePage.tab('Captains').click()
+    await managePage.tab('Roster').click()
     await expect(managePage.tabPanel.getByText('Draft Order (3 Captains)')).toBeVisible()
 
     // Move up/down buttons are hidden on mobile (hidden sm:flex).
-    // On mobile, skip the button-based reorder and verify list is at least visible.
     const viewport = managerPage.viewportSize()
-    const moveDownButton = managePage.tabPanel.locator('li').first().getByLabel('Move down')
 
     if (viewport && viewport.width >= 640) {
-      const captainRows = managePage.tabPanel.locator('li')
-      const firstCaptainText = await captainRows.first().textContent()
+      // Move down buttons only exist in the Draft Order section
+      const firstMoveDown = managePage.tabPanel.getByLabel('Move down').first()
+      const firstCaptainLabel = managePage.tabPanel
+        .getByLabel('Move down')
+        .first()
+        .locator('xpath=ancestor::li')
+      const firstCaptainText = await firstCaptainLabel.textContent()
 
-      await moveDownButton.click()
+      await firstMoveDown.click()
 
       // Wait for reorder to complete — the first position should have changed
       await managerPage.waitForTimeout(1000)
-      const newFirstCaptainText = await captainRows.first().textContent()
+      const newFirstCaptainText = await firstCaptainLabel.textContent()
       expect(newFirstCaptainText).not.toBe(firstCaptainText)
     } else {
-      // On mobile, verify the captain list renders correctly
-      const captainRows = managePage.tabPanel.locator('li')
-      expect(await captainRows.count()).toBe(3)
+      // On mobile, verify the captain list renders by checking Draft Order count
+      await expect(managePage.tabPanel.getByText('Draft Order (3 Captains)')).toBeVisible()
     }
   })
 
-  test('verify share tab', async ({ managerPage }) => {
+  test('verify captain links on roster', async ({ managerPage }) => {
     const managePage = new ManageLeaguePage(managerPage)
     await managerPage.goto(leagueUrl)
     await expect(managePage.heading).toBeVisible({ timeout: 10000 })
 
-    await managePage.tab('Share').click()
+    await managePage.tab('Roster').click()
 
-    // Verify spectator link section with its Copy Link button
-    await expect(managePage.spectatorLinkCard).toBeVisible()
-    await expect(
-      managePage.tabPanel.getByRole('button', { name: 'Copy Link', exact: true })
-    ).toBeVisible()
-
-    // Verify captain links section
-    await expect(managePage.captainLinksCard).toBeVisible()
-
-    // Verify 3 captain link buttons are visible (via aria-label)
+    // Verify copy link buttons exist for each captain in the draft order section
     await expect(managePage.tabPanel.getByLabel('Copy link for Team Alpha')).toBeVisible()
     await expect(managePage.tabPanel.getByLabel('Copy link for Team Beta')).toBeVisible()
     await expect(managePage.tabPanel.getByLabel('Copy link for Alice')).toBeVisible()
