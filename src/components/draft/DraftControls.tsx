@@ -123,8 +123,8 @@ export function DraftControls({
               onClick={() => setShowUndoConfirm(true)}
               disabled={isLoading || !hasPicks}
               size="sm"
-              title="Undo last pick"
-              aria-label="Undo last pick"
+              title="Undo Pick"
+              aria-label="Undo Pick"
             >
               <Undo2 className="h-3.5 w-3.5" />
             </Button>

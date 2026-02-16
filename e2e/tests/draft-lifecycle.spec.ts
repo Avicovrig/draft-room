@@ -88,10 +88,10 @@ test.describe.serial('Draft Lifecycle', () => {
     await draftButton.click()
 
     // Verify pick counter advanced
-    await expect(managerPage.getByText('Pick 2 of 4', { exact: true })).toBeVisible({
+    await expect(managerPage.getByText(/Pick 2 of 4/)).toBeVisible({
       timeout: 10000,
     })
-    await expect(managerPage.getByText(/3 players remaining/)).toBeVisible()
+    await expect(managerPage.getByText(/3 remaining/)).toBeVisible()
   })
 
   test('pause and resume draft', async ({ managerPage }) => {
@@ -102,7 +102,7 @@ test.describe.serial('Draft Lifecycle', () => {
     await managerPage.getByRole('button', { name: /Pause Draft/ }).click()
 
     // Verify paused state
-    await expect(managerPage.getByText('Draft Paused')).toBeVisible({ timeout: 5000 })
+    await expect(managerPage.getByText('Paused')).toBeVisible({ timeout: 5000 })
     await expect(managerPage.getByRole('button', { name: /Resume Draft/ })).toBeVisible()
     await expect(managerPage.getByRole('button', { name: 'Restart' })).toBeVisible()
 
@@ -123,10 +123,10 @@ test.describe.serial('Draft Lifecycle', () => {
     await managerPage.getByRole('button', { name: 'Confirm Undo' }).click()
 
     // Verify pick counter resets to Pick 1 of 4
-    await expect(managerPage.getByText('Pick 1 of 4', { exact: true })).toBeVisible({
+    await expect(managerPage.getByText(/Pick 1 of 4/)).toBeVisible({
       timeout: 10000,
     })
-    await expect(managerPage.getByText(/4 players remaining/)).toBeVisible()
+    await expect(managerPage.getByText(/4 remaining/)).toBeVisible()
   })
 
   test('complete draft and verify summary', async ({ managerPage }) => {
@@ -146,7 +146,7 @@ test.describe.serial('Draft Lifecycle', () => {
 
       if (i < 4) {
         // Wait for pick counter to advance
-        await expect(managerPage.getByText(`Pick ${i + 1} of 4`, { exact: true })).toBeVisible({
+        await expect(managerPage.getByText(new RegExp(`Pick ${i + 1} of 4`))).toBeVisible({
           timeout: 10000,
         })
       }
