@@ -169,47 +169,20 @@ Deno.serve(async (req) => {
         return errorResponse('Invalid entry ID format', 400, req)
       }
 
-      // Verify all entries belong to this captain
-      const { data: entries, error: fetchError } = await supabaseAdmin
-        .from('captain_draft_queues')
-        .select('id')
-        .eq('captain_id', captainId)
+      // Atomic reorder via database function — single UPDATE avoids the
+      // two-phase negative-temp pattern that risked partial failures.
+      const { error: reorderError } = await supabaseAdmin.rpc('reorder_draft_queue', {
+        p_captain_id: captainId,
+        p_entry_ids: entryIds,
+      })
 
-      if (fetchError) {
-        console.error('Failed to fetch queue:', fetchError)
-        return errorResponse('Failed to fetch queue', 500, req)
-      }
-
-      const existingIds = new Set(entries?.map((e) => e.id) ?? [])
-      if (!entryIds.every((id) => existingIds.has(id))) {
-        return errorResponse('One or more entry IDs do not belong to this captain', 400, req)
-      }
-
-      // Two-phase update to avoid unique constraint violations on (captain_id, position)
-      // Phase 1: Set all to negative temporaries
-      for (let i = 0; i < entryIds.length; i++) {
-        const { error } = await supabaseAdmin
-          .from('captain_draft_queues')
-          .update({ position: -(i + 1) })
-          .eq('id', entryIds[i])
-
-        if (error) {
-          console.error('Failed to set temp position:', error)
-          return errorResponse('Failed to reorder queue', 500, req)
-        }
-      }
-
-      // Phase 2: Set final positions
-      for (let i = 0; i < entryIds.length; i++) {
-        const { error } = await supabaseAdmin
-          .from('captain_draft_queues')
-          .update({ position: i })
-          .eq('id', entryIds[i])
-
-        if (error) {
-          console.error('Failed to set final position:', error)
-          return errorResponse('Failed to reorder queue', 500, req)
-        }
+      if (reorderError) {
+        console.error('Failed to reorder queue:', reorderError)
+        const message = reorderError.message?.includes('Not all entries belong')
+          ? 'One or more entry IDs do not belong to this captain'
+          : 'Failed to reorder queue'
+        const status = message.includes('do not belong') ? 400 : 500
+        return errorResponse(message, status, req)
       }
 
       logAudit(supabaseAdmin, {

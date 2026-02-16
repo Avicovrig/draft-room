@@ -8,34 +8,23 @@ import {
   Copy,
   ExternalLink,
   Crown,
-  Shuffle,
-  ChevronUp,
-  ChevronDown,
-  Settings,
   Check,
   Link as LinkIcon,
 } from 'lucide-react'
-import { SortableList, SortableItem, DragHandle } from '@/components/ui/SortableList'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Label } from '@/components/ui/Label'
-import { Select } from '@/components/ui/Select'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
 import { PlayerProfileForm, type ProfileFormData } from '@/components/player/PlayerProfileForm'
 import { SpreadsheetImportModal } from '@/components/spreadsheet/SpreadsheetImportModal'
 import { ManagerTeamSettingsModal } from '@/components/league/ManagerTeamSettingsModal'
+import { DraftOrderCard } from './DraftOrderCard'
 import { useToast } from '@/components/ui/Toast'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { useCreatePlayer, useDeletePlayer } from '@/hooks/usePlayers'
 import { useUpdatePlayerProfile, useUploadProfilePicture } from '@/hooks/usePlayerProfile'
 import { useUpsertCustomFields } from '@/hooks/useCustomFields'
 import { useLeagueFieldSchemas } from '@/hooks/useFieldSchemas'
-import {
-  useCreateCaptain,
-  useDeleteCaptain,
-  useAssignRandomCaptains,
-  useReorderCaptains,
-} from '@/hooks/useCaptains'
+import { useCreateCaptain } from '@/hooks/useCaptains'
 import { DEFAULT_CAPTAIN_COLORS } from '@/lib/colors'
 import { getAvailablePlayers } from '@/lib/draft'
 import { exportPlayersToSpreadsheet } from '@/lib/exportPlayers'
@@ -77,141 +66,6 @@ function EditProfileModal({
   )
 }
 
-// ─── Sortable Captain Item ──────────────────────────────────────────────────
-
-interface SortableCaptainItemProps {
-  captain: CaptainPublic
-  index: number
-  isEditable: boolean
-  isFirst: boolean
-  isLast: boolean
-  isReordering: boolean
-  isDeleting: boolean
-  onMoveUp: (index: number) => void
-  onMoveDown: (index: number) => void
-  onDelete: (id: string) => void
-  onTeamSettings: (captain: CaptainPublic) => void
-  onCopyLink: (captain: CaptainPublic) => void
-}
-
-function SortableCaptainItem({
-  captain,
-  index,
-  isEditable,
-  isFirst,
-  isLast,
-  isReordering,
-  isDeleting,
-  onMoveUp,
-  onMoveDown,
-  onDelete,
-  onTeamSettings,
-  onCopyLink,
-}: SortableCaptainItemProps) {
-  return (
-    <SortableItem
-      id={captain.id}
-      disabled={!isEditable}
-      className="rounded-lg border border-border p-3"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          {isEditable && <DragHandle />}
-          {isEditable && (
-            <div className="hidden sm:flex flex-col">
-              <button
-                type="button"
-                onClick={() => onMoveUp(index)}
-                disabled={isFirst || isReordering}
-                className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                aria-label="Move up"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onMoveDown(index)}
-                disabled={isLast || isReordering}
-                className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                aria-label="Move down"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-            {index + 1}
-          </span>
-          {captain.team_color && (
-            <span
-              className="h-4 w-4 flex-shrink-0 rounded-full"
-              style={{ backgroundColor: captain.team_color }}
-            />
-          )}
-          {captain.team_photo_url && (
-            <img
-              src={captain.team_photo_url}
-              alt=""
-              loading="lazy"
-              className="h-8 w-8 flex-shrink-0 rounded object-cover"
-            />
-          )}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="truncate font-medium">{captain.name}</span>
-              {captain.player_id || captain.is_participant ? (
-                <span className="whitespace-nowrap text-xs text-green-600 dark:text-green-400">
-                  (Player)
-                </span>
-              ) : (
-                <span className="whitespace-nowrap text-xs text-muted-foreground">
-                  (Non-player)
-                </span>
-              )}
-            </div>
-            {captain.team_name && (
-              <span className="text-sm text-muted-foreground">{captain.team_name}</span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {isEditable && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onTeamSettings(captain)}
-              title="Team settings"
-              aria-label={`Team settings for ${captain.name}`}
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onCopyLink(captain)}
-            title="Copy captain link"
-            aria-label={`Copy link for ${captain.name}`}
-          >
-            <LinkIcon className="h-4 w-4" />
-          </Button>
-          {isEditable && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(captain.id)}
-              disabled={isDeleting}
-              aria-label="Delete captain"
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          )}
-        </div>
-      </div>
-    </SortableItem>
-  )
-}
-
 // ─── RosterTab ──────────────────────────────────────────────────────────────
 
 export function RosterTab({ league, customFieldsMap = {}, tokens, fieldSchemas }: RosterTabProps) {
@@ -222,8 +76,6 @@ export function RosterTab({ league, customFieldsMap = {}, tokens, fieldSchemas }
 
   // Captain state
   const [newCaptainName, setNewCaptainName] = useState('')
-  const [randomCount, setRandomCount] = useState('2')
-  const [showRandomAssign, setShowRandomAssign] = useState(false)
   const [teamSettingsCaptain, setTeamSettingsCaptain] = useState<CaptainPublic | null>(null)
   const [copiedCaptainId, setCopiedCaptainId] = useState<string | null>(null)
 
@@ -239,23 +91,18 @@ export function RosterTab({ league, customFieldsMap = {}, tokens, fieldSchemas }
 
   // Hooks: captains
   const createCaptain = useCreateCaptain()
-  const deleteCaptain = useDeleteCaptain()
-  const assignRandom = useAssignRandomCaptains()
-  const reorderCaptains = useReorderCaptains()
 
   const isEditable = league.status === 'not_started'
 
   // Derived data
   const availablePlayers = getAvailablePlayers(league.players, league.captains)
   const draftedPlayers = league.players.filter((p) => p.drafted_by_captain_id)
-  const sortedCaptains = [...league.captains].sort((a, b) => a.draft_position - b.draft_position)
 
   // Captain limits
   const captainLinkedCount = league.captains.filter((c) => c.player_id).length
   const availableDraftPlayers = league.players.length - captainLinkedCount
   const canAddPlayerCaptain = availableDraftPlayers - league.captains.length >= 2
   const canAddNonPlayerCaptain = availableDraftPlayers - league.captains.length >= 1
-  const maxRandomCaptains = Math.floor(league.players.length / 2)
 
   // ── Player Handlers ─────────────────────────────────────────────────────
 
@@ -374,14 +221,6 @@ export function RosterTab({ league, customFieldsMap = {}, tokens, fieldSchemas }
     }
   }
 
-  async function handleDeleteCaptain(captainId: string) {
-    try {
-      await deleteCaptain.mutateAsync({ id: captainId, leagueId: league.id })
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
   async function handleCopyCaptainLink(captain: CaptainPublic) {
     const tokenEntry = tokens?.captains.find((c) => c.id === captain.id)
     if (!tokenEntry) {
@@ -397,98 +236,6 @@ export function RosterTab({ league, customFieldsMap = {}, tokens, fieldSchemas }
     } catch {
       addToast('Failed to copy link', 'error')
     }
-  }
-
-  // ── Draft Order Handlers ────────────────────────────────────────────────
-
-  async function handleDragReorder(activeId: string, overId: string) {
-    const oldIndex = sortedCaptains.findIndex((c) => c.id === activeId)
-    const newIndex = sortedCaptains.findIndex((c) => c.id === overId)
-    if (oldIndex === -1 || newIndex === -1) return
-    const newOrder = [...sortedCaptains]
-    const [moved] = newOrder.splice(oldIndex, 1)
-    newOrder.splice(newIndex, 0, moved)
-    try {
-      await reorderCaptains.mutateAsync({
-        leagueId: league.id,
-        captainIds: newOrder.map((c) => c.id),
-      })
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  async function handleMoveUp(index: number) {
-    if (index === 0) return
-    const newOrder = [...sortedCaptains]
-    const temp = newOrder[index]
-    newOrder[index] = newOrder[index - 1]
-    newOrder[index - 1] = temp
-    try {
-      await reorderCaptains.mutateAsync({
-        leagueId: league.id,
-        captainIds: newOrder.map((c) => c.id),
-      })
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  async function handleMoveDown(index: number) {
-    if (index === sortedCaptains.length - 1) return
-    const newOrder = [...sortedCaptains]
-    const temp = newOrder[index]
-    newOrder[index] = newOrder[index + 1]
-    newOrder[index + 1] = temp
-    try {
-      await reorderCaptains.mutateAsync({
-        leagueId: league.id,
-        captainIds: newOrder.map((c) => c.id),
-      })
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  async function handleRandomizeOrder() {
-    if (sortedCaptains.length < 2) return
-    const shuffled = [...sortedCaptains]
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-    }
-    try {
-      await reorderCaptains.mutateAsync({
-        leagueId: league.id,
-        captainIds: shuffled.map((c) => c.id),
-      })
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  async function handleRandomAssign() {
-    const count = parseInt(randomCount, 10)
-    const playerIds = league.players.map((p) => p.id)
-    if (playerIds.length < count * 2) {
-      addToast(
-        `Not enough players. You need at least ${count * 2} players for ${count} captains.`,
-        'error'
-      )
-      return
-    }
-    try {
-      await assignRandom.mutateAsync({ leagueId: league.id, playerIds, count })
-      setShowRandomAssign(false)
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  // Random assign options: 2 to maxRandomCaptains
-  const randomAssignOptions: number[] = []
-  for (let i = 2; i <= maxRandomCaptains; i++) {
-    randomAssignOptions.push(i)
   }
 
   // ── Player Row Renderer ─────────────────────────────────────────────────
@@ -771,123 +518,11 @@ export function RosterTab({ league, customFieldsMap = {}, tokens, fieldSchemas }
       )}
 
       {/* ── Draft Order ──────────────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Draft Order ({sortedCaptains.length} Captains)</CardTitle>
-            {isEditable && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRandomizeOrder}
-                disabled={sortedCaptains.length < 2 || reorderCaptains.isPending}
-              >
-                <Shuffle className="mr-2 h-4 w-4" />
-                Randomize Draft Order
-              </Button>
-            )}
-          </div>
-          <CardDescription>
-            {isEditable ? 'Drag to reorder captains. ' : 'Captains will pick in this order. '}
-            {league.draft_type === 'snake'
-              ? 'Order reverses each round.'
-              : 'Same order every round.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {sortedCaptains.length === 0 ? (
-            <div className="py-6 text-center">
-              <Crown className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">
-                No captains added yet. Use the crown button on a player above, or add a non-player
-                captain.
-              </p>
-            </div>
-          ) : (
-            <SortableList
-              items={sortedCaptains.map((c) => c.id)}
-              onReorder={handleDragReorder}
-              disabled={!isEditable}
-            >
-              <ul className="space-y-2">
-                {sortedCaptains.map((captain, index) => (
-                  <SortableCaptainItem
-                    key={captain.id}
-                    captain={captain}
-                    index={index}
-                    isEditable={isEditable}
-                    isFirst={index === 0}
-                    isLast={index === sortedCaptains.length - 1}
-                    isReordering={reorderCaptains.isPending}
-                    isDeleting={deleteCaptain.isPending}
-                    onMoveUp={handleMoveUp}
-                    onMoveDown={handleMoveDown}
-                    onDelete={handleDeleteCaptain}
-                    onTeamSettings={setTeamSettingsCaptain}
-                    onCopyLink={handleCopyCaptainLink}
-                  />
-                ))}
-              </ul>
-            </SortableList>
-          )}
-
-          {sortedCaptains.length > 0 && sortedCaptains.length < 2 && (
-            <p className="mt-4 text-sm text-yellow-600 dark:text-yellow-400">
-              You need at least 2 captains to start the draft.
-            </p>
-          )}
-
-          {/* Random Captain Assignment */}
-          {isEditable && (
-            <div className="mt-4 border-t border-border pt-4">
-              {showRandomAssign ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Number of Captains</Label>
-                    {randomAssignOptions.length > 0 ? (
-                      <>
-                        <Select
-                          value={randomCount}
-                          onChange={(e) => setRandomCount(e.target.value)}
-                        >
-                          {randomAssignOptions.map((n) => (
-                            <option key={n} value={String(n)}>
-                              {n} Captains
-                            </option>
-                          ))}
-                        </Select>
-                        <p className="text-sm text-muted-foreground">
-                          This will remove existing captains and randomly select from your players.
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                        Not enough players for random assignment. You need at least 4 players (2
-                        captains minimum, each needing one draft player).
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {randomAssignOptions.length > 0 && (
-                      <Button onClick={handleRandomAssign} disabled={assignRandom.isPending}>
-                        {assignRandom.isPending ? 'Assigning...' : 'Assign Random Captains'}
-                      </Button>
-                    )}
-                    <Button variant="outline" onClick={() => setShowRandomAssign(false)}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button variant="outline" onClick={() => setShowRandomAssign(true)}>
-                  <Shuffle className="mr-2 h-4 w-4" />
-                  Randomly Assign Captains
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <DraftOrderCard
+        league={league}
+        onTeamSettings={setTeamSettingsCaptain}
+        onCopyCaptainLink={handleCopyCaptainLink}
+      />
 
       {/* ── Team Settings Modal ──────────────────────────────────────── */}
       {teamSettingsCaptain && (

@@ -48,7 +48,7 @@ All draft-critical mutations go through Deno edge functions in `supabase/functio
 - **`restart-draft`** - Manager-only. Deletes all picks, resets players, sets league back to `not_started`. Requires manager JWT.
 - **`undo-pick`** - Manager-only. Removes last pick, resets that player, decrements pick index. Requires manager JWT.
 - **`copy-league`** - Manager-only. Duplicates a league with all captains, players, field schemas, custom fields, and draft queues. Creates fresh tokens, resets draft state. Rolls back on partial failure.
-- **`manage-draft-queue`** - Captain queue operations (add, remove, reorder). Requires captain token OR manager JWT. Validates captain belongs to league, entry ownership. Uses two-phase position updates for reorder to avoid unique constraint violations.
+- **`manage-draft-queue`** - Captain queue operations (add, remove, reorder). Requires captain token OR manager JWT. Validates captain belongs to league, entry ownership. Reorder uses atomic `reorder_draft_queue` RPC (single UPDATE with `array_position()`).
 
 All edge functions share utilities in `supabase/functions/_shared/`: CORS origin checking (`cors.ts`), rate limiting (`rateLimit.ts`), UUID/URL validation + Content-Type enforcement + JPEG validation + timing-safe comparison + HTTP method enforcement (`validation.ts`), manager JWT auth with optional client reuse (`auth.ts`), audit logging (`audit.ts`), admin client creation with fail-fast env validation (`supabase.ts`), draft order logic (`draftOrder.ts`), and shared type definitions (`types.ts`). All validate UUID format on ID parameters before hitting the database. All enforce `Content-Type: application/json` via `requireJson()`. Request body types and entity interfaces are defined in `_shared/types.ts` — use these instead of inline type annotations.
 
@@ -95,7 +95,7 @@ Eight tables: `leagues`, `captains`, `players`, `player_custom_fields`, `draft_p
 
 **Important**: `useLeague` selects explicit columns (not `*`) from related tables to minimize payload and because token columns are not accessible. Column lists are defined in `src/lib/queryColumns.ts` (`LEAGUE_COLUMNS`, `CAPTAIN_COLUMNS`, `PLAYER_COLUMNS`) and shared by all hooks. When adding new columns to the schema, update the constants there.
 
-Migrations are in `supabase/migrations/` (001-025), applied sequentially.
+Migrations are in `supabase/migrations/` (001-026), applied sequentially.
 
 ### Draft State Machine
 
@@ -124,7 +124,7 @@ Token is stripped from the URL on page load and stored in `sessionStorage` via `
 - Toast notifications: use `useToast()` hook from `@/components/ui/Toast`
 - Each route in `App.tsx` is wrapped in its own `<ErrorBoundary>` for route-level error isolation. When adding new routes, always wrap them in `<ErrorBoundary>`.
 - Hooks follow the pattern: `use<Entity>` for queries, `useCreate<Entity>`/`useUpdate<Entity>`/`useDelete<Entity>` for mutations
-- Tables with unique constraints on position columns use two-phase updates with `Promise.all`: set positions to negative temps first, then final values
+- Tables with unique constraints on position columns use two-phase updates with `Promise.all`: set positions to negative temps first, then final values. Exception: `captain_draft_queues` reorder uses the atomic `reorder_draft_queue` RPC instead.
 - **TypeScript**: Strict mode with `noUnusedLocals`/`noUnusedParameters` enforced — removing code that references variables/imports will cause build failures if you don't clean up unused references.
 - **TypeScript imports**: `verbatimModuleSyntax` is enabled — use `import type { Foo }` for type-only imports. A bare `import { Foo }` where `Foo` is only a type will fail.
 
@@ -202,7 +202,7 @@ Build-time env vars (set in CI/Vercel, not in `.env` files):
 
 ## Supabase Setup
 
-1. Run migrations from `supabase/migrations/` in order (001-025)
+1. Run migrations from `supabase/migrations/` in order (001-026)
 2. Deploy all 9 edge functions: `make-pick`, `auto-pick`, `toggle-auto-pick`, `update-player-profile`, `update-captain-color`, `restart-draft`, `undo-pick`, `copy-league`, `manage-draft-queue`
 3. Enable realtime on tables: `leagues`, `players`, `draft_picks`, `captains`
 4. Set up QStash for server-side timer enforcement:
