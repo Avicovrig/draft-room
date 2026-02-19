@@ -522,6 +522,10 @@ export function RosterTab({ league, customFieldsMap = {}, tokens, fieldSchemas }
         league={league}
         onTeamSettings={setTeamSettingsCaptain}
         onCopyCaptainLink={handleCopyCaptainLink}
+        onEditPlayer={(captain) => {
+          const player = league.players.find((p) => p.id === captain.player_id)
+          if (player) setEditingPlayer(player)
+        }}
       />
 
       {/* ── Team Settings Modal ──────────────────────────────────────── */}

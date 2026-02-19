@@ -1,4 +1,4 @@
-import { ChevronUp, ChevronDown, Settings, Trash2, Link as LinkIcon } from 'lucide-react'
+import { ChevronUp, ChevronDown, Settings, Trash2, Link as LinkIcon, Pencil } from 'lucide-react'
 import { SortableItem, DragHandle } from '@/components/ui/SortableList'
 import { Button } from '@/components/ui/Button'
 import type { CaptainPublic } from '@/lib/types'
@@ -16,6 +16,7 @@ export interface SortableCaptainItemProps {
   onDelete: (id: string) => void
   onTeamSettings: (captain: CaptainPublic) => void
   onCopyLink: (captain: CaptainPublic) => void
+  onEditPlayer?: (captain: CaptainPublic) => void
 }
 
 export function SortableCaptainItem({
@@ -31,6 +32,7 @@ export function SortableCaptainItem({
   onDelete,
   onTeamSettings,
   onCopyLink,
+  onEditPlayer,
 }: SortableCaptainItemProps) {
   return (
     <SortableItem
@@ -99,6 +101,17 @@ export function SortableCaptainItem({
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {captain.player_id && onEditPlayer && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onEditPlayer(captain)}
+              title="Edit player profile"
+              aria-label={`Edit profile for ${captain.name}`}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
           {isEditable && (
             <Button
               variant="ghost"

@@ -15,9 +15,15 @@ interface DraftOrderCardProps {
   league: LeagueFullPublic
   onTeamSettings: (captain: CaptainPublic) => void
   onCopyCaptainLink: (captain: CaptainPublic) => void
+  onEditPlayer?: (captain: CaptainPublic) => void
 }
 
-export function DraftOrderCard({ league, onTeamSettings, onCopyCaptainLink }: DraftOrderCardProps) {
+export function DraftOrderCard({
+  league,
+  onTeamSettings,
+  onCopyCaptainLink,
+  onEditPlayer,
+}: DraftOrderCardProps) {
   const [showRandomAssign, setShowRandomAssign] = useState(false)
   const [randomCount, setRandomCount] = useState('2')
 
@@ -179,6 +185,7 @@ export function DraftOrderCard({ league, onTeamSettings, onCopyCaptainLink }: Dr
                   onDelete={handleDeleteCaptain}
                   onTeamSettings={onTeamSettings}
                   onCopyLink={onCopyCaptainLink}
+                  onEditPlayer={onEditPlayer}
                 />
               ))}
             </ul>
