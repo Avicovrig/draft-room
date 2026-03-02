@@ -99,6 +99,15 @@ export function SpreadsheetImportModal({
     setStep('preview')
   }, [spreadsheetData, mappings, firstRowIsHeader, fieldSchemas])
 
+  const resetAndClose = useCallback(() => {
+    setStep('upload')
+    setSpreadsheetData(null)
+    setMappings({})
+    setParsedPlayers([])
+    setFirstRowIsHeader(true)
+    onClose()
+  }, [onClose])
+
   const handleImport = useCallback(async () => {
     try {
       const result = await importPlayers.mutateAsync(parsedPlayers)
@@ -114,20 +123,11 @@ export function SpreadsheetImportModal({
         }
       }
       onImportComplete(result.playersCreated)
-      onClose()
+      resetAndClose()
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Import failed', 'error')
     }
-  }, [importPlayers, parsedPlayers, addToast, onImportComplete, onClose])
-
-  const resetAndClose = useCallback(() => {
-    setStep('upload')
-    setSpreadsheetData(null)
-    setMappings({})
-    setParsedPlayers([])
-    setFirstRowIsHeader(true)
-    onClose()
-  }, [onClose])
+  }, [importPlayers, parsedPlayers, addToast, onImportComplete, resetAndClose])
 
   // Check if name is mapped
   const hasNameMapping = Object.values(mappings).some(

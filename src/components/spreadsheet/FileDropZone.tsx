@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Upload, FileSpreadsheet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +14,7 @@ export function FileDropZone({
   accept = '.csv,.xlsx,.xls',
 }: FileDropZoneProps) {
   const [isDragging, setIsDragging] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -41,11 +42,17 @@ export function FileDropZone({
     [onFileSelect]
   )
 
+  const handleClick = useCallback(() => {
+    inputRef.current?.click()
+  }, [])
+
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
       if (file) {
         onFileSelect(file)
+        // Reset so the same file can be re-selected
+        e.target.value = ''
       }
     },
     [onFileSelect]
@@ -53,11 +60,12 @@ export function FileDropZone({
 
   return (
     <div
+      onClick={handleClick}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        'relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors',
+        'relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors',
         isDragging
           ? 'border-primary bg-primary/5'
           : 'border-border hover:border-primary/50 hover:bg-accent/50',
@@ -65,10 +73,11 @@ export function FileDropZone({
       )}
     >
       <input
+        ref={inputRef}
         type="file"
         accept={accept}
         onChange={handleFileInput}
-        className="absolute inset-0 cursor-pointer opacity-0"
+        className="hidden"
         disabled={isLoading}
       />
 
