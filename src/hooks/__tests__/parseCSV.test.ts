@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseCSV } from '../useSpreadsheetImport'
+import { parseCSV } from '@/lib/spreadsheetParsing'
 
 describe('parseCSV', () => {
   it('parses basic comma-separated rows', () => {

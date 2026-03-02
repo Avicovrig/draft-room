@@ -4,59 +4,9 @@ import { trackCount, trackDistribution } from '@/lib/metrics'
 import { PLAYER_COLUMNS } from '@/lib/queryColumns'
 import type { SpreadsheetData, ParsedPlayer, ImportResult } from '@/lib/spreadsheetTypes'
 
+import { suggestMappings, transformData, parseCSV } from '@/lib/spreadsheetParsing'
 // Re-export pure functions for existing consumers
-export { suggestMappings, transformData } from '@/lib/spreadsheetParsing'
-
-export function parseCSV(text: string): string[][] {
-  const rows: string[][] = []
-  let currentRow: string[] = []
-  let currentField = ''
-  let inQuotes = false
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i]
-
-    if (inQuotes) {
-      if (char === '"') {
-        if (text[i + 1] === '"') {
-          // Escaped quote
-          currentField += '"'
-          i++
-        } else {
-          inQuotes = false
-        }
-      } else {
-        currentField += char
-      }
-    } else if (char === '"') {
-      inQuotes = true
-    } else if (char === ',') {
-      currentRow.push(currentField.trim())
-      currentField = ''
-    } else if (char === '\n') {
-      currentRow.push(currentField.trim())
-      if (currentRow.some((cell) => cell !== '')) {
-        rows.push(currentRow)
-      }
-      currentRow = []
-      currentField = ''
-    } else if (char === '\r') {
-      // Skip carriage returns (Windows line endings)
-    } else {
-      currentField += char
-    }
-  }
-
-  // Flush last field/row
-  if (currentField !== '' || currentRow.length > 0) {
-    currentRow.push(currentField.trim())
-    if (currentRow.some((cell) => cell !== '')) {
-      rows.push(currentRow)
-    }
-  }
-
-  return rows
-}
+export { suggestMappings, transformData, parseCSV }
 
 export function parseFile(file: File): Promise<SpreadsheetData> {
   const isCSV = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')
